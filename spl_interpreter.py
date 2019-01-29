@@ -37,7 +37,7 @@ class Function:
         self.body = body
 
     def __str__(self):
-        return "Function<>"
+        return "Function<{} at {}>".format(self.name, id(self))
 
     def __repr__(self):
         return self.__str__()
@@ -83,6 +83,10 @@ def evaluate(node, env):
             return int(left) > int(right)
         elif symbol == "<":
             return int(left) < int(right)
+        elif symbol == ">=":
+            return int(left) >= int(right)
+        elif symbol == "<=":
+            return int(left) <= int(right)
 
         raise InterpretException("No such symbol")
     elif isinstance(node, BlockStmt):

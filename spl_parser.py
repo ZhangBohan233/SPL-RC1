@@ -1,8 +1,8 @@
-
 class Parser:
     """
     :type inner: Parser
     """
+
     def __init__(self):
         self.elements = []
         self.stack = []
@@ -33,8 +33,8 @@ class Parser:
         else:
             op_node = OperatorNode()
             op_node.operation = op
-            left = self.stack.pop()
-            op_node.left = left
+            # left = self.stack.pop()
+            # op_node.left = left
             self.stack.append(op_node)
 
     def add_assignment(self):
@@ -117,23 +117,54 @@ class Parser:
             self.inner = None
             self.stack.append(root)
 
+    # def build_expr(self):
+    #     if self.inner:
+    #         self.inner.build_expr()
+    #     else:
+    #         # print(self.stack)
+    #         res = None
+    #         while len(self.stack) > 0:
+    #             node = self.stack.pop()
+    #             if isinstance(node, LeafNode):
+    #                 res = node
+    #             elif isinstance(node, OperatorNode):
+    #                 node.right = res
+    #                 res = node
+    #             else:
+    #                 self.stack.append(node)
+    #                 break
+    #         self.stack.append(res)
+
     def build_expr(self):
         if self.inner:
             self.inner.build_expr()
         else:
-            # print(self.stack)
-            res = None
+            lst = []
             while len(self.stack) > 0:
                 node = self.stack.pop()
-                if isinstance(node, LeafNode):
-                    res = node
-                elif isinstance(node, OperatorNode):
-                    node.right = res
-                    res = node
+                if isinstance(node, NumNode) or isinstance(node, NameNode) or isinstance(node, OperatorNode):
+                    lst.append(node)
                 else:
                     self.stack.append(node)
                     break
-            self.stack.append(res)
+            lst.reverse()
+            while len(lst) > 1:
+                max_pre = 0
+                index = 0
+                for i in range(len(lst)):
+                    node = lst[i]
+                    if isinstance(node, OperatorNode):
+                        pre = node.precedence()
+                        if pre > max_pre and not node.left and not node.right:
+                            max_pre = pre
+                            index = i
+                operator = lst[index]
+                operator.left = lst[index - 1]
+                operator.right = lst[index + 1]
+                lst.pop(index + 1)
+                lst.pop(index - 1)
+
+            self.stack.append(lst[0])
 
     def build_line(self):
         if self.inner:
@@ -187,9 +218,10 @@ class LeafNode(Node):
 
 class BinaryExpr(Node):
     """
-    :type operation: OperatorNode
+    :type operation: str
     :type left:
     """
+
     def __init__(self):
         Node.__init__(self)
 
@@ -229,9 +261,10 @@ class OperatorNode(BinaryExpr):
     def __init__(self):
         BinaryExpr.__init__(self)
 
-    def is_left_associated(self):
-        left = ["="]
-        return self.operation in left
+    def precedence(self):
+        precedences = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
+                       "==": 10, ">": 10, "<": 10, ">=": 10, "<=": 10}
+        return precedences[self.operation]
 
 
 class NameNode(LeafNode):
@@ -259,10 +292,10 @@ class BlockStmt(Node):
         self.lines = []
 
     def __str__(self):
-        s = "Block(\n"
+        s = "Block{\n"
         for line in self.lines:
             s += (str(line) + ",\n")
-        return s + ")"
+        return s + "}"
 
     def __repr__(self):
         return self.__str__()
