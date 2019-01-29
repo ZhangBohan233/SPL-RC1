@@ -120,6 +120,8 @@ def evaluate(node, env):
         scope = Environment(env.heap)
         for i in range(len(func.params)):
             scope.assign(func.params[i].name, evaluate(node.args[i], env))
+        # scope.variables.merge(env.variables)
+        print(scope.variables)
         return evaluate(func.body, scope)
 
     return None

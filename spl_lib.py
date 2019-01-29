@@ -8,6 +8,9 @@ class Map:
     def __getitem__(self, item):
         raise NotImplementedError
 
+    def __len__(self):
+        raise NotImplementedError
+
 
 class HashMap(Map):
     def __init__(self):
@@ -18,11 +21,18 @@ class HashMap(Map):
     def __str__(self):
         return str(self.d)
 
+    def __len__(self):
+        return len(self.d)
+
     def __setitem__(self, key, value):
         self.d[key] = value
 
     def __getitem__(self, item):
         return self.d[item]
+
+    def merge(self, other):
+        for key in other.d:
+            self.d[key] = other.d[key]
 
 
 class Stack:

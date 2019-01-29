@@ -1,12 +1,7 @@
 function test(a, b) {
-    c = 1;
-    if (a > 3) {
-        c = 0;
-        if (a > 4) {
-            c = 2;
-        };
-    };
-    c;
+    a + b;
 };
 
-res = test(5, 6);
+f = test;
+//res = f(1, 2);
+res2 = f(1, 2);

@@ -31,6 +31,8 @@ class Lexer:
                     lst2.append(x)
             # print(lst2)
             for part in lst2:
+                if part == "//":
+                    break
                 if part.isidentifier():
                     if part in self.reserved:
                         self.tokens.append(IdToken(line_num, part))
@@ -55,6 +57,7 @@ class Lexer:
         """
         parser = psr.Parser()
         i = 0
+        func_count = 0
         in_expr = False
         in_cond = False
         in_call = False
@@ -64,10 +67,15 @@ class Lexer:
                 if isinstance(token, IdToken):
                     sym = token.symbol
                     if sym == "function":
-                        f_token: IdToken = self.tokens[i + 1]
+                        i += 1
+                        f_token = self.tokens[i]
                         f_name = f_token.symbol
-                        parser.add_function(f_name)
-                        i += 2
+                        if f_name == "(":
+                            parser.add_function("anonymous_function_{}".format(func_count))
+                            func_count += 1
+                        else:
+                            parser.add_function(f_name)
+                            i += 1
                         front_par = self.tokens[i]
                         if isinstance(front_par, IdToken) and front_par.symbol == "(":
                             i += 1

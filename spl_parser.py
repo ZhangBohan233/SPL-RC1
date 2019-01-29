@@ -1,3 +1,7 @@
+PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
+              "==": 10, ">": 10, "<": 10, ">=": 10, "<=": 10, "!=": 10}
+
+
 class Parser:
     """
     :type inner: Parser
@@ -59,7 +63,6 @@ class Parser:
             self.inner.add_else()
         else:
             node = self.stack.pop()
-
 
     def add_while(self):
         if self.inner:
@@ -251,9 +254,7 @@ class OperatorNode(BinaryExpr):
         BinaryExpr.__init__(self)
 
     def precedence(self):
-        precedences = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
-                       "==": 10, ">": 10, "<": 10, ">=": 10, "<=": 10, "!=": 10}
-        return precedences[self.operation]
+        return PRECEDENCE[self.operation]
 
 
 class NameNode(LeafNode):

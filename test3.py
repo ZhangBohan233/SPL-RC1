@@ -3,7 +3,6 @@ if __name__ == "__main__":
     import spl_parser
     import spl_interpreter
     f = open("sample.sp", "r")
-    print(type(f))
     lexer = spl_lexer.Lexer(f)
     lexer.read()
 
