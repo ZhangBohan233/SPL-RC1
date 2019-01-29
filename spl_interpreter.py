@@ -78,7 +78,13 @@ def evaluate(node, env):
         elif symbol == "*":
             return int(left) * int(right)
         elif symbol == "/":
-            pass
+            return int(left) // int(right)
+        elif symbol == "%":
+            return int(left) % int(right)
+        elif symbol == "==":
+            return int(left) == int(right)
+        elif symbol == "!=":
+            return int(left) != int(right)
         elif symbol == ">":
             return int(left) > int(right)
         elif symbol == "<":

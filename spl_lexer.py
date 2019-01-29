@@ -2,7 +2,7 @@ import spl_parser as psr
 
 EOF = -1
 EOL = ";"
-BINARY_OPERATORS = {"+", "-", "*", "/", "%", "==", ">=", "<=", "!=", "&&", "||"}
+BINARY_OPERATORS = {"+", "-", "*", "/", "%", "<", ">", "==", ">=", "<=", "!=", "&&", "||"}
 
 
 class Lexer:
@@ -14,7 +14,8 @@ class Lexer:
     def __init__(self, f):
         self.file = f
         self.reserved = {"function", "if", "else"}
-        self.symbols = {"(", ")", "{", "}", "=", "+", "-", "*", "/", "%", "==", ">=", "<=", "!=", "&&", "||", ","}
+        self.symbols = {"(", ")", "{", "}", "=", "+", "-", "*", "/", "%", "==",
+                        "<", ">", ">=", "<=", "!=", "&&", "||", ","}
         self.tokens = []
 
     def read(self):

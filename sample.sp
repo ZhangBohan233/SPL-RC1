@@ -1,10 +1,12 @@
 function test(a, b) {
-    if (a >= 3) {
+    c = 1;
+    if (a > 3) {
         c = 0;
-    } else {
-        c=1;
+        if (a > 4) {
+            c = 2;
+        };
     };
     c;
 };
 
-res = test(2, 6);
+res = test(5, 6);

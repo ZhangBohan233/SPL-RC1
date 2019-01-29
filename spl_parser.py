@@ -54,6 +54,13 @@ class Parser:
             ifs = IfStmt()
             self.stack.append(ifs)
 
+    def add_else(self):
+        if self.inner:
+            self.inner.add_else()
+        else:
+            node = self.stack.pop()
+
+
     def add_while(self):
         if self.inner:
             self.inner.add_while()
@@ -116,24 +123,6 @@ class Parser:
             root = self.inner.get_as_block()
             self.inner = None
             self.stack.append(root)
-
-    # def build_expr(self):
-    #     if self.inner:
-    #         self.inner.build_expr()
-    #     else:
-    #         # print(self.stack)
-    #         res = None
-    #         while len(self.stack) > 0:
-    #             node = self.stack.pop()
-    #             if isinstance(node, LeafNode):
-    #                 res = node
-    #             elif isinstance(node, OperatorNode):
-    #                 node.right = res
-    #                 res = node
-    #             else:
-    #                 self.stack.append(node)
-    #                 break
-    #         self.stack.append(res)
 
     def build_expr(self):
         if self.inner:
@@ -263,7 +252,7 @@ class OperatorNode(BinaryExpr):
 
     def precedence(self):
         precedences = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
-                       "==": 10, ">": 10, "<": 10, ">=": 10, "<=": 10}
+                       "==": 10, ">": 10, "<": 10, ">=": 10, "<=": 10, "!=": 10}
         return precedences[self.operation]
 
 

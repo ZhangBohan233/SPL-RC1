@@ -31,13 +31,14 @@ if __name__ == "__main__":
     psr.add_assignment()
     psr.add_name("a")
     psr.add_operator("+")
-
     psr.add_number("1")
     psr.build_expr()
     # print(psr.inner.stack)
     psr.build_line()
     # print(psr.inner)
     psr.build_block()
+
+    psr.add_else()
 
     psr.new_block()
     psr.add_name("b")
