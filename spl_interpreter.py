@@ -18,7 +18,7 @@ class Environment:
     def __init__(self, heap=HashMap()):
         self.heap = heap
         self.variables = HashMap()
-        self.calls = Stack()
+        # self.calls = Stack()
 
     def assign(self, key, value):
         self.variables[key] = value
@@ -41,11 +41,6 @@ class Function:
 
     def __repr__(self):
         return self.__str__()
-
-
-class FunctionCall:
-    def __init__(self, f):
-        pass
 
 
 def evaluate(node, env):
