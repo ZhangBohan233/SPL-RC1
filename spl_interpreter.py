@@ -8,23 +8,30 @@ class Interpreter:
     """
     def __init__(self, ast):
         self.ast = ast
-        self.env = Environment()
+        self.env = Environment(True, HashMap())
 
     def interpret(self):
         return evaluate(self.ast, self.env)
 
 
 class Environment:
-    def __init__(self, heap=HashMap()):
+    def __init__(self, is_global, heap):
+        self.is_global = is_global
         self.heap = heap
         self.variables = HashMap()
         # self.calls = Stack()
 
     def assign(self, key, value):
-        self.variables[key] = value
+        if self.is_global:
+            self.heap[key] = value
+        else:
+            self.variables[key] = value
 
     def get(self, key):
-        return self.variables[key]
+        if key in self.variables:
+            return self.variables[key]
+        else:
+            return self.heap[key]
 
 
 class Function:
@@ -112,11 +119,11 @@ def evaluate(node, env):
         return 0
     elif isinstance(node, FuncCall):
         func: Function = env.get(node.f_name)
-        scope = Environment(env.heap)
+        scope = Environment(False, env.heap)
         for i in range(len(func.params)):
             scope.assign(func.params[i].name, evaluate(node.args[i], env))
         # scope.variables.merge(env.variables)
-        print(scope.variables)
+        # print(scope.variables)
         return evaluate(func.body, scope)
 
     return None

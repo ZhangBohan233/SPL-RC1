@@ -2,7 +2,9 @@ if __name__ == "__main__":
     import spl_lexer
     import spl_parser
     import spl_interpreter
-    f = open("sample.sp", "r")
+    file_name = "sample.sp"
+    file_name = "samples/sample4.sp"
+    f = open(file_name, "r")
     lexer = spl_lexer.Lexer(f)
     lexer.read()
 
@@ -17,3 +19,4 @@ if __name__ == "__main__":
     itr = spl_interpreter.Interpreter(block)
     print(itr.interpret())
     print(itr.env.variables)
+    print(itr.env.heap)

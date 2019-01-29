@@ -62,7 +62,8 @@ class Parser:
         if self.inner:
             self.inner.add_else()
         else:
-            node = self.stack.pop()
+            pass
+            # node = self.stack.pop()
 
     def add_while(self):
         if self.inner:
@@ -95,14 +96,17 @@ class Parser:
             self.stack.append(fc)
 
     def build_call(self):
-        lst = []
-        node = self.stack.pop()
-        while not isinstance(node, FuncCall):
-            lst.append(node)
+        if self.inner:
+            self.inner.build_call()
+        else:
+            lst = []
+            while not isinstance(self.stack[-1], FuncCall):
+                lst.append(self.stack.pop())
+
+            lst.reverse()
             node = self.stack.pop()
-        lst.reverse()
-        node.args = lst
-        self.stack.append(node)
+            node.args = lst
+            self.stack.append(node)
 
     def build_condition(self):
         if self.inner:

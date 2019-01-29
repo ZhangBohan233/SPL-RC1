@@ -133,6 +133,7 @@ class Lexer:
                         if isinstance(self.tokens[i + 1], IdToken) and self.tokens[i + 1].symbol == "(":
                             # function call
                             parser.add_call(sym)
+                            # print("call " + self.tokens[i].symbol + str(self.tokens[i].line_number()))
                             i += 1
                             in_call = True
                         else:

@@ -8,6 +8,5 @@ function exp(base, exp) {
     res;
 };
 
-f = exp;
-//res = f(1, 2);
-res = f(2, 3);
+a = 2;
+exp(a, 3);
