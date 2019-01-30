@@ -11,7 +11,7 @@ if __name__ == "__main__":
     psr.add_number("5")
     psr.add_operator("+")
     psr.add_number("4")
-    psr.build_expr2()
+    psr.build_expr()
     psr.build_line()
 
     print(psr)

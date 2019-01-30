@@ -3,7 +3,7 @@ if __name__ == "__main__":
     import spl_parser
     import spl_interpreter
     file_name = "sample.sp"
-    file_name = "samples/sample4.sp"
+    file_name = "samples/sample5.sp"
     f = open(file_name, "r")
     lexer = spl_lexer.Lexer(f)
     lexer.read()

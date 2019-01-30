@@ -3,6 +3,7 @@ import spl_parser as psr
 EOF = -1
 EOL = ";"
 BINARY_OPERATORS = {"+", "-", "*", "/", "%", "<", ">", "==", ">=", "<=", "!=", "&&", "||"}
+RESERVED = {"class", "function", "if", "else", "new"}
 
 
 class Lexer:
@@ -13,9 +14,8 @@ class Lexer:
 
     def __init__(self, f):
         self.file = f
-        self.reserved = {"function", "if", "else"}
         self.symbols = {"(", ")", "{", "}", "=", "+", "-", "*", "/", "%", "==",
-                        "<", ">", ">=", "<=", "!=", "&&", "||", ","}
+                        "<", ">", ">=", "<=", "!=", "&&", "||", ",", "."}
         self.tokens = []
 
     def read(self):
@@ -34,7 +34,7 @@ class Lexer:
                 if part == "//":
                     break
                 if part.isidentifier():
-                    if part in self.reserved:
+                    if part in RESERVED:
                         self.tokens.append(IdToken(line_num, part))
                     else:
                         self.tokens.append(IdToken(line_num, part))
@@ -61,6 +61,8 @@ class Lexer:
         in_expr = False
         in_cond = False
         in_call = False
+        brace_count = 0
+        class_brace = -1
         while True:
             try:
                 token = self.tokens[i]
@@ -86,6 +88,17 @@ class Lexer:
                                     params.append(sbl)
                                 i += 1
                             parser.build_func_params(params)
+                    elif sym == "class":
+                        i += 1
+                        c_token = self.tokens[i]
+                        class_name = c_token.symbol
+                        parser.add_class(class_name)
+                        class_brace = brace_count
+                    elif sym == "new":
+                        i += 1
+                        c_token = self.tokens[i]
+                        class_name = c_token.symbol
+                        parser.add_class_new(class_name)
                     elif sym == "if":
                         in_cond = True
                         parser.add_if()
@@ -101,10 +114,17 @@ class Lexer:
                     elif sym == "else":
                         pass
                     elif sym == "{":
+                        brace_count += 1
                         parser.new_block()
                     elif sym == "}":
+                        brace_count -= 1
                         # parser.build_line()
                         parser.build_block()
+                        if brace_count == class_brace:
+                            parser.build_class()
+                            class_brace = -1
+                    # elif sym == "(":
+                    #     pass
                     elif sym == ")":
                         if in_cond:
                             if in_expr:
@@ -113,10 +133,11 @@ class Lexer:
                             parser.build_condition()
                             in_cond = False
                         elif in_call:
+                            parser.build_call()
                             if in_expr:
                                 parser.build_expr()
                                 in_expr = False
-                            parser.build_call()
+                            # parser.build_call()
                             in_call = False
                     elif sym == "=":
                         parser.add_assignment()
@@ -124,6 +145,9 @@ class Lexer:
                         if in_expr:
                             parser.build_expr()
                             in_expr = False
+                    elif sym == ".":
+                        parser.add_dot()
+                        in_expr = True
                     elif sym in BINARY_OPERATORS:
                         parser.add_operator(sym)
                         in_expr = True

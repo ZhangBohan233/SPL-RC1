@@ -2,13 +2,14 @@ def fib(n):
     if n < 2:
         return n
     else:
-        x = n - 1
-        y = n - 2
-        a = fib(x)
-        b = fib(y)
-        c = a + b
-        return c
+        a = fib(n - 1)
+        b = fib(n - 2)
+        return a + b
 
 
 if __name__ == "__main__":
-    print(fib(7))
+    import time
+    s = time.time() * 1000
+    print(fib(25))
+    e = time.time() * 1000
+    print(e - s)

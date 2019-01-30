@@ -1,5 +1,5 @@
 PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
-              "==": 10, ">": 10, "<": 10, ">=": 10, "<=": 10, "!=": 10}
+              "==": 10, ">": 10, "<": 10, ">=": 10, "<=": 10, "!=": 10, ".": 500}
 
 
 class Parser:
@@ -123,6 +123,42 @@ class Parser:
         else:
             self.inner = Parser()
 
+    def add_class(self, class_name):
+        if self.inner:
+            self.inner.add_class(class_name)
+        else:
+            cs = ClassStmt(class_name)
+            self.stack.append(cs)
+
+    def build_class(self):
+        if self.inner:
+            self.inner.build_class()
+        else:
+            node = self.stack.pop()
+            class_node = self.stack.pop()
+            class_node.block = node
+            self.stack.append(class_node)
+
+    def add_class_new(self, class_name):
+        if self.inner:
+            self.inner.add_class_new(class_name)
+        else:
+            node = ClassInit(class_name)
+            self.stack.append(node)
+
+    def add_dot(self):
+        if self.inner:
+            self.inner.add_dot()
+        else:
+            node = Dot()
+            self.stack.append(node)
+
+    # def build_postfix(self):
+    #     if self.inner:
+    #         self.inner.build_postfix()
+    #     else:
+    #         pass
+
     def build_block(self):
         if self.inner.inner:
             self.inner.build_block()
@@ -136,6 +172,7 @@ class Parser:
             self.inner.build_expr()
         else:
             lst = []
+            # print(self.stack)
             while len(self.stack) > 0:
                 node = self.stack.pop()
                 if isinstance(node, NumNode) or isinstance(node, NameNode) or isinstance(node, OperatorNode) or \
@@ -268,9 +305,13 @@ class NameNode(LeafNode):
         LeafNode.__init__(self)
 
         self.name = n
+        self.postfix = None
 
     def __str__(self):
-        return "N(" + self.name + ")"
+        if self.postfix:
+            return "N({}).{}".format(self.name, self.postfix)
+        else:
+            return "N(" + self.name + ")"
 
     def __repr__(self):
         return self.__str__()
@@ -370,6 +411,51 @@ class FuncCall(LeafNode):
 
     def __str__(self):
         return "{}({})".format(self.f_name, self.args)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class ClassStmt(Node):
+    def __init__(self, name):
+        Node.__init__(self)
+
+        self.class_name = name
+        self.block = None
+
+    def __str__(self):
+        return "Class {}: {}".format(self.class_name, self.block)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class ClassInit(LeafNode):
+    def __init__(self, name):
+        LeafNode.__init__(self)
+
+        self.class_name = name
+
+    def __str__(self):
+        return "ClassInit {}".format(self.class_name)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class Postfix:
+    def __init__(self):
+        pass
+
+
+class Dot(OperatorNode):
+    def __init__(self):
+        OperatorNode.__init__(self)
+
+        self.operation = "."
+
+    def __str__(self):
+        return "{} dot {}".format(self.left, self.right)
 
     def __repr__(self):
         return self.__str__()

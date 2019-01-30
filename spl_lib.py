@@ -36,6 +36,9 @@ class HashMap(Map):
     def __contains__(self, item):
         return item in self.d
 
+    def key_set(self):
+        return set(self.d.keys())
+
     def merge(self, other):
         for key in other.d:
             self.d[key] = other.d[key]

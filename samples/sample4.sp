@@ -8,6 +8,8 @@ function fib(n) {
     };
 };
 
-//a = time();
-x = fib(9);
-//b = time();
+a = time();
+x = fib(25);
+b = time();
+print(b - a);
+print(x);

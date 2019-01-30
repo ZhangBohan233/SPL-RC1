@@ -65,9 +65,39 @@ class Function:
         # self.name = f_name
         self.params = params
         self.body = body
+        self.parent = None
 
     def __str__(self):
+        if self.parent:
+            return "{}.Method<{}>".format(self.parent, id(self))
         return "Function<{}>".format(id(self))
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class Class:
+    def __init__(self, class_name, body):
+        self.class_name = class_name
+        self.body = body
+
+    def __str__(self):
+        return "Class<>"
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class ClassInstance:
+    def __init__(self, env):
+        """
+        :type env: Environment
+        """
+        self.env = env
+        # print("Instance " + str(attributes))
+
+    def __str__(self):
+        return "Object: " + str(self.env.variables)
 
     def __repr__(self):
         return self.__str__()
@@ -92,6 +122,18 @@ def evaluate(node, env):
         value = evaluate(node.right, env)
         env.assign(key, value)
         return value
+    elif isinstance(node, Dot):
+        instance: ClassInstance = evaluate(node.left, env)
+        obj = node.right
+        if isinstance(obj, NameNode):
+            attr = instance.env.variables[obj.name]
+            return attr
+        elif isinstance(obj, FuncCall):
+            # attr = instance.attributes[obj.f_name]
+            # print(obj)
+            return evaluate(obj, instance.env)
+        else:
+            raise InterpretException("Unknown Syntax")
     elif isinstance(node, OperatorNode):
         left = evaluate(node.left, env)
         right = evaluate(node.right, env)
@@ -140,11 +182,14 @@ def evaluate(node, env):
     elif isinstance(node, DefStmt):
         f = Function(node.params, node.body)
         env.assign(node.name, f)
-        return 0
+        return None
     elif isinstance(node, FuncCall):
         func = env.get(node.f_name)
         if isinstance(func, Function):
             scope = Environment(False, env.heap)
+            if func.parent:
+                scope.variables = func.parent.env.variables
+            # print(scope.variables)
             for i in range(len(func.params)):
                 scope.assign(func.params[i].name, evaluate(node.args[i], env))
             # scope.variables.merge(env.variables)
@@ -159,7 +204,22 @@ def evaluate(node, env):
             return func.call(args)
         else:
             raise InterpretException("Not a function call")
-
+    elif isinstance(node, ClassStmt):
+        cla = Class(node.class_name, node.block)
+        env.assign(node.class_name, cla)
+        return None
+    elif isinstance(node, ClassInit):
+        cla: Class = env.get(node.class_name)
+        scope = Environment(False, env.heap)
+        evaluate(cla.body, scope)
+        # print(scope.variables)
+        instance = ClassInstance(scope)
+        for k in scope.variables.key_set():
+            v = scope.variables[k]
+            if isinstance(v, Function):
+                v.parent = instance
+        return instance
+        # cla.new()
     return None
 
 
