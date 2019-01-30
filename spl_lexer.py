@@ -64,6 +64,7 @@ class Lexer:
         in_call = False
         brace_count = 0
         class_brace = -1
+        extra_precedence = 0
         while True:
             try:
                 token = self.tokens[i]
@@ -124,25 +125,30 @@ class Lexer:
                         if brace_count == class_brace:
                             parser.build_class()
                             class_brace = -1
-                    # elif sym == "(":
-                    #     pass
+                    elif sym == "(":
+                        if in_expr:
+                            extra_precedence += 1
                     elif sym == ")":
-                        if in_cond:
+                        if extra_precedence == 0:
+                            if in_cond:
+                                if in_expr:
+                                    parser.build_expr()
+                                    in_expr = False
+                                parser.build_condition()
+                                in_cond = False
+                            elif in_call:
+                                if in_call_expr:
+                                    parser.build_call_expr()
+                                    in_call_expr = False
+                                parser.build_call()
+                                if in_expr:
+                                    parser.build_expr()
+                                    in_expr = False
+                                # parser.build_call()
+                                in_call = False
+                        else:
                             if in_expr:
-                                parser.build_expr()
-                                in_expr = False
-                            parser.build_condition()
-                            in_cond = False
-                        elif in_call:
-                            if in_call_expr:
-                                parser.build_call_expr()
-                                in_call_expr = False
-                            parser.build_call()
-                            if in_expr:
-                                parser.build_expr()
-                                in_expr = False
-                            # parser.build_call()
-                            in_call = False
+                                extra_precedence -= 1
                     elif sym == "=":
                         parser.add_assignment()
                     elif sym == ",":
@@ -150,12 +156,12 @@ class Lexer:
                             parser.build_expr()
                             in_expr = False
                     elif sym == ".":
-                        parser.add_dot()
+                        parser.add_dot(extra_precedence)
                         in_expr = True
                         if in_call:
                             in_call_expr = True
                     elif sym in BINARY_OPERATORS:
-                        parser.add_operator(sym)
+                        parser.add_operator(sym, extra_precedence)
                         in_expr = True
                         if in_call:
                             in_call_expr = True
@@ -202,10 +208,11 @@ def normalize(string):
         lst = []
         s = string[0]
         last_type = char_type(s)
+        can_concentrate = {0, 1, 10, 11}
         for i in range(1, len(string), 1):
             char = string[i]
             t = char_type(char)
-            if t == last_type or (last_type == 8 and t == 9):
+            if (t in can_concentrate and t == last_type) or (last_type == 8 and t == 9):
                 s += char
             else:
                 lst.append(s)

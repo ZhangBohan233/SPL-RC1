@@ -2,11 +2,7 @@ function fib(n) {
     if (n < 2) {
         n;
     } else {
-        x = n - 1;
-        y = n - 2;
-        a = fib(x);
-        b = fib(y);
-        a + b;
+        fib(n - 1) + fib(n - 2);
     };
 };
 

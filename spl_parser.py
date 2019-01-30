@@ -31,11 +31,11 @@ class Parser:
         else:
             self.stack.append(NumNode(v))
 
-    def add_operator(self, op):
+    def add_operator(self, op, extra_precedence):
         if self.inner:
-            self.inner.add_operator(op)
+            self.inner.add_operator(op, extra_precedence)
         else:
-            op_node = OperatorNode()
+            op_node = OperatorNode(extra_precedence)
             op_node.operation = op
             # left = self.stack.pop()
             # op_node.left = left
@@ -158,18 +158,12 @@ class Parser:
             node = ClassInit(class_name)
             self.stack.append(node)
 
-    def add_dot(self):
+    def add_dot(self, extra_precedence):
         if self.inner:
-            self.inner.add_dot()
+            self.inner.add_dot(extra_precedence)
         else:
-            node = Dot()
+            node = Dot(extra_precedence)
             self.stack.append(node)
-
-    # def build_postfix(self):
-    #     if self.inner:
-    #         self.inner.build_postfix()
-    #     else:
-    #         pass
 
     def build_block(self):
         if self.inner.inner:
@@ -195,24 +189,8 @@ class Parser:
                     break
             lst.reverse()
             # print(lst)
-            # while len(lst) > 1:
-            #     max_pre = 0
-            #     index = 0
-            #     for i in range(len(lst)):
-            #         node = lst[i]
-            #         if isinstance(node, OperatorNode):
-            #             pre = node.precedence()
-            #             if pre > max_pre and not node.left and not node.right:
-            #                 max_pre = pre
-            #                 index = i
-            #     operator = lst[index]
-            #     operator.left = lst[index - 1]
-            #     operator.right = lst[index + 1]
-            #     lst.pop(index + 1)
-            #     lst.pop(index - 1)
 
             node = parse_expr(lst)
-
             self.stack.append(node)
 
     def build_line(self):
@@ -307,11 +285,13 @@ class NumNode(LeafNode):
 
 
 class OperatorNode(BinaryExpr):
-    def __init__(self):
+    def __init__(self, extra):
         BinaryExpr.__init__(self)
 
+        self.extra_precedence = extra * 1000
+
     def precedence(self):
-        return PRECEDENCE[self.operation]
+        return PRECEDENCE[self.operation] + self.extra_precedence
 
 
 class NameNode(LeafNode):
@@ -463,8 +443,8 @@ class Postfix:
 
 
 class Dot(OperatorNode):
-    def __init__(self):
-        OperatorNode.__init__(self)
+    def __init__(self, extra):
+        OperatorNode.__init__(self, extra)
 
         self.operation = "."
 
@@ -483,6 +463,7 @@ def parse_expr(lst):
             node = lst[i]
             if isinstance(node, OperatorNode):
                 pre = node.precedence()
+                # print(str(pre) + node.operation)
                 if pre > max_pre and not node.left and not node.right:
                     max_pre = pre
                     index = i

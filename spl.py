@@ -18,12 +18,12 @@ if __name__ == "__main__":
     lexer = spl_lexer.Lexer(f)
     lexer.read()
 
-    # print(lexer.tokens)
+    print(lexer.tokens)
 
     parse_start = time.time()
 
     psr = lexer.parse()
-    # print(psr)
+    print(psr)
 
     block = spl_parser.BlockStmt()
     block.lines = psr.elements
