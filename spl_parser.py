@@ -95,6 +95,18 @@ class Parser:
             fc = FuncCall(f_name)
             self.stack.append(fc)
 
+    def build_call_expr(self):
+        if self.inner:
+            self.inner.build_call_expr()
+        else:
+            lst = []
+            while not isinstance(self.stack[-1], FuncCall):
+                lst.append(self.stack.pop())
+            lst.reverse()
+
+            node = parse_expr(lst)
+            self.stack.append(node)
+
     def build_call(self):
         if self.inner:
             self.inner.build_call()
@@ -183,23 +195,25 @@ class Parser:
                     break
             lst.reverse()
             # print(lst)
-            while len(lst) > 1:
-                max_pre = 0
-                index = 0
-                for i in range(len(lst)):
-                    node = lst[i]
-                    if isinstance(node, OperatorNode):
-                        pre = node.precedence()
-                        if pre > max_pre and not node.left and not node.right:
-                            max_pre = pre
-                            index = i
-                operator = lst[index]
-                operator.left = lst[index - 1]
-                operator.right = lst[index + 1]
-                lst.pop(index + 1)
-                lst.pop(index - 1)
+            # while len(lst) > 1:
+            #     max_pre = 0
+            #     index = 0
+            #     for i in range(len(lst)):
+            #         node = lst[i]
+            #         if isinstance(node, OperatorNode):
+            #             pre = node.precedence()
+            #             if pre > max_pre and not node.left and not node.right:
+            #                 max_pre = pre
+            #                 index = i
+            #     operator = lst[index]
+            #     operator.left = lst[index - 1]
+            #     operator.right = lst[index + 1]
+            #     lst.pop(index + 1)
+            #     lst.pop(index - 1)
 
-            self.stack.append(lst[0])
+            node = parse_expr(lst)
+
+            self.stack.append(node)
 
     def build_line(self):
         if self.inner:
@@ -459,3 +473,22 @@ class Dot(OperatorNode):
 
     def __repr__(self):
         return self.__str__()
+
+
+def parse_expr(lst):
+    while len(lst) > 1:
+        max_pre = 0
+        index = 0
+        for i in range(len(lst)):
+            node = lst[i]
+            if isinstance(node, OperatorNode):
+                pre = node.precedence()
+                if pre > max_pre and not node.left and not node.right:
+                    max_pre = pre
+                    index = i
+        operator = lst[index]
+        operator.left = lst[index - 1]
+        operator.right = lst[index + 1]
+        lst.pop(index + 1)
+        lst.pop(index - 1)
+    return lst[0]

@@ -59,6 +59,7 @@ class Lexer:
         i = 0
         func_count = 0
         in_expr = False
+        in_call_expr = False
         in_cond = False
         in_call = False
         brace_count = 0
@@ -133,6 +134,9 @@ class Lexer:
                             parser.build_condition()
                             in_cond = False
                         elif in_call:
+                            if in_call_expr:
+                                parser.build_call_expr()
+                                in_call_expr = False
                             parser.build_call()
                             if in_expr:
                                 parser.build_expr()
@@ -148,9 +152,13 @@ class Lexer:
                     elif sym == ".":
                         parser.add_dot()
                         in_expr = True
+                        if in_call:
+                            in_call_expr = True
                     elif sym in BINARY_OPERATORS:
                         parser.add_operator(sym)
                         in_expr = True
+                        if in_call:
+                            in_call_expr = True
                     elif token.is_eol():
                         if in_expr:
                             parser.build_expr()

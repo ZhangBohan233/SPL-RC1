@@ -16,6 +16,6 @@ class Sample {
 };
 
 ca = new Sample;
-ca.set_a(3);
-d = ca.a;
+ca.set_a(3 + 2);
+d = ca.m() + ca.m();
 d;

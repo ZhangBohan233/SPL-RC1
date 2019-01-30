@@ -11,7 +11,7 @@ function fib(n) {
 };
 
 a = time();
-x = fib(25);
+x = fib(20);
 b = time();
 c = b - a;
 print(c);
