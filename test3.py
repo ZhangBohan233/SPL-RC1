@@ -18,5 +18,5 @@ if __name__ == "__main__":
 
     itr = spl_interpreter.Interpreter(block)
     print(itr.interpret())
-    print(itr.env.variables)
+    # print(itr.env.variables)
     print(itr.env.heap)

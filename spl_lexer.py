@@ -113,6 +113,9 @@ class Lexer:
                             parser.build_condition()
                             in_cond = False
                         elif in_call:
+                            if in_expr:
+                                parser.build_expr()
+                                in_expr = False
                             parser.build_call()
                             in_call = False
                     elif sym == "=":

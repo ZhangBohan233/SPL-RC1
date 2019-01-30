@@ -138,12 +138,14 @@ class Parser:
             lst = []
             while len(self.stack) > 0:
                 node = self.stack.pop()
-                if isinstance(node, NumNode) or isinstance(node, NameNode) or isinstance(node, OperatorNode):
+                if isinstance(node, NumNode) or isinstance(node, NameNode) or isinstance(node, OperatorNode) or \
+                        (isinstance(node, FuncCall) and node.args is not None):
                     lst.append(node)
                 else:
                     self.stack.append(node)
                     break
             lst.reverse()
+            # print(lst)
             while len(lst) > 1:
                 max_pre = 0
                 index = 0
@@ -288,7 +290,7 @@ class BlockStmt(Node):
     def __str__(self):
         s = "Block{\n"
         for line in self.lines:
-            s += (str(line) + ",\n")
+            s += (str(line) + ";\n")
         return s + "}"
 
     def __repr__(self):
@@ -359,7 +361,12 @@ class FuncCall(LeafNode):
         LeafNode.__init__(self)
 
         self.f_name = f_name
+        # self.filled = False
         self.args = None
+
+    # def set_args(self, args):
+    #     self.args = args
+    #     self.filled = True
 
     def __str__(self):
         return "{}({})".format(self.f_name, self.args)

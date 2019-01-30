@@ -1,3 +1,6 @@
+import time as time_lib
+
+
 class Map:
     def __init__(self):
         pass
@@ -66,3 +69,7 @@ class StackNode:
     def __init__(self, value):
         self.value = value
         self.after = None
+
+
+def time():
+    return int(time_lib.time() * 1000)

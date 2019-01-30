@@ -1,11 +1,9 @@
-function rec(x, y) {
-    if (y > 0) {
-        a = x + 1;
-        b = y - 1;
-        rec(a, b);
+function f(a) {
+    if (a < 1) {
+        a;
     } else {
-        x;
+        f(a-1);
     };
 };
 
-s = rec(0, 5);
+f(5);
