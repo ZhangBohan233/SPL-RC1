@@ -2,7 +2,11 @@ import spl_parser as psr
 
 EOF = -1
 EOL = ";"
+SYMBOLS = {"{", "}", ".", ","}
+MIDDLE = {"(", ")"}
 BINARY_OPERATORS = {"+", "-", "*", "/", "%", "<", ">", "==", ">=", "<=", "!=", "&&", "||"}
+OTHERS = {"="}
+ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE)
 RESERVED = {"class", "function", "if", "else", "new", "extends"}
 
 
@@ -14,8 +18,8 @@ class Lexer:
 
     def __init__(self, f):
         self.file = f
-        self.symbols = {"(", ")", "{", "}", "=", "+", "-", "*", "/", "%", "==",
-                        "<", ">", ">=", "<=", "!=", "&&", "||", ",", "."}
+        # self.symbols = {"(", ")", "{", "}", "=", "+", "-", "*", "/", "%", "==",
+        #                 "<", ">", ">=", "<=", "!=", "&&", "||", ",", "."}
         self.tokens = []
 
     def read(self):
@@ -40,7 +44,7 @@ class Lexer:
                         self.tokens.append(IdToken(line_num, part))
                 elif part.isdigit():
                     self.tokens.append(NumToken(line_num, part))
-                elif part in self.symbols:
+                elif part in ALL:
                     self.tokens.append(IdToken(line_num, part))
                 elif part == EOL:
                     self.tokens.append(IdToken(line_num, EOL))
@@ -167,7 +171,10 @@ class Lexer:
                         if in_call:
                             in_call_expr = True
                     elif sym in BINARY_OPERATORS:
-                        parser.add_operator(sym, extra_precedence)
+                        if sym == "-" and (i == 0 or is_neg(self.tokens[i - 1])):
+                            parser.add_neg(extra_precedence)
+                        else:
+                            parser.add_operator(sym, extra_precedence)
                         in_expr = True
                         if in_call:
                             in_call_expr = True
@@ -199,6 +206,36 @@ class Lexer:
                 raise ParseException("Parse error at line {}".format(self.tokens[i].line_number()))
 
         return parser
+
+
+def is_neg(last_token):
+    """
+    Returns True iff this should be a negation unary operator.
+    False if it should be a minus operator.
+
+    :param last_token:
+    :type last_token: Token
+    :return:
+    :rtype: bool
+    """
+    # 大三角
+    if isinstance(last_token, IdToken):
+        if last_token.is_eol():
+            return True
+        else:
+            sym = last_token.symbol
+            if sym in BINARY_OPERATORS:
+                return True
+            elif sym == "=":
+                return True
+            elif sym in RESERVED:
+                return True
+            else:
+                return False
+    elif isinstance(last_token, NumToken):
+        return False
+    else:
+        return True
 
 
 def normalize(string):

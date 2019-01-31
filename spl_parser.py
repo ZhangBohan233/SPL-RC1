@@ -1,5 +1,6 @@
 PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
-              "==": 10, ">": 10, "<": 10, ">=": 10, "<=": 10, "!=": 10, ".": 500}
+              "==": 10, ">": 10, "<": 10, ">=": 10, "<=": 10,
+              "!=": 10, ".": 500, "neg": 200}
 
 
 class Parser:
@@ -40,6 +41,13 @@ class Parser:
             # left = self.stack.pop()
             # op_node.left = left
             self.stack.append(op_node)
+
+    def add_neg(self, extra_precedence):
+        if self.inner:
+            self.inner.add_neg(extra_precedence)
+        else:
+            node = NegativeExpr(extra_precedence)
+            self.stack.append(node)
 
     def add_assignment(self):
         if self.inner:
@@ -190,6 +198,7 @@ class Parser:
             while len(self.stack) > 0:
                 node = self.stack[-1]
                 if isinstance(node, NumNode) or isinstance(node, NameNode) or isinstance(node, OperatorNode) or \
+                        isinstance(node, NegativeExpr) or \
                         (isinstance(node, FuncCall) and node.args is not None):
                     lst.append(node)
                     self.stack.pop()
@@ -323,6 +332,23 @@ class NameNode(LeafNode):
 class AssignmentNode(BinaryExpr):
     def __init__(self):
         BinaryExpr.__init__(self)
+
+
+class NegativeExpr(Node):
+    def __init__(self, extra):
+        Node.__init__(self)
+
+        self.value = None
+        self.extra_precedence = extra * 1000
+
+    def precedence(self):
+        return PRECEDENCE["neg"] + self.extra_precedence
+
+    def __str__(self):
+        return "-" + str(self.value)
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class BlockStmt(Node):
@@ -466,20 +492,30 @@ class Dot(OperatorNode):
 
 
 def parse_expr(lst):
+    # print(lst)
     while len(lst) > 1:
         max_pre = 0
         index = 0
         for i in range(len(lst)):
             node = lst[i]
-            if isinstance(node, OperatorNode):
+            if isinstance(node, NegativeExpr):
+                pre = node.precedence()
+                if pre > max_pre and not node.value:
+                    max_pre = pre
+                    index = i
+            elif isinstance(node, OperatorNode):
                 pre = node.precedence()
                 # print(str(pre) + node.operation)
                 if pre > max_pre and not node.left and not node.right:
                     max_pre = pre
                     index = i
         operator = lst[index]
-        operator.left = lst[index - 1]
-        operator.right = lst[index + 1]
-        lst.pop(index + 1)
-        lst.pop(index - 1)
+        if isinstance(operator, NegativeExpr):
+            operator.value = lst[index + 1]
+            lst.pop(index + 1)
+        else:
+            operator.left = lst[index - 1]
+            operator.right = lst[index + 1]
+            lst.pop(index + 1)
+            lst.pop(index - 1)
     return lst[0]

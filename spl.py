@@ -6,10 +6,37 @@ import spl_parser
 import spl_interpreter
 import time
 
-if __name__ == "__main__":
-    argv = sys.argv
 
-    file_name = argv[1]
+def parse_arg(args):
+    d = {"debugger": False, "timer": False, "ast": False, "token": False, "vars": False, "argv": []}
+    file_found = False
+    for i in range(1, len(args), 1):
+        arg = args[i]
+        if file_found:
+            d["argv"].append(arg)
+        else:
+            if arg[0] == "-":
+                flag = arg[1:]
+                if flag == "debug":
+                    d["debugger"] = True
+                elif flag == "t":
+                    d["timer"] = True
+                elif flag == "asg":
+                    d["ast"] = True
+                elif flag == "token":
+                    d["token"] = True
+                elif flag == "v":
+                    d["vars"] = True
+            else:
+                d["file"] = arg
+                file_found = True
+    return d
+
+
+if __name__ == "__main__":
+    argv = parse_arg(sys.argv)
+
+    file_name = argv["file"]
 
     f = open(file_name, "r")
 
@@ -18,12 +45,14 @@ if __name__ == "__main__":
     lexer = spl_lexer.Lexer(f)
     lexer.read()
 
-    print(lexer.tokens)
+    if argv["token"]:
+        print(lexer.tokens)
 
     parse_start = time.time()
 
     psr = lexer.parse()
-    print(psr)
+    if argv["ast"]:
+        print(psr)
 
     block = spl_parser.BlockStmt()
     block.lines = psr.elements
@@ -37,8 +66,10 @@ if __name__ == "__main__":
 
     print("Process finished with exit value " + str(result))
 
-    print("Time used: tokenize: {}s, parse: {}s, execute: {}s.".format
-          (parse_start - lex_start, interpret_start - parse_start, end - interpret_start))
-    # print(itr.interpret())
-    print(itr.env.variables)
-    print(itr.env.heap)
+    if argv["vars"]:
+        print(itr.env.variables)
+        print("Heap: " + str(itr.env.heap))
+
+    if argv["timer"]:
+        print("Time used: tokenize: {}s, parse: {}s, execute: {}s.".format
+              (parse_start - lex_start, interpret_start - parse_start, end - interpret_start))

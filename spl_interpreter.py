@@ -190,6 +190,9 @@ def evaluate(node, env):
             return int(left) <= int(right)
 
         raise InterpretException("No such symbol")
+    elif isinstance(node, NegativeExpr):
+        value = evaluate(node.value, env)
+        return -value
     elif isinstance(node, BlockStmt):
         result = 0
         for line in node.lines:
