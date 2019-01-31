@@ -123,8 +123,10 @@ def evaluate(node, env):
     :type env: Environment
     :return:
     """
-    if isinstance(node, NumNode):
+    if isinstance(node, IntNode):
         return int(node.value)
+    elif isinstance(node, FloatNode):
+        return float(node.value)
     elif isinstance(node, NameNode):
         value = env.get(node.name)
         return value
@@ -133,6 +135,7 @@ def evaluate(node, env):
         value = evaluate(node.right, env)
         if isinstance(key, NameNode):
             env.assign(key.name, value)
+            # print("assign {} to {}".format(key.name, value))
             return value
         elif isinstance(key, Dot):
             node = key
@@ -167,27 +170,27 @@ def evaluate(node, env):
         right = evaluate(node.right, env)
         symbol = node.operation
         if symbol == "+":
-            return int(left) + int(right)
+            return left + right
         elif symbol == "-":
-            return int(left) - int(right)
+            return left - right
         elif symbol == "*":
-            return int(left) * int(right)
+            return left * right
         elif symbol == "/":
-            return int(left) // int(right)
+            return left // right
         elif symbol == "%":
-            return int(left) % int(right)
+            return left % right
         elif symbol == "==":
-            return int(left) == int(right)
+            return left == right
         elif symbol == "!=":
-            return int(left) != int(right)
+            return left != right
         elif symbol == ">":
-            return int(left) > int(right)
+            return left > right
         elif symbol == "<":
-            return int(left) < int(right)
+            return left < right
         elif symbol == ">=":
-            return int(left) >= int(right)
+            return left >= right
         elif symbol == "<=":
-            return int(left) <= int(right)
+            return left <= right
 
         raise InterpretException("No such symbol")
     elif isinstance(node, NegativeExpr):
@@ -239,7 +242,7 @@ def evaluate(node, env):
         cla = Class(node.class_name, node.block)
         cla.superclass_name = node.superclass_name
         env.assign(node.class_name, cla)
-        return None
+        return cla
     elif isinstance(node, ClassInit):
         cla: Class = env.get(node.class_name)
 

@@ -28,10 +28,15 @@ class Extend extends Sample {
 
 
 class DoubleExtend extends Extend {
-    a = 22;
+    a = -22.2;
     d = 4;
+
+    function sum() {
+        a + b.dog.age + c + d;
+    };
 };
 
 
 g = new DoubleExtend;
+g.sum();
 

@@ -30,7 +30,11 @@ class Parser:
         if self.inner:
             self.inner.add_number(v)
         else:
-            self.stack.append(NumNode(v))
+            if "." in v:
+                node = FloatNode(v)
+            else:
+                node = IntNode(v)
+            self.stack.append(node)
 
     def add_operator(self, op, extra_precedence):
         if self.inner:
@@ -294,12 +298,14 @@ class NumNode(LeafNode):
         return self.__str__()
 
 
-# class NegativeExpr(Node):
-#     def __init__(self):
-#         Node.__init__(self)
-#
-#     def __str__(self):
-#         return "-"
+class IntNode(NumNode):
+    def __init__(self, v):
+        NumNode.__init__(self, v)
+
+
+class FloatNode(NumNode):
+    def __init__(self, v):
+        NumNode.__init__(self, v)
 
 
 class OperatorNode(BinaryExpr):
@@ -471,11 +477,6 @@ class ClassInit(LeafNode):
 
     def __repr__(self):
         return self.__str__()
-
-
-class Postfix:
-    def __init__(self):
-        pass
 
 
 class Dot(OperatorNode):

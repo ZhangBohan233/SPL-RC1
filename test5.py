@@ -15,9 +15,12 @@ def curry(a):
 
 if __name__ == "__main__":
     import time
-    # s = time.time() * 1000
+    s = time.time() * 1000
     # print(fib(25))
-    # e = time.time() * 1000
-    # print(e - s)
-    x = curry(2)
-    print(x())
+    x = 0
+    while x < 1000000:
+        x = x + 1
+    e = time.time() * 1000
+    print(e - s)
+    # x = curry(2)
+    # print(x())

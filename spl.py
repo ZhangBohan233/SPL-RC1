@@ -21,7 +21,7 @@ def parse_arg(args):
                     d["debugger"] = True
                 elif flag == "t":
                     d["timer"] = True
-                elif flag == "asg":
+                elif flag == "ast":
                     d["ast"] = True
                 elif flag == "token":
                     d["token"] = True
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     lex_start = time.time()
 
     lexer = spl_lexer.Lexer(f)
-    lexer.read()
+    lexer.tokenize()
 
     if argv["token"]:
         print(lexer.tokens)

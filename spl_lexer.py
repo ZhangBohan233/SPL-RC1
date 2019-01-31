@@ -22,13 +22,14 @@ class Lexer:
         #                 "<", ">", ">=", "<=", "!=", "&&", "||", ",", "."}
         self.tokens = []
 
-    def read(self):
+    def tokenize(self):
         self.tokens.clear()
         line = self.file.readline()
         line_num = 1
         while line:
             # print(line)
             lst1 = list(filter(lambda st: len(st) > 0, line.split(" ")))
+            # print(lst1)
             lst2 = []
             for s in lst1:
                 for x in normalize(s):
@@ -42,6 +43,8 @@ class Lexer:
                         self.tokens.append(IdToken(line_num, part))
                     else:
                         self.tokens.append(IdToken(line_num, part))
+                elif is_float(part):
+                    self.tokens.append(NumToken(line_num, part))
                 elif part.isdigit():
                     self.tokens.append(NumToken(line_num, part))
                 elif part in ALL:
@@ -251,11 +254,12 @@ def normalize(string):
         lst = []
         s = string[0]
         last_type = char_type(s)
-        can_concatenate = {0, 1, 10, 11, 14}
+        self_concatenate = {0, 1, 10, 11, 14}
+        cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0)}
         for i in range(1, len(string), 1):
             char = string[i]
             t = char_type(char)
-            if (t in can_concatenate and t == last_type) or (last_type == 8 and t == 9):
+            if (t in self_concatenate and t == last_type) or ((last_type, t) in cross_concatenate):
                 s += char
             else:
                 lst.append(s)
@@ -301,6 +305,24 @@ def char_type(ch):
         return 13
     elif ch == "/":
         return 14
+
+
+def is_float(num_str):
+    """
+    :type num_str: str
+    :param num_str:
+    :return:
+    """
+    if "." in num_str:
+        index = num_str.index(".")
+        front = num_str[:index]
+        back = num_str[index + 1:]
+        if len(front) > 0:
+            if not front.isdigit():
+                return False
+        if back.isdigit():
+            return True
+    return False
 
 
 class Token:
