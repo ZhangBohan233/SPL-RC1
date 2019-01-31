@@ -45,6 +45,7 @@ class Parser:
         if self.inner:
             self.inner.add_assignment()
         else:
+            # print(len(self.stack))
             name = self.stack.pop()
             ass_node = AssignmentNode()
             ass_node.left = name
@@ -142,6 +143,13 @@ class Parser:
             cs = ClassStmt(class_name)
             self.stack.append(cs)
 
+    def add_extends(self, superclass_name):
+        if self.inner:
+            self.inner.add_extends(superclass_name)
+        else:
+            cs: ClassStmt = self.stack[-1]
+            cs.superclass_name = superclass_name
+
     def build_class(self):
         if self.inner:
             self.inner.build_class()
@@ -180,12 +188,13 @@ class Parser:
             lst = []
             # print(self.stack)
             while len(self.stack) > 0:
-                node = self.stack.pop()
+                node = self.stack[-1]
                 if isinstance(node, NumNode) or isinstance(node, NameNode) or isinstance(node, OperatorNode) or \
                         (isinstance(node, FuncCall) and node.args is not None):
                     lst.append(node)
+                    self.stack.pop()
                 else:
-                    self.stack.append(node)
+                    # self.stack.append(node)
                     break
             lst.reverse()
             # print(lst)
@@ -415,6 +424,7 @@ class ClassStmt(Node):
         Node.__init__(self)
 
         self.class_name = name
+        self.superclass_name = None
         self.block = None
 
     def __str__(self):
@@ -449,7 +459,7 @@ class Dot(OperatorNode):
         self.operation = "."
 
     def __str__(self):
-        return "{} dot {}".format(self.left, self.right)
+        return "({} dot {})".format(self.left, self.right)
 
     def __repr__(self):
         return self.__str__()

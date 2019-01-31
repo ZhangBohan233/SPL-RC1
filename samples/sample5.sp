@@ -1,21 +1,37 @@
+class Dog {
+    age = 2;
+
+    function older() {
+        age = age + 1;
+    };
+};
+
+
 class Fuck {
-    x = 2;
+    dog = new Dog;
 };
 
 class Sample {
     a = 1;
     b = new Fuck;
 
-    function m() {
-        a + b.x;
-    };
-
     function set_a(na) {
         a = na;
     };
 };
 
-ca = new Sample;
-ca.set_a(3 + 2);
-d = ca.m() + ca.m();
-d;
+
+class Extend extends Sample {
+    a = 99;
+    c = 6;
+};
+
+
+class DoubleExtend extends Extend {
+    a = 22;
+    d = 4;
+};
+
+
+g = new DoubleExtend;
+

@@ -3,7 +3,7 @@ import spl_parser as psr
 EOF = -1
 EOL = ";"
 BINARY_OPERATORS = {"+", "-", "*", "/", "%", "<", ">", "==", ">=", "<=", "!=", "&&", "||"}
-RESERVED = {"class", "function", "if", "else", "new"}
+RESERVED = {"class", "function", "if", "else", "new", "extends"}
 
 
 class Lexer:
@@ -96,6 +96,11 @@ class Lexer:
                         class_name = c_token.symbol
                         parser.add_class(class_name)
                         class_brace = brace_count
+                    elif sym == "extends":
+                        i += 1
+                        c_token = self.tokens[i]
+                        superclass_name = c_token.symbol
+                        parser.add_extends(superclass_name)
                     elif sym == "new":
                         i += 1
                         c_token = self.tokens[i]
@@ -150,6 +155,7 @@ class Lexer:
                             if in_expr:
                                 extra_precedence -= 1
                     elif sym == "=":
+                        parser.build_expr()
                         parser.add_assignment()
                     elif sym == ",":
                         if in_expr:
@@ -208,11 +214,11 @@ def normalize(string):
         lst = []
         s = string[0]
         last_type = char_type(s)
-        can_concentrate = {0, 1, 10, 11}
+        can_concatenate = {0, 1, 10, 11, 14}
         for i in range(1, len(string), 1):
             char = string[i]
             t = char_type(char)
-            if (t in can_concentrate and t == last_type) or (last_type == 8 and t == 9):
+            if (t in can_concatenate and t == last_type) or (last_type == 8 and t == 9):
                 s += char
             else:
                 lst.append(s)
@@ -256,6 +262,8 @@ def char_type(ch):
         return 12
     elif ch == ",":
         return 13
+    elif ch == "/":
+        return 14
 
 
 class Token:

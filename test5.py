@@ -7,9 +7,17 @@ def fib(n):
         return a + b
 
 
+def curry(a):
+    def inner():
+        return a + 1
+    return inner
+
+
 if __name__ == "__main__":
     import time
-    s = time.time() * 1000
-    print(fib(25))
-    e = time.time() * 1000
-    print(e - s)
+    # s = time.time() * 1000
+    # print(fib(25))
+    # e = time.time() * 1000
+    # print(e - s)
+    x = curry(2)
+    print(x())

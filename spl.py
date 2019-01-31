@@ -35,10 +35,10 @@ if __name__ == "__main__":
 
     end = time.time()
 
-    print("Process finished with exit code " + str(result))
+    print("Process finished with exit value " + str(result))
 
     print("Time used: tokenize: {}s, parse: {}s, execute: {}s.".format
           (parse_start - lex_start, interpret_start - parse_start, end - interpret_start))
     # print(itr.interpret())
-    # print(itr.env.variables)
-    # print(itr.env.heap)
+    print(itr.env.variables)
+    print(itr.env.heap)
