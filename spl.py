@@ -27,6 +27,8 @@ def parse_arg(args):
                     d["token"] = True
                 elif flag == "v":
                     d["vars"] = True
+                else:
+                    print("unknown flag: -" + flag)
             else:
                 d["file"] = arg
                 file_found = True
@@ -53,6 +55,8 @@ if __name__ == "__main__":
     psr = lexer.parse()
     if argv["ast"]:
         print(psr)
+    if argv["debugger"]:
+        spl_interpreter.DEBUG = True
 
     block = spl_parser.BlockStmt()
     block.lines = psr.elements

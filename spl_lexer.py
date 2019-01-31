@@ -8,6 +8,7 @@ BINARY_OPERATORS = {"+", "-", "*", "/", "%", "<", ">", "==", ">=", "<=", "!=", "
 OTHERS = {"="}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE)
 RESERVED = {"class", "function", "if", "else", "new", "extends"}
+OMITS = {"\n", "\r", "\t", " "}
 
 
 class Lexer:
@@ -18,8 +19,6 @@ class Lexer:
 
     def __init__(self, f):
         self.file = f
-        # self.symbols = {"(", ")", "{", "}", "=", "+", "-", "*", "/", "%", "==",
-        #                 "<", ">", ">=", "<=", "!=", "&&", "||", ",", "."}
         self.tokens = []
 
     def tokenize(self):
@@ -51,6 +50,10 @@ class Lexer:
                     self.tokens.append(IdToken(line_num, part))
                 elif part == EOL:
                     self.tokens.append(IdToken(line_num, EOL))
+                elif part in OMITS:
+                    pass
+                else:
+                    raise ParseException("Unknown symbol: '{}', at line {}".format(part, line_num))
 
             line = self.file.readline()
             line_num += 1
@@ -138,6 +141,9 @@ class Lexer:
                             parser.build_class()
                             class_brace = -1
                     elif sym == "(":
+                        # if i > 0 and isinstance(self.tokens[i - 1], IdToken) and self.tokens[i - 1].symbol == ")":
+                        #     parser.add_call(None)
+                        #     in_call = True
                         if in_expr:
                             extra_precedence += 1
                     elif sym == ")":
@@ -204,6 +210,8 @@ class Lexer:
                 elif token.is_eof():
                     # parser.build_line()
                     break
+                else:
+                    raise ParseException("Unexpected token at line {}".format(self.tokens[i].line_number()))
                 i += 1
             except Exception:
                 raise ParseException("Parse error at line {}".format(self.tokens[i].line_number()))

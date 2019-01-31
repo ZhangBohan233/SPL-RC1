@@ -1,6 +1,8 @@
 from spl_parser import *
 from spl_lib import *
 
+DEBUG = False
+
 
 class Interpreter:
     """
@@ -18,13 +20,14 @@ class Interpreter:
 class Environment:
     """
     ===== Attributes =====
-    # :type outer: Environment
+    :type outer: Environment
     """
+
     def __init__(self, is_global, heap):
         self.is_global = is_global
         self.heap = heap  # Heap-allocated variables (global)
         self.variables = HashMap()  # Stack variables
-        # self.outer = None  # Outer environment, only used for inner functions
+        self.outer = None  # Outer environment, only used for inner functions
 
         if is_global:
             self._add_natives()
@@ -34,17 +37,30 @@ class Environment:
         self.heap["time"] = NativeFunction(time)
 
     def assign(self, key, value):
-        # print("assigned {} to {}".format(key, value))
+        if DEBUG:
+            print("assigned {} to {}".format(key, value))
         if self.is_global:
             self.heap[key] = value
-        else:
+        elif key in self.variables:
             self.variables[key] = value
+        else:
+            # look for outer first
+            out = self.outer
+            found = False
+            while out:
+                if key in out.variables:
+                    out.variables[key] = value
+                    found = True
+                    break
+                out = out.outer
+            if not found:
+                self.variables[key] = value
 
     def get(self, key):
         if key in self.variables:
             return self.variables[key]
-        # elif self.outer:
-        #     return self.outer.get(key)
+        elif self.outer:
+            return self.outer.get(key)
         else:
             return self.heap[key]
 
@@ -67,13 +83,15 @@ class Function:
     """
     :type body: BlockStmt
     :type parent: ClassInstance
+    :type outer_scope: Environment
     """
 
     def __init__(self, params, body):
         # self.name = f_name
         self.params = params
         self.body = body
-        self.parent = None
+        self.parent = None  # the parent class if this is a class method
+        self.outer_scope = None
 
     def __str__(self):
         if self.parent:
@@ -215,6 +233,7 @@ def evaluate(node, env):
         return result
     elif isinstance(node, DefStmt):
         f = Function(node.params, node.body)
+        f.outer_scope = env
         env.assign(node.name, f)
         return f
     elif isinstance(node, FuncCall):
@@ -224,6 +243,7 @@ def evaluate(node, env):
             # scope.outer = env
             if func.parent:
                 scope.variables = func.parent.env.variables
+            scope.outer = func.outer_scope  # supports for closure
             # print(scope.variables)
             # print(env.is_global)
             for i in range(len(func.params)):
