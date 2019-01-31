@@ -26,39 +26,80 @@ class Lexer:
         line = self.file.readline()
         line_num = 1
         while line:
-            # print(line)
-            lst1 = list(filter(lambda st: len(st) > 0, line.split(" ")))
-            # print(lst1)
-            lst2 = []
-            for s in lst1:
-                for x in normalize(s):
-                    lst2.append(x)
-            # print(lst2)
-            for part in lst2:
-                if part == "//":
-                    break
-                if part.isidentifier():
-                    if part in RESERVED:
-                        self.tokens.append(IdToken(line_num, part))
-                    else:
-                        self.tokens.append(IdToken(line_num, part))
-                elif is_float(part):
-                    self.tokens.append(NumToken(line_num, part))
-                elif part.isdigit():
-                    self.tokens.append(NumToken(line_num, part))
-                elif part in ALL:
-                    self.tokens.append(IdToken(line_num, part))
-                elif part == EOL:
-                    self.tokens.append(IdToken(line_num, EOL))
-                elif part in OMITS:
-                    pass
-                else:
-                    raise ParseException("Unknown symbol: '{}', at line {}".format(part, line_num))
+            self.proceed_line(line, line_num)
 
             line = self.file.readline()
             line_num += 1
 
         self.tokens.append(Token(EOF))
+
+    def proceed_line(self, line, line_num):
+        """
+
+        :param line: line to be proceed
+        :param line_num: the line number
+        :type line: str
+        :return:
+        """
+        in_single = False
+        in_double = False
+        literal = ""
+        non_literal = ""
+        # lst = []
+        for ch in line:
+            if in_double:
+                if ch == '"':
+                    in_double = False
+                    self.tokens.append(LiteralToken(line_num, literal))
+                    literal = ""
+                    continue
+            elif in_single:
+                if ch == "'":
+                    in_single = False
+                    self.tokens.append(LiteralToken(line_num, literal))
+                    literal = ""
+                    continue
+            else:
+                if ch == '"':
+                    in_double = True
+                    self.line_tokenize(non_literal, line_num)
+                    non_literal = ""
+                    continue
+                elif ch == "'":
+                    in_single = True
+                    self.line_tokenize(non_literal, line_num)
+                    non_literal = ""
+                    continue
+            if in_single or in_double:
+                literal += ch
+            else:
+                non_literal += ch
+
+        if len(non_literal) > 0:
+            self.line_tokenize(non_literal, line_num)
+
+    def line_tokenize(self, non_literal, line_num):
+        lst = normalize(non_literal)
+        for part in lst:
+            if part == "//":
+                break
+            if part.isidentifier():
+                if part in RESERVED:
+                    self.tokens.append(IdToken(line_num, part))
+                else:
+                    self.tokens.append(IdToken(line_num, part))
+            elif is_float(part):
+                self.tokens.append(NumToken(line_num, part))
+            elif part.isdigit():
+                self.tokens.append(NumToken(line_num, part))
+            elif part in ALL:
+                self.tokens.append(IdToken(line_num, part))
+            elif part == EOL:
+                self.tokens.append(IdToken(line_num, EOL))
+            elif part in OMITS:
+                pass
+            else:
+                raise ParseException("Unknown symbol: '{}', at line {}".format(part, line_num))
 
     def parse(self):
         """
@@ -206,7 +247,8 @@ class Lexer:
                     value = token.value
                     parser.add_number(value)
                 elif isinstance(token, LiteralToken):
-                    pass
+                    value = token.text
+                    parser.add_literal(value)
                 elif token.is_eof():
                     # parser.build_line()
                     break
@@ -390,6 +432,12 @@ class LiteralToken(Token):
 
     def is_literal(self):
         return True
+
+    def __str__(self):
+        return "LIT({})".format(self.text)
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class IdToken(Token):

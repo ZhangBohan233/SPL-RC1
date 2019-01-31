@@ -36,6 +36,13 @@ class Parser:
                 node = IntNode(v)
             self.stack.append(node)
 
+    def add_literal(self, lit):
+        if self.inner:
+            self.inner.add_literal(lit)
+        else:
+            node = LiteralNode(lit)
+            self.stack.append(node)
+
     def add_operator(self, op, extra_precedence):
         if self.inner:
             self.inner.add_operator(op, extra_precedence)
@@ -202,7 +209,7 @@ class Parser:
             while len(self.stack) > 0:
                 node = self.stack[-1]
                 if isinstance(node, NumNode) or isinstance(node, NameNode) or isinstance(node, OperatorNode) or \
-                        isinstance(node, NegativeExpr) or \
+                        isinstance(node, NegativeExpr) or isinstance(node, LiteralNode) or \
                         (isinstance(node, FuncCall) and node.args is not None):
                     lst.append(node)
                     self.stack.pop()
@@ -308,6 +315,19 @@ class FloatNode(NumNode):
         NumNode.__init__(self, v)
 
 
+class LiteralNode(LeafNode):
+    def __init__(self, lit):
+        LeafNode.__init__(self)
+
+        self.literal = lit
+
+    def __str__(self):
+        return '"' + self.literal + '"'
+
+    def __repr__(self):
+        return self.__str__()
+
+
 class OperatorNode(BinaryExpr):
     def __init__(self, extra):
         BinaryExpr.__init__(self)
@@ -405,16 +425,6 @@ class WhileStmt(CondStmt):
 
     def __repr__(self):
         return self.__str__()
-
-
-class StringLiteral(LeafNode):
-    def __init__(self, s):
-        LeafNode.__init__(self)
-
-        self.string = s
-
-    def __str__(self):
-        return "String({})".format(self.string)
 
 
 class DefStmt(Node):

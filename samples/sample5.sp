@@ -14,6 +14,7 @@ class Fuck {
 class Sample {
     a = 1;
     b = new Fuck;
+    s = "fdg xs//2";
 
     function set_a(na) {
         a = na;
@@ -40,3 +41,4 @@ class DoubleExtend extends Extend {
 g = new DoubleExtend;
 g.sum();
 
+print(g.s + "333");

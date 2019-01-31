@@ -145,6 +145,8 @@ def evaluate(node, env):
         return int(node.value)
     elif isinstance(node, FloatNode):
         return float(node.value)
+    elif isinstance(node, LiteralNode):
+        return node.literal
     elif isinstance(node, NameNode):
         value = env.get(node.name)
         return value
