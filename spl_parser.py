@@ -1,6 +1,6 @@
 PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "==": 10, ">": 10, "<": 10, ">=": 10, "<=": 10,
-              "!=": 10, ".": 500, "neg": 200}
+              "!=": 10, ")(": 500, ".": 500, "neg": 200}
 
 
 class Parser:
@@ -24,7 +24,8 @@ class Parser:
         if self.inner:
             self.inner.add_name(n)
         else:
-            self.stack.append(NameNode(n))
+            node = NameNode(n)
+            self.stack.append(node)
 
     def add_number(self, v):
         if self.inner:
@@ -115,6 +116,13 @@ class Parser:
             fc = FuncCall(f_name)
             self.stack.append(fc)
 
+    def add_continue_call(self, extra):
+        if self.inner:
+            self.inner.add_continue_call(extra)
+        else:
+            cc = ContinueCall(extra)
+            self.stack.append(cc)
+
     def build_call_expr(self):
         if self.inner:
             self.inner.build_call_expr()
@@ -132,7 +140,7 @@ class Parser:
             self.inner.build_call()
         else:
             lst = []
-            while not isinstance(self.stack[-1], FuncCall):
+            while not isinstance(self.stack[-1], FuncCall) and not isinstance(self.stack[-1], ClassInit):
                 lst.append(self.stack.pop())
 
             lst.reverse()
@@ -343,13 +351,11 @@ class NameNode(LeafNode):
         LeafNode.__init__(self)
 
         self.name = n
-        self.postfix = None
+        self.index = None
+        # self.nest = None
 
     def __str__(self):
-        if self.postfix:
-            return "N({}).{}".format(self.name, self.postfix)
-        else:
-            return "N(" + self.name + ")"
+        return "N(" + self.name + ")"
 
     def __repr__(self):
         return self.__str__()
@@ -447,12 +453,7 @@ class FuncCall(LeafNode):
         LeafNode.__init__(self)
 
         self.f_name = f_name
-        # self.filled = False
         self.args = None
-
-    # def set_args(self, args):
-    #     self.args = args
-    #     self.filled = True
 
     def __str__(self):
         return "{}({})".format(self.f_name, self.args)
@@ -481,9 +482,13 @@ class ClassInit(LeafNode):
         LeafNode.__init__(self)
 
         self.class_name = name
+        self.args = None
 
     def __str__(self):
-        return "ClassInit {}".format(self.class_name)
+        if self.args:
+            return "ClassInit {}({})".format(self.class_name, self.args)
+        else:
+            return "ClassInit {}".format(self.class_name)
 
     def __repr__(self):
         return self.__str__()
@@ -497,6 +502,19 @@ class Dot(OperatorNode):
 
     def __str__(self):
         return "({} dot {})".format(self.left, self.right)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class ContinueCall(OperatorNode):
+    def __init__(self, extra):
+        OperatorNode.__init__(self, extra)
+
+        self.operation = ")("
+
+    def __str__(self):
+        return "{}>>{}".format(self.left, self.right)
 
     def __repr__(self):
         return self.__str__()
@@ -516,11 +534,11 @@ def parse_expr(lst):
                     index = i
             elif isinstance(node, OperatorNode):
                 pre = node.precedence()
-                # print(str(pre) + node.operation)
                 if pre > max_pre and not node.left and not node.right:
                     max_pre = pre
                     index = i
         operator = lst[index]
+        # print(lst)
         if isinstance(operator, NegativeExpr):
             operator.value = lst[index + 1]
             lst.pop(index + 1)

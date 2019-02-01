@@ -7,20 +7,23 @@ def fib(n):
         return a + b
 
 
-def curry(a):
-    def inner():
+def f(a):
+    def g():
         return a + 1
-    return inner
+    return g
 
 
 if __name__ == "__main__":
-    import time
-    s = time.time() * 1000
-    # print(fib(25))
-    x = 0
-    while x < 1000000:
-        x = x + 1
-    e = time.time() * 1000
-    print(e - s)
-    # x = curry(2)
-    # print(x())
+    x = f(2)()
+    print(x)
+
+    # import time
+    # s = time.time() * 1000
+    # # print(fib(25))
+    # x = 0
+    # while x < 1000000:
+    #     x = x + 1
+    # e = time.time() * 1000
+    # print(e - s)
+    # # x = curry(2)
+    # # print(x())

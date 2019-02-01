@@ -29,6 +29,9 @@ class Environment:
         self.variables = HashMap()  # Stack variables
         self.outer = None  # Outer environment, only used for inner functions
 
+        # self.var_array = []
+        # self.heap1 = heap
+
         if is_global:
             self._add_natives()
 
@@ -82,7 +85,7 @@ class NativeFunction:
 class Function:
     """
     :type body: BlockStmt
-    :type parent: ClassInstance
+    # :type parent: ClassInstance
     :type outer_scope: Environment
     """
 
@@ -90,12 +93,12 @@ class Function:
         # self.name = f_name
         self.params = params
         self.body = body
-        self.parent = None  # the parent class if this is a class method
+        # self.parent = None  # the parent class if this is a class method
         self.outer_scope = None
 
     def __str__(self):
-        if self.parent:
-            return "{}.Method<{}>".format(self.parent, id(self))
+        # if self.parent:
+        #     return "{}.Method<{}>".format(self.parent, id(self))
         return "Function<{}>".format(id(self))
 
     def __repr__(self):
@@ -132,6 +135,19 @@ class ClassInstance:
         return self.__str__()
 
 
+# class Var:
+#     def __init__(self, name, index, nest):
+#         self.name = name
+#         self.index = index
+#         self.nest = nest
+#
+#     def __str__(self):
+#         return "var" + str(self.index)
+#
+#     def __repr__(self):
+#         return self.__str__()
+
+
 def evaluate(node, env):
     """
 
@@ -155,7 +171,6 @@ def evaluate(node, env):
         value = evaluate(node.right, env)
         if isinstance(key, NameNode):
             env.assign(key.name, value)
-            # print("assign {} to {}".format(key.name, value))
             return value
         elif isinstance(key, Dot):
             node = key
@@ -169,8 +184,6 @@ def evaluate(node, env):
             scope = env
             for t in name_lst[:-1]:
                 scope = scope.get(t).env
-            # if isinstance(value, Function):
-            #     value.parent = 1
             scope.assign(name_lst[-1], value)
             return value
     elif isinstance(node, Dot):
@@ -242,9 +255,6 @@ def evaluate(node, env):
         func = env.get(node.f_name)
         if isinstance(func, Function):
             scope = Environment(False, env.heap)
-            # scope.outer = env
-            if func.parent:
-                scope.variables = func.parent.env.variables
             scope.outer = func.outer_scope  # supports for closure
             # print(scope.variables)
             # print(env.is_global)
@@ -277,8 +287,16 @@ def evaluate(node, env):
             v = scope.variables[k]
             if isinstance(v, Function):
                 v.parent = instance
+
+        if node.args:
+            # constructor: Function = scope.variables[node.class_name]
+            fc = FuncCall(node.class_name)
+            fc.args = node.args
+            # print(constructor)
+            evaluate(fc, scope)
         return instance
-    return None
+    else:
+        raise InterpretException("Invalid Syntax Tree")
 
 
 def class_inheritance(cla, env, scope):

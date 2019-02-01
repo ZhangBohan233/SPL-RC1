@@ -1,3 +1,7 @@
+===== Build 0002 : 2019/02/01 =====
+
+*Added Support for class constructor
+
 ===== Build 0001 : 2019/01/31 =====
 
 *Release

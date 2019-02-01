@@ -101,6 +101,24 @@ class Lexer:
             else:
                 raise ParseException("Unknown symbol: '{}', at line {}".format(part, line_num))
 
+    def pre_arrange(self):
+        lst = []
+        count = 0
+        i = 0
+        while i < len(self.tokens):
+            token = self.tokens[i]
+            if i < len(self.tokens) - 1:
+                next_token = self.tokens[i + 1]
+                if isinstance(token, IdToken) and isinstance(next_token, IdToken):
+                    if token.symbol == ")" and next_token.symbol == "(":
+                        lst.append(IdToken(token.line_number(), EOL))
+                        var = []
+                        if i > 1 and isinstance(self.tokens[i - 1], IdToken) and self.tokens[i - 1].symbol == "=":
+                            # var = []
+                            while len(lst) > 0 and not lst[-1].is_eol():
+                                var.append(lst.pop())
+                            var.reverse()
+
     def parse(self):
         """
         :rtype: psr.Parser
@@ -113,6 +131,7 @@ class Lexer:
         in_call_expr = False
         in_cond = False
         in_call = False
+        # in_continue_call = False
         brace_count = 0
         class_brace = -1
         extra_precedence = 0
@@ -126,7 +145,7 @@ class Lexer:
                         f_token = self.tokens[i]
                         f_name = f_token.symbol
                         if f_name == "(":
-                            parser.add_function("anonymous_function_{}".format(func_count))
+                            parser.add_function("af-{}".format(func_count))  # "af" stands for anonymous function
                             func_count += 1
                         else:
                             parser.add_function(f_name)
@@ -157,6 +176,10 @@ class Lexer:
                         c_token = self.tokens[i]
                         class_name = c_token.symbol
                         parser.add_class_new(class_name)
+                        if i + 1 < len(self.tokens) and isinstance(self.tokens[i + 1], IdToken) and \
+                                self.tokens[i + 1].symbol == "(":
+                            i += 1
+                            in_call = True
                     elif sym == "if":
                         in_cond = True
                         parser.add_if()
@@ -183,7 +206,9 @@ class Lexer:
                             class_brace = -1
                     elif sym == "(":
                         # if i > 0 and isinstance(self.tokens[i - 1], IdToken) and self.tokens[i - 1].symbol == ")":
-                        #     parser.add_call(None)
+                        #     parser.add_continue_call(extra_precedence)
+                        #     # in_expr = True
+                        #     in_continue_call = True
                         #     in_call = True
                         if in_expr:
                             extra_precedence += 1
@@ -304,7 +329,7 @@ def normalize(string):
         lst = []
         s = string[0]
         last_type = char_type(s)
-        self_concatenate = {0, 1, 10, 11, 14}
+        self_concatenate = {0, 1, 9, 10, 11, 14}
         cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0)}
         for i in range(1, len(string), 1):
             char = string[i]

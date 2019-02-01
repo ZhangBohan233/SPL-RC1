@@ -42,3 +42,7 @@ g = new DoubleExtend;
 g.sum();
 
 print(g.s + "333");
+print(g.b.dog.age);
+a = g.b.dog;
+a.older();
+print(a.age);
