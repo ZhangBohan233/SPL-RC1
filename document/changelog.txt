@@ -1,6 +1,7 @@
 ===== Build 0002 : 2019/02/01 =====
 
 *Added Support for class constructor
+*Fixed that "==" not works.
 
 ===== Build 0001 : 2019/01/31 =====
 
