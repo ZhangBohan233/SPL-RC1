@@ -1,3 +1,8 @@
+===== Build 0003 : 2019/02/01 =====
+
+*Added native function "type"
+*passed argv to interpreter
+
 ===== Build 0002 : 2019/02/01 =====
 
 *Added Support for class constructor

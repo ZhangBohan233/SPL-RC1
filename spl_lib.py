@@ -1,4 +1,5 @@
 import time as time_lib
+import spl_interpreter as inter
 
 
 class Map:
@@ -76,3 +77,10 @@ class StackNode:
 
 def time():
     return int(time_lib.time() * 1000)
+
+
+def typeof(obj):
+    if isinstance(obj, inter.ClassInstance):
+        return obj.classname
+    else:
+        return type(obj)

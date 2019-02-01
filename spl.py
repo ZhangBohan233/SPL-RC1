@@ -36,6 +36,7 @@ def parse_arg(args):
                 pass
             else:
                 d["file"] = arg
+                d["argv"].append(arg)
     if d["file"] is None:
         print_usage()
         return None
@@ -78,7 +79,7 @@ if __name__ == "__main__":
 
         interpret_start = time.time()
 
-        itr = spl_interpreter.Interpreter(block)
+        itr = spl_interpreter.Interpreter(block, argv["argv"])
         result = itr.interpret()
 
         end = time.time()

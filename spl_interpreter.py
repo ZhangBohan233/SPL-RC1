@@ -7,10 +7,12 @@ DEBUG = False
 class Interpreter:
     """
     :type ast: Node
+    :type argv: list
     """
 
-    def __init__(self, ast):
+    def __init__(self, ast, argv):
         self.ast = ast
+        self.argv = argv
         self.env = Environment(True, HashMap())
 
     def interpret(self):
@@ -38,6 +40,7 @@ class Environment:
     def _add_natives(self):
         self.heap["print"] = NativeFunction(print)
         self.heap["time"] = NativeFunction(time)
+        self.heap["type"] = NativeFunction(typeof)
 
     def assign(self, key, value):
         if DEBUG:
@@ -85,7 +88,6 @@ class NativeFunction:
 class Function:
     """
     :type body: BlockStmt
-    # :type parent: ClassInstance
     :type outer_scope: Environment
     """
 
@@ -93,12 +95,9 @@ class Function:
         # self.name = f_name
         self.params = params
         self.body = body
-        # self.parent = None  # the parent class if this is a class method
         self.outer_scope = None
 
     def __str__(self):
-        # if self.parent:
-        #     return "{}.Method<{}>".format(self.parent, id(self))
         return "Function<{}>".format(id(self))
 
     def __repr__(self):
@@ -122,30 +121,18 @@ class Class:
 
 
 class ClassInstance:
-    def __init__(self, env):
+    def __init__(self, env, classname):
         """
         :type env: Environment
         """
+        self.classname = classname
         self.env = env
 
     def __str__(self):
-        return "Object: " + str(self.env.variables)
+        return self.classname + ": " + str(self.env.variables)
 
     def __repr__(self):
         return self.__str__()
-
-
-# class Var:
-#     def __init__(self, name, index, nest):
-#         self.name = name
-#         self.index = index
-#         self.nest = nest
-#
-#     def __str__(self):
-#         return "var" + str(self.index)
-#
-#     def __repr__(self):
-#         return self.__str__()
 
 
 def evaluate(node, env):
@@ -282,7 +269,7 @@ def evaluate(node, env):
         class_inheritance(cla, env, scope)
 
         # print(scope.variables)
-        instance = ClassInstance(scope)
+        instance = ClassInstance(scope, node.class_name)
         for k in scope.variables.key_set():
             v = scope.variables[k]
             if isinstance(v, Function):

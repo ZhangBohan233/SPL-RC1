@@ -16,3 +16,6 @@ av = a.value;
 
 b = new TypeA;
 bv = b.value;
+
+t = type(b);
+t;
