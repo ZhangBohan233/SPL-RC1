@@ -6,13 +6,16 @@ import spl_parser
 import spl_interpreter
 import time
 
+HELP = """
+spl.py 
+"""
+
 
 def parse_arg(args):
-    d = {"debugger": False, "timer": False, "ast": False, "token": False, "vars": False, "argv": []}
-    file_found = False
+    d = {"file": None, "debugger": False, "timer": False, "ast": False, "token": False, "vars": False, "argv": []}
     for i in range(1, len(args), 1):
         arg = args[i]
-        if file_found:
+        if d["file"] is not None:
             d["argv"].append(arg)
         else:
             if arg[0] == "-":
@@ -29,14 +32,25 @@ def parse_arg(args):
                     d["vars"] = True
                 else:
                     print("unknown flag: -" + flag)
+            elif arg == "help":
+                pass
             else:
                 d["file"] = arg
-                file_found = True
-    return d
+    if d["file"] is None:
+        print_usage()
+        return None
+    else:
+        return d
+
+
+def print_usage():
+    print(HELP)
 
 
 if __name__ == "__main__":
     argv = parse_arg(sys.argv)
+    if not argv:
+        exit(0)
 
     file_name = argv["file"]
 
