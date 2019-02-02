@@ -1,3 +1,17 @@
+===== Build 0005 : 2019/02/02 =====
+
+*Added syntax:
+    *Added keywords "break", "continue"
+    *Added boolean type "true", "false"
+    *Added null pointer "null"
+    *Added bitwise operators "&", "^", "|", "<<", ">>"
+    *Implemented logical operators "&&", "||"
+*Modified SPL executable:
+    *Flag changes:
+        v -> vars
+        t -> timer
+        token -> tokens
+
 ===== Build 0004 : 2019/02/01 =====
 
 *Added syntax:

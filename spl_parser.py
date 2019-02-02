@@ -1,6 +1,10 @@
 PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
-              "==": 10, ">": 10, "<": 10, ">=": 10, "<=": 10,
-              "!=": 10, ")(": 500, ".": 500, "neg": 200, "return": 5}
+              "==": 20, ">": 25, "<": 25, ">=": 25, "<=": 25,
+              "!=": 20, "&&": 5, "||": 5, "&": 12, "^": 11, "|": 10,
+              "<<": 40, ">>": 40,
+              ".": 500, "neg": 200, "return": 1}
+
+MULTIPLIER = 1000
 
 
 class Parser:
@@ -123,6 +127,34 @@ class Parser:
             rtn = ReturnStmt()
             self.stack.append(rtn)
 
+    def add_break(self):
+        if self.inner:
+            self.inner.add_break()
+        else:
+            node = BreakStmt()
+            self.stack.append(node)
+
+    def add_continue(self):
+        if self.inner:
+            self.inner.add_continue()
+        else:
+            node = ContinueStmt()
+            self.stack.append(node)
+
+    def add_bool(self, v):
+        if self.inner:
+            self.inner.add_bool(v)
+        else:
+            node = BooleanStmt(v)
+            self.stack.append(node)
+
+    def add_null(self):
+        if self.inner:
+            self.inner.add_null()
+        else:
+            node = NullStmt()
+            self.stack.append(node)
+
     # def add_continue_call(self, extra):
     #     if self.inner:
     #         self.inner.add_continue_call(extra)
@@ -229,7 +261,8 @@ class Parser:
                 node = self.stack[-1]
                 if isinstance(node, NumNode) or isinstance(node, NameNode) or isinstance(node, OperatorNode) or \
                         isinstance(node, UnaryOperator) or isinstance(node, LiteralNode) or \
-                        (isinstance(node, FuncCall) and node.args is not None) or isinstance(node, ClassInit):
+                        (isinstance(node, FuncCall) and node.args is not None) or isinstance(node, ClassInit) or \
+                        isinstance(node, NullStmt) or isinstance(node, BooleanStmt):
                     lst.append(node)
                     self.stack.pop()
                 else:
@@ -351,7 +384,7 @@ class OperatorNode(BinaryExpr):
     def __init__(self, extra):
         BinaryExpr.__init__(self)
 
-        self.extra_precedence = extra * 1000
+        self.extra_precedence = extra * MULTIPLIER
 
     def precedence(self):
         return PRECEDENCE[self.operation] + self.extra_precedence
@@ -364,7 +397,7 @@ class UnaryOperator(Node):
 
         self.value = None
         self.operation = None
-        self.extra_precedence = extra * 1000
+        self.extra_precedence = extra * MULTIPLIER
 
     def precedence(self):
         return PRECEDENCE[self.operation] + self.extra_precedence
@@ -415,6 +448,52 @@ class ReturnStmt(UnaryOperator):
         UnaryOperator.__init__(self, 0)
 
         self.operation = "return"
+
+
+class BreakStmt(LeafNode):
+    def __init__(self):
+        LeafNode.__init__(self)
+
+    def __str__(self):
+        return "break"
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class ContinueStmt(LeafNode):
+    def __init__(self):
+        LeafNode.__init__(self)
+
+    def __str__(self):
+        return "continue"
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class BooleanStmt(LeafNode):
+    def __init__(self, v):
+        LeafNode.__init__(self)
+
+        self.value = v
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class NullStmt(LeafNode):
+    def __init__(self):
+        LeafNode.__init__(self)
+
+    def __str__(self):
+        return "null"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class BlockStmt(Node):

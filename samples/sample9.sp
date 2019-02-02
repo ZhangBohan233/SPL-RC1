@@ -1,14 +1,12 @@
 function test(a) {
-    c = 0;
-    if (a > 2) {
-        c = 1;
-        return c;
-    } else {
-        c = 5;
-        return c;
+    while (a < 100) {
+        a = a + 1;
+        if (a % 10 == 0) {
+            continue;
+        }
+        print(a);
     }
-    c = 2;
-    return c;
-};
+    return 123;
+}
 
 c = test(0);

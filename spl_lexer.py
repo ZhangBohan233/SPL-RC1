@@ -4,10 +4,12 @@ EOF = -1
 EOL = ";"
 SYMBOLS = {"{", "}", ".", ","}
 MIDDLE = {"(", ")"}
-BINARY_OPERATORS = {"+", "-", "*", "/", "%", "<", ">", "==", ">=", "<=", "!=", "&&", "||"}
+BINARY_OPERATORS = {"+", "-", "*", "/", "%", "<", ">", "==", ">=", "<=", "!=", "&&", "||",
+                    "&", "^", "|", "<<", ">>"}
 OTHERS = {"="}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE)
-RESERVED = {"class", "function", "if", "else", "new", "extends", "return"}
+RESERVED = {"class", "function", "if", "else", "new", "extends", "return", "break", "continue",
+            "true", "false", "null"}
 OMITS = {"\n", "\r", "\t", " "}
 
 
@@ -101,23 +103,23 @@ class Lexer:
             else:
                 raise ParseException("Unknown symbol: '{}', at line {}".format(part, line_num))
 
-    def pre_arrange(self):
-        lst = []
-        count = 0
-        i = 0
-        while i < len(self.tokens):
-            token = self.tokens[i]
-            if i < len(self.tokens) - 1:
-                next_token = self.tokens[i + 1]
-                if isinstance(token, IdToken) and isinstance(next_token, IdToken):
-                    if token.symbol == ")" and next_token.symbol == "(":
-                        lst.append(IdToken(token.line_number(), EOL))
-                        var = []
-                        if i > 1 and isinstance(self.tokens[i - 1], IdToken) and self.tokens[i - 1].symbol == "=":
-                            # var = []
-                            while len(lst) > 0 and not lst[-1].is_eol():
-                                var.append(lst.pop())
-                            var.reverse()
+    # def pre_arrange(self):
+    #     lst = []
+    #     count = 0
+    #     i = 0
+    #     while i < len(self.tokens):
+    #         token = self.tokens[i]
+    #         if i < len(self.tokens) - 1:
+    #             next_token = self.tokens[i + 1]
+    #             if isinstance(token, IdToken) and isinstance(next_token, IdToken):
+    #                 if token.symbol == ")" and next_token.symbol == "(":
+    #                     lst.append(IdToken(token.line_number(), EOL))
+    #                     var = []
+    #                     if i > 1 and isinstance(self.tokens[i - 1], IdToken) and self.tokens[i - 1].symbol == "=":
+    #                         # var = []
+    #                         while len(lst) > 0 and not lst[-1].is_eol():
+    #                             var.append(lst.pop())
+    #                         var.reverse()
 
     def parse(self):
         """
@@ -200,6 +202,14 @@ class Lexer:
                     elif sym == "return":
                         parser.add_return()
                         in_expr = True
+                    elif sym == "break":
+                        parser.add_break()
+                    elif sym == "continue":
+                        parser.add_continue()
+                    elif sym == "true" or sym == "false":
+                        parser.add_bool(sym)
+                    elif sym == "null":
+                        parser.add_null()
                     elif sym == "{":
                         brace_count += 1
                         parser.new_block()
@@ -347,8 +357,8 @@ def normalize(string):
         lst = []
         s = string[0]
         last_type = char_type(s)
-        self_concatenate = {0, 1, 9, 10, 11, 14}
-        cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0)}
+        self_concatenate = {0, 1, 8, 9, 10, 11, 14}
+        cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0), (15, 9)}
         for i in range(1, len(string), 1):
             char = string[i]
             t = char_type(char)
@@ -384,7 +394,7 @@ def char_type(ch):
         return 6
     elif ch == "\n":
         return 7
-    elif ch == ">" or ch == "<" or ch == "!":
+    elif ch == ">" or ch == "<":
         return 8
     elif ch == "=":
         return 9
@@ -398,6 +408,12 @@ def char_type(ch):
         return 13
     elif ch == "/":
         return 14
+    elif ch == "!":
+        return 15
+    elif ch == "^":
+        return 16
+    elif ch in {"+", "-", "*", "/", "%"}:
+        return 17
 
 
 def is_float(num_str):

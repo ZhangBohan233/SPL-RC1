@@ -1,2 +1,1 @@
-a = 5.5;
-b = a + 7;
+a = true && false;

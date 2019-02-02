@@ -12,7 +12,7 @@ spl.py
 
 
 def parse_arg(args):
-    d = {"file": None, "debugger": False, "timer": False, "ast": False, "token": False, "vars": False, "argv": []}
+    d = {"file": None, "debugger": False, "timer": False, "ast": False, "tokens": False, "vars": False, "argv": []}
     for i in range(1, len(args), 1):
         arg = args[i]
         if d["file"] is not None:
@@ -22,13 +22,13 @@ def parse_arg(args):
                 flag = arg[1:]
                 if flag == "debug":
                     d["debugger"] = True
-                elif flag == "t":
+                elif flag == "timer":
                     d["timer"] = True
                 elif flag == "ast":
                     d["ast"] = True
-                elif flag == "token":
-                    d["token"] = True
-                elif flag == "v":
+                elif flag == "tokens":
+                    d["tokens"] = True
+                elif flag == "vars":
                     d["vars"] = True
                 else:
                     print("unknown flag: -" + flag)
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         lexer = spl_lexer.Lexer(f)
         lexer.tokenize()
 
-        if argv["token"]:
+        if argv["tokens"]:
             print(lexer.tokens)
 
         parse_start = time.time()

@@ -31,8 +31,11 @@ class Environment:
         self.variables = HashMap()  # Stack variables
         self.outer = None  # Outer environment, only used for inner functions
 
+        # environment signals
         self.terminated = False
         self.exit_value = None
+        self.broken = False
+        self.paused = False
         # self.var_array = []
         # self.heap1 = heap
 
@@ -47,6 +50,12 @@ class Environment:
     def terminate(self, exit_value):
         self.terminated = True
         self.exit_value = exit_value
+
+    def break_loop(self):
+        self.broken = True
+
+    def pause_loop(self):
+        self.paused = True
 
     def assign(self, key, value):
         if DEBUG:
@@ -157,6 +166,8 @@ def evaluate(node, env):
         return None
     elif env.terminated:
         return env.exit_value
+    elif env.paused:
+        return None
     elif isinstance(node, IntNode):
         return int(node.value)
     elif isinstance(node, FloatNode):
@@ -166,6 +177,19 @@ def evaluate(node, env):
     elif isinstance(node, NameNode):
         value = env.get(node.name)
         return value
+    elif isinstance(node, BooleanStmt):
+        if node.value == "true":
+            return True
+        elif node.value == "false":
+            return False
+        else:
+            raise InterpretException("Unknown boolean value")
+    elif isinstance(node, NullStmt):
+        return None
+    elif isinstance(node, BreakStmt):
+        env.break_loop()
+    elif isinstance(node, ContinueStmt):
+        env.pause_loop()
     elif isinstance(node, AssignmentNode):
         key = node.left
         value = evaluate(node.right, env)
@@ -202,30 +226,7 @@ def evaluate(node, env):
         left = evaluate(node.left, env)
         right = evaluate(node.right, env)
         symbol = node.operation
-        if symbol == "+":
-            return left + right
-        elif symbol == "-":
-            return left - right
-        elif symbol == "*":
-            return left * right
-        elif symbol == "/":
-            return left // right
-        elif symbol == "%":
-            return left % right
-        elif symbol == "==":
-            return left == right
-        elif symbol == "!=":
-            return left != right
-        elif symbol == ">":
-            return left > right
-        elif symbol == "<":
-            return left < right
-        elif symbol == ">=":
-            return left >= right
-        elif symbol == "<=":
-            return left <= right
-
-        raise InterpretException("No such symbol")
+        return arithmetic(left, right, symbol)
     elif isinstance(node, NegativeExpr):
         value = evaluate(node.value, env)
         return -value
@@ -250,8 +251,10 @@ def evaluate(node, env):
             return evaluate(node.else_block, env)
     elif isinstance(node, WhileStmt):
         result = 0
-        while evaluate(node.condition, env):
+        while not env.broken and evaluate(node.condition, env):
             result = evaluate(node.body, env)
+            env.paused = False  # reset the environment the the next iteration
+        env.broken = False  # reset the environment for next loop
         return result
     elif isinstance(node, DefStmt):
         f = Function(node.params, node.body)
@@ -304,6 +307,47 @@ def evaluate(node, env):
         return instance
     else:
         raise InterpretException("Invalid Syntax Tree")
+
+
+def arithmetic(left, right, symbol):
+    if symbol == "+":
+        return left + right
+    elif symbol == "-":
+        return left - right
+    elif symbol == "*":
+        return left * right
+    elif symbol == "/":
+        return left // right
+    elif symbol == "%":
+        return left % right
+    elif symbol == "==":
+        return left == right
+    elif symbol == "!=":
+        return left != right
+    elif symbol == ">":
+        return left > right
+    elif symbol == "<":
+        return left < right
+    elif symbol == ">=":
+        return left >= right
+    elif symbol == "<=":
+        return left <= right
+    elif symbol == "&&":
+        return left and right
+    elif symbol == "||":
+        return left or right
+    elif symbol == "<<":
+        return left << right
+    elif symbol == ">>":
+        return left >> right
+    elif symbol == "&":
+        return left & right
+    elif symbol == "^":
+        return left ^ right
+    elif symbol == "|":
+        return left | right
+
+    raise InterpretException("No such symbol")
 
 
 def class_inheritance(cla, env, scope):
