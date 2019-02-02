@@ -1,4 +1,4 @@
-from spl_parser import *
+from spl_parser2 import *
 from spl_lib import *
 
 DEBUG = False
@@ -14,6 +14,7 @@ class Interpreter:
         self.ast = ast
         self.argv = argv
         self.env = Environment(True, HashMap())
+        self.env.scope_name = "Global"
 
     def interpret(self):
         return evaluate(self.ast, self.env)
@@ -30,6 +31,9 @@ class Environment:
         self.heap = heap  # Heap-allocated variables (global)
         self.variables = HashMap()  # Stack variables
         self.outer = None  # Outer environment, only used for inner functions
+        self.temp_vars = []
+
+        self.scope_name = None
 
         # environment signals
         self.terminated = False
@@ -42,10 +46,17 @@ class Environment:
         if is_global:
             self._add_natives()
 
+    def __str__(self):
+        if self.scope_name:
+            return self.scope_name
+        else:
+            return str(super)
+
     def _add_natives(self):
         self.heap["print"] = NativeFunction(print)
         self.heap["time"] = NativeFunction(time)
         self.heap["type"] = NativeFunction(typeof)
+        self.heap["list"] = NativeFunction(make_list)
 
     def terminate(self, exit_value):
         self.terminated = True
@@ -179,13 +190,13 @@ def evaluate(node, env):
         return value
     elif isinstance(node, BooleanStmt):
         if node.value == "true":
-            return True
+            return Boolean(True)
         elif node.value == "false":
-            return False
+            return Boolean(False)
         else:
             raise InterpretException("Unknown boolean value")
     elif isinstance(node, NullStmt):
-        return None
+        return Null()
     elif isinstance(node, BreakStmt):
         env.break_loop()
     elif isinstance(node, ContinueStmt):
@@ -217,9 +228,12 @@ def evaluate(node, env):
             attr = instance.env.variables[obj.name]
             return attr
         elif isinstance(obj, FuncCall):
-            # attr = instance.attributes[obj.f_name]
-            # print(obj)
-            return evaluate(obj, instance.env)
+            if isinstance(instance, NativeTypes):
+                return native_types_call(instance, obj, env)
+            elif isinstance(instance, ClassInstance):
+                return evaluate(obj, instance.env)
+            else:
+                raise InterpretException("Not a class instance")
         else:
             raise InterpretException("Unknown Syntax")
     elif isinstance(node, OperatorNode):
@@ -245,13 +259,13 @@ def evaluate(node, env):
         return result
     elif isinstance(node, IfStmt):
         cond = evaluate(node.condition, env)
-        if cond:
+        if cond.value:
             return evaluate(node.then_block, env)
         else:
             return evaluate(node.else_block, env)
     elif isinstance(node, WhileStmt):
         result = 0
-        while not env.broken and evaluate(node.condition, env):
+        while not env.broken and evaluate(node.condition, env).value:
             result = evaluate(node.body, env)
             env.paused = False  # reset the environment the the next iteration
         env.broken = False  # reset the environment for next loop
@@ -265,18 +279,25 @@ def evaluate(node, env):
         func = env.get(node.f_name)
         if isinstance(func, Function):
             scope = Environment(False, env.heap)
+            scope.scope_name = "Function scope<{}>".format(node.f_name)
             scope.outer = func.outer_scope  # supports for closure
-            # print(scope.variables)
-            # print(env.is_global)
-            for i in range(len(func.params)):
-                # Assign function arguments
-                scope.assign(func.params[i].name, evaluate(node.args[i], env))
+
+            if len(env.temp_vars) == len(func.params):
+                for i in range(len(func.params)):
+                    scope.assign(func.params[i].name, env.temp_vars[i])
+                env.temp_vars.clear()
+            else:
+                for i in range(len(func.params)):
+                    # Assign function arguments
+                    e = evaluate(node.args.lines[i], env)
+                    scope.assign(func.params[i].name, e)
             result = evaluate(func.body, scope)
             return result
         elif isinstance(func, NativeFunction):
             args = []
-            for i in range(len(node.args)):
-                args.append(evaluate(node.args[i], env))
+            for i in range(len(node.args.lines)):
+                # args.append(evaluate(node.args[i], env))
+                args.append(evaluate(node.args.lines[i], env))
             return func.call(args)
         else:
             raise InterpretException("Not a function call")
@@ -289,6 +310,7 @@ def evaluate(node, env):
         cla: Class = env.get_class(node.class_name)
 
         scope = Environment(False, env.heap)
+        scope.scope_name = "Class scope<{}>".format(cla.class_name)
         class_inheritance(cla, env, scope)
 
         # print(scope.variables)
@@ -296,14 +318,20 @@ def evaluate(node, env):
         for k in scope.variables.key_set():
             v = scope.variables[k]
             if isinstance(v, Function):
-                v.parent = instance
+                # v.parent = instance
+                v.outer_scope = scope
 
         if node.args:
             # constructor: Function = scope.variables[node.class_name]
             fc = FuncCall(node.class_name)
             fc.args = node.args
-            # print(constructor)
+            for a in fc.args.lines:
+                scope.temp_vars.append(evaluate(a, env))
+            # print(scope.variables)
             evaluate(fc, scope)
+
+            # if env.outer:
+            #     print(env.get("value"))
         return instance
     else:
         raise InterpretException("Invalid Syntax Tree")
@@ -311,43 +339,48 @@ def evaluate(node, env):
 
 def arithmetic(left, right, symbol):
     if symbol == "+":
-        return left + right
+        result = left + right
     elif symbol == "-":
-        return left - right
+        result = left - right
     elif symbol == "*":
-        return left * right
+        result = left * right
     elif symbol == "/":
-        return left // right
+        result = left // right
     elif symbol == "%":
-        return left % right
+        result = left % right
     elif symbol == "==":
-        return left == right
+        result = left == right
     elif symbol == "!=":
-        return left != right
+        result = left != right
     elif symbol == ">":
-        return left > right
+        result = left > right
     elif symbol == "<":
-        return left < right
+        result = left < right
     elif symbol == ">=":
-        return left >= right
+        result = left >= right
     elif symbol == "<=":
-        return left <= right
+        result = left <= right
     elif symbol == "&&":
-        return left and right
+        result = left and right
     elif symbol == "||":
-        return left or right
+        result = left or right
     elif symbol == "<<":
-        return left << right
+        result = left << right
     elif symbol == ">>":
-        return left >> right
+        result = left >> right
     elif symbol == "&":
-        return left & right
+        result = left & right
     elif symbol == "^":
-        return left ^ right
+        result = left ^ right
     elif symbol == "|":
-        return left | right
+        result = left | right
+    else:
+        raise InterpretException("No such symbol")
 
-    raise InterpretException("No such symbol")
+    if isinstance(result, bool):
+        return Boolean(result)
+    else:
+        return result
 
 
 def class_inheritance(cla, env, scope):
@@ -362,9 +395,36 @@ def class_inheritance(cla, env, scope):
     :return:
     """
     if cla.superclass_name:
-        class_inheritance(env.get(cla.superclass_name), env, scope)
+        class_inheritance(env.get_class(cla.superclass_name), env, scope)
 
     evaluate(cla.body, scope)
+
+
+def native_types_call(instance, method, env):
+    """
+
+    :param instance:
+    :type instance: NativeType
+    :param method:
+    :type method: FuncCall
+    :type env: Environment
+    :return:
+    """
+    args = []
+    for x in method.args.lines:
+        args.append(evaluate(x, env))
+    name = method.f_name
+    type_ = type(instance)
+    # object_methods = [method_name for method_name in dir(type_) if callable(getattr(type_, method_name))]
+    method = getattr(type_, name)
+    res = method(instance, *args)
+    return res
+    # print(method)
+    # string = "instance.{}(".format(name)
+    # for arg in args:
+    #     string += str(arg)
+    # string += ")"
+    # return eval(string)
 
 
 class InterpretException(Exception):

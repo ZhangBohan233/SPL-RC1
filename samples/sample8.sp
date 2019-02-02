@@ -1,18 +1,29 @@
+class TB {
+    vv = null;
+    vw = 0;
+
+    function TB(va, vb) {
+        vv = va;
+        vw = vb;
+    }
+}
+
 class TypeA {
-    value = 0;
+    value = null;
+    pre = 5;
+    tb = new TB(pre, 9);
 
     function TypeA(v) {
         value = v;
     }
 
     function copy() {
-        return new TypeA(value);
+        return new TB(value, pre);
     }
 }
 
+b = new TypeA(4);
 
-a = new TypeA(3);
+c = b.copy();
 
-b = new TypeA;
-
-b.copy();
+d = new TB(7, 5);

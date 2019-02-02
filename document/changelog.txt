@@ -1,3 +1,11 @@
+===== Build 0006 : 2019/02/02 =====
+
+*Rewrote the lexer and parser for fixing nested function calls
+*Fixed a bug that class initializer not working properly
+*Added link of calling native object methods
+*Modified interpreter:
+    *Added wrapper of boolean and null
+
 ===== Build 0005 : 2019/02/02 =====
 
 *Added syntax:

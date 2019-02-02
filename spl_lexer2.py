@@ -1,4 +1,4 @@
-import spl_parser as psr
+import spl_parser2 as psr
 
 EOF = -1
 EOL = ";"
@@ -129,8 +129,9 @@ class Lexer:
         parser = psr.Parser()
         i = 0
         func_count = 0
-        in_expr = False
-        in_call_expr = False
+        # in_expr = False
+        # expr_layer = 0
+        # in_call_expr = False
         in_cond = False
         # in_call = False
         call_nest = 0
@@ -184,6 +185,7 @@ class Lexer:
                                 self.tokens[i + 1].symbol == "(":
                             i += 1
                             call_nest += 1
+                            parser.add_call(class_name)
                             # in_call = True
                     elif sym == "if":
                         in_cond = True
@@ -201,7 +203,8 @@ class Lexer:
                         pass
                     elif sym == "return":
                         parser.add_return()
-                        in_expr = True
+                        # in_expr = True
+                        # expr_layer += 1
                     elif sym == "break":
                         parser.add_break()
                     elif sym == "continue":
@@ -221,75 +224,98 @@ class Lexer:
                             parser.build_class()
                             class_brace = -1
                         if not (isinstance(self.tokens[i + 1], IdToken) and self.tokens[i + 1].symbol == "else"):
-                            if in_expr:
-                                parser.build_expr()
-                                in_expr = False
+                            # if in_expr:
+                            # if expr_layer > 0:
+                            parser.build_expr()
+                                # in_expr = False
+                                # expr_layer -= 1
                             parser.build_line()
                     elif sym == "(":
-                        # if i > 0 and isinstance(self.tokens[i - 1], IdToken) and self.tokens[i - 1].symbol == ")":
-                        #     parser.add_continue_call(extra_precedence)
-                        #     # in_expr = True
-                        #     in_continue_call = True
-                        #     in_call = True
-                        if in_expr:
+                        # if expr_layer > 0:
+                        #     extra_precedence += 1
+                        if parser.in_expr:
                             extra_precedence += 1
                     elif sym == ")":
                         if extra_precedence == 0:
                             if in_cond:
-                                if in_expr:
-                                    parser.build_expr()
-                                    in_expr = False
+                                # if in_expr:
+                                # if expr_layer > 0:
+                                parser.build_expr()
+                                    # in_expr = False
+                                    # expr_layer -= 1
                                 parser.build_condition()
                                 in_cond = False
                             elif call_nest > 0:
-                                if in_call_expr:
-                                    # print("xxx")
-                                    parser.build_call_expr()
-                                    in_call_expr = False
+                                # if in_expr:
+                                # if expr_layer > 0:
+                                #     parser.build_expr()
+                                #     # in_expr = False
+                                #     expr_layer -= 1
+                                parser.build_expr()
+                                parser.build_line()
                                 parser.build_call()
-                                if in_expr:
-                                    parser.build_expr()
-                                    in_expr = False
-                                # parser.build_call()
-                                # in_call = False
                                 call_nest -= 1
+                            # elif call_nest > 0:
+                            #     if in_call_expr:
+                            #         # print("xxx")
+                            #         parser.build_call_expr()
+                            #         in_call_expr = False
+                            #     parser.build_call()
+                            #     if in_expr:
+                            #         parser.build_expr()
+                            #         in_expr = False
+                            #     # parser.build_call()
+                            #     # in_call = False
+                            #     call_nest -= 1
                         else:
-                            if in_expr:
-                                extra_precedence -= 1
+                            # if in_expr:
+                            # if expr_layer > 0:
+                            #     extra_precedence -= 1
+                            if parser.in_expr:
+                                extra_precedence += 1
                     elif sym == "=":
                         parser.build_expr()
                         parser.add_assignment()
                     elif sym == ",":
-                        if in_expr:
-                            parser.build_expr()
-                            in_expr = False
+                        # if in_expr:
+                        # if expr_layer > 0:
+                        parser.build_expr()
+                            # in_expr = False
+                            # expr_layer -= 1
+                        if call_nest > 0:
+                            parser.build_line()
                     elif sym == ".":
                         parser.add_dot(extra_precedence)
-                        in_expr = True
+                        # in_expr = True
+                        # expr_layer += 1
                         # if in_call:
-                        if call_nest > 0:
-                            in_call_expr = True
+                        # if call_nest > 0:
+                        #     in_call_expr = True
                     elif sym in BINARY_OPERATORS:
                         if sym == "-" and (i == 0 or is_neg(self.tokens[i - 1])):
                             parser.add_neg(extra_precedence)
                         else:
                             parser.add_operator(sym, extra_precedence)
-                        in_expr = True
-                        if call_nest > 0:
-                            in_call_expr = True
+                        # in_expr = True
+                        # expr_layer += 1
+                        # if call_nest > 0:
+                        #     in_call_expr = True
                     elif token.is_eol():
-                        if in_expr:
-                            parser.build_expr()
-                            in_expr = False
+                        # if in_expr:
+                        # if expr_layer > 0:
+                            # parser.build_expr()
+                            # in_expr = False
+                            # expr_layer = 0
+                        # print(parser.stack)
+                        parser.build_expr()
+                        # print(parser.stack)
                         parser.build_line()
                     else:
                         if isinstance(self.tokens[i + 1], IdToken) and self.tokens[i + 1].symbol == "(":
                             # function call
                             parser.add_call(sym)
-                            # print("call " + self.tokens[i].symbol + str(self.tokens[i].line_number()))
-                            i += 1
                             call_nest += 1
-                            # in_call = True
+                            i += 1
                         else:
                             parser.add_name(sym)
 

@@ -1,8 +1,8 @@
 """ The main SPL runner. """
 
 import sys
-import spl_lexer
-import spl_parser
+import spl_lexer2
+import spl_parser2
 import spl_interpreter
 import time
 
@@ -12,7 +12,8 @@ spl.py
 
 
 def parse_arg(args):
-    d = {"file": None, "debugger": False, "timer": False, "ast": False, "tokens": False, "vars": False, "argv": []}
+    d = {"file": None, "debugger": False, "timer": False, "ast": False, "tokens": False, "vars": False, "argv": [],
+         "exit": False}
     for i in range(1, len(args), 1):
         arg = args[i]
         if d["file"] is not None:
@@ -30,6 +31,8 @@ def parse_arg(args):
                     d["tokens"] = True
                 elif flag == "vars":
                     d["vars"] = True
+                elif flag == "exit":
+                    d["exit"] = True
                 else:
                     print("unknown flag: -" + flag)
             elif arg == "help":
@@ -60,7 +63,7 @@ if __name__ == "__main__":
     try:
         lex_start = time.time()
 
-        lexer = spl_lexer.Lexer(f)
+        lexer = spl_lexer2.Lexer(f)
         lexer.tokenize()
 
         if argv["tokens"]:
@@ -74,7 +77,7 @@ if __name__ == "__main__":
         if argv["debugger"]:
             spl_interpreter.DEBUG = True
 
-        block = spl_parser.BlockStmt()
+        block = spl_parser2.BlockStmt()
         block.lines = psr.elements
 
         interpret_start = time.time()
@@ -84,7 +87,8 @@ if __name__ == "__main__":
 
         end = time.time()
 
-        print("Process finished with exit value " + str(result))
+        if argv["exit"]:
+            print("Process finished with exit value " + str(result))
 
         if argv["vars"]:
             print(itr.env.variables)

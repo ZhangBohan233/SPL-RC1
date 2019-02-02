@@ -4,17 +4,16 @@
 
 Slowest Programming Language (SPL) is a light-weight scripting language.
 
-SPL focuses on making codes simpler. Here's some general ideas: 
+SPL focuses on making codes simpler. Here's the general idea: 
 
-* You are not allowed to write fancy-looking code in SPL, 
-which makes your code looks dumb. But few weeks after you wrote your code, you'll found
-the advantage that brought by simple code.
+* Code should be simple and easy for reading. 
+fancy-looking codes somehow shows your programming skills but harmful to readers.
+So complicated syntax is not allowed in SPL. There should not be too much code 
+in one line.
 
 SPL Key Features:
 
 * Dynamic variables
 * Object oriented
 * Functional programming
-* Scripting language
-* Interpreter language
-* Very slow on executing
+* Slow

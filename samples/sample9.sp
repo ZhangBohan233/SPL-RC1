@@ -6,7 +6,7 @@ function test(a) {
         }
         print(a);
     }
-    return 123;
+    return null;
 }
 
 c = test(0);
