@@ -1,3 +1,11 @@
+===== Build 0004 : 2019/02/01 =====
+
+*Added syntax:
+    *Added keyword "return" which terminates a function call
+    *Semicolon after "}" may be omitted now
+*Bug fixes:
+    *Fixed this type of bugs: "return new Classname()"
+
 ===== Build 0003 : 2019/02/01 =====
 
 *Added native function "type"

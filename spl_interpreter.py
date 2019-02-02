@@ -31,6 +31,8 @@ class Environment:
         self.variables = HashMap()  # Stack variables
         self.outer = None  # Outer environment, only used for inner functions
 
+        self.terminated = False
+        self.exit_value = None
         # self.var_array = []
         # self.heap1 = heap
 
@@ -41,6 +43,10 @@ class Environment:
         self.heap["print"] = NativeFunction(print)
         self.heap["time"] = NativeFunction(time)
         self.heap["type"] = NativeFunction(typeof)
+
+    def terminate(self, exit_value):
+        self.terminated = True
+        self.exit_value = exit_value
 
     def assign(self, key, value):
         if DEBUG:
@@ -69,6 +75,9 @@ class Environment:
             return self.outer.get(key)
         else:
             return self.heap[key]
+
+    def get_class(self, classname):
+        return self.heap[classname]
 
 
 class NativeFunction:
@@ -144,7 +153,11 @@ def evaluate(node, env):
     :type env: Environment
     :return:
     """
-    if isinstance(node, IntNode):
+    if not node:
+        return None
+    elif env.terminated:
+        return env.exit_value
+    elif isinstance(node, IntNode):
         return int(node.value)
     elif isinstance(node, FloatNode):
         return float(node.value)
@@ -216,10 +229,17 @@ def evaluate(node, env):
     elif isinstance(node, NegativeExpr):
         value = evaluate(node.value, env)
         return -value
+    elif isinstance(node, ReturnStmt):
+        value = node.value
+        res = evaluate(value, env)
+        # print(env.variables)
+        env.terminate(res)
+        return res
     elif isinstance(node, BlockStmt):
         result = 0
         for line in node.lines:
             result = evaluate(line, env)
+            # print(result)
             # print(line)
         return result
     elif isinstance(node, IfStmt):
@@ -263,7 +283,7 @@ def evaluate(node, env):
         env.assign(node.class_name, cla)
         return cla
     elif isinstance(node, ClassInit):
-        cla: Class = env.get(node.class_name)
+        cla: Class = env.get_class(node.class_name)
 
         scope = Environment(False, env.heap)
         class_inheritance(cla, env, scope)

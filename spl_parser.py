@@ -1,6 +1,6 @@
 PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "==": 10, ">": 10, "<": 10, ">=": 10, "<=": 10,
-              "!=": 10, ")(": 500, ".": 500, "neg": 200}
+              "!=": 10, ")(": 500, ".": 500, "neg": 200, "return": 5}
 
 
 class Parser:
@@ -116,21 +116,30 @@ class Parser:
             fc = FuncCall(f_name)
             self.stack.append(fc)
 
-    def add_continue_call(self, extra):
+    def add_return(self):
         if self.inner:
-            self.inner.add_continue_call(extra)
+            self.inner.add_return()
         else:
-            cc = ContinueCall(extra)
-            self.stack.append(cc)
+            rtn = ReturnStmt()
+            self.stack.append(rtn)
+
+    # def add_continue_call(self, extra):
+    #     if self.inner:
+    #         self.inner.add_continue_call(extra)
+    #     else:
+    #         cc = ContinueCall(extra)
+    #         self.stack.append(cc)
 
     def build_call_expr(self):
         if self.inner:
             self.inner.build_call_expr()
         else:
             lst = []
+            # print(self.stack)
             while not isinstance(self.stack[-1], FuncCall):
                 lst.append(self.stack.pop())
             lst.reverse()
+            # print(lst)
 
             node = parse_expr(lst)
             self.stack.append(node)
@@ -140,9 +149,11 @@ class Parser:
             self.inner.build_call()
         else:
             lst = []
+            # print(nest)
+            # print(self.stack)
             while not isinstance(self.stack[-1], FuncCall) and not isinstance(self.stack[-1], ClassInit):
                 lst.append(self.stack.pop())
-
+            # print(lst)
             lst.reverse()
             node = self.stack.pop()
             node.args = lst
@@ -217,15 +228,14 @@ class Parser:
             while len(self.stack) > 0:
                 node = self.stack[-1]
                 if isinstance(node, NumNode) or isinstance(node, NameNode) or isinstance(node, OperatorNode) or \
-                        isinstance(node, NegativeExpr) or isinstance(node, LiteralNode) or \
-                        (isinstance(node, FuncCall) and node.args is not None):
+                        isinstance(node, UnaryOperator) or isinstance(node, LiteralNode) or \
+                        (isinstance(node, FuncCall) and node.args is not None) or isinstance(node, ClassInit):
                     lst.append(node)
                     self.stack.pop()
                 else:
                     # self.stack.append(node)
                     break
             lst.reverse()
-            # print(lst)
 
             node = parse_expr(lst)
             self.stack.append(node)
@@ -234,35 +244,36 @@ class Parser:
         if self.inner:
             self.inner.build_line()
         else:
-            res = None
-            res2 = None
-            # print(self.stack)
-            while len(self.stack) > 0:
-                node = self.stack.pop()
-                if isinstance(node, LeafNode):
-                    res = node
-                elif isinstance(node, BinaryExpr) and res:
-                    node.right = res
-                    res = node
-                elif isinstance(node, BlockStmt):
-                    if res:
-                        res2 = res
+            if len(self.stack) > 0:
+                res = None
+                res2 = None
+                # print(self.stack)
+                while len(self.stack) > 0:
+                    node = self.stack.pop()
+                    if isinstance(node, LeafNode):
+                        res = node
+                    elif isinstance(node, BinaryExpr) and res:
+                        node.right = res
+                        res = node
+                    elif isinstance(node, BlockStmt):
+                        if res:
+                            res2 = res
+                            res = node
+                        else:
+                            res = node
+                    elif isinstance(node, IfStmt):
+                        node.then_block = res
+                        node.else_block = res2
+                        res = node
+                    elif isinstance(node, WhileStmt):
+                        node.body = res
+                        res = node
+                    elif isinstance(node, DefStmt):
+                        node.body = res
                         res = node
                     else:
                         res = node
-                elif isinstance(node, IfStmt):
-                    node.then_block = res
-                    node.else_block = res2
-                    res = node
-                elif isinstance(node, WhileStmt):
-                    node.body = res
-                    res = node
-                elif isinstance(node, DefStmt):
-                    node.body = res
-                    res = node
-                else:
-                    res = node
-            self.elements.append(res)
+                self.elements.append(res)
 
     def get_as_block(self):
         block = BlockStmt()
@@ -346,6 +357,25 @@ class OperatorNode(BinaryExpr):
         return PRECEDENCE[self.operation] + self.extra_precedence
 
 
+class UnaryOperator(Node):
+
+    def __init__(self, extra):
+        Node.__init__(self)
+
+        self.value = None
+        self.operation = None
+        self.extra_precedence = extra * 1000
+
+    def precedence(self):
+        return PRECEDENCE[self.operation] + self.extra_precedence
+
+    def __str__(self):
+        return "UE({} {})".format(self.operation, self.value)
+
+    def __repr__(self):
+        return self.__str__()
+
+
 class NameNode(LeafNode):
     def __init__(self, n):
         LeafNode.__init__(self)
@@ -366,21 +396,25 @@ class AssignmentNode(BinaryExpr):
         BinaryExpr.__init__(self)
 
 
-class NegativeExpr(Node):
+class NegativeExpr(UnaryOperator):
     def __init__(self, extra):
-        Node.__init__(self)
+        UnaryOperator.__init__(self, extra)
 
+        self.operation = "neg"
         self.value = None
-        self.extra_precedence = extra * 1000
 
-    def precedence(self):
-        return PRECEDENCE["neg"] + self.extra_precedence
+    # def __str__(self):
+    #     return "-" + str(self.value)
+    #
+    # def __repr__(self):
+    #     return self.__str__()
 
-    def __str__(self):
-        return "-" + str(self.value)
 
-    def __repr__(self):
-        return self.__str__()
+class ReturnStmt(UnaryOperator):
+    def __init__(self):
+        UnaryOperator.__init__(self, 0)
+
+        self.operation = "return"
 
 
 class BlockStmt(Node):
@@ -507,17 +541,17 @@ class Dot(OperatorNode):
         return self.__str__()
 
 
-class ContinueCall(OperatorNode):
-    def __init__(self, extra):
-        OperatorNode.__init__(self, extra)
-
-        self.operation = ")("
-
-    def __str__(self):
-        return "{}>>{}".format(self.left, self.right)
-
-    def __repr__(self):
-        return self.__str__()
+# class ContinueCall(OperatorNode):
+#     def __init__(self, extra):
+#         OperatorNode.__init__(self, extra)
+#
+#         self.operation = ")("
+#
+#     def __str__(self):
+#         return "{}>>{}".format(self.left, self.right)
+#
+#     def __repr__(self):
+#         return self.__str__()
 
 
 def parse_expr(lst):
@@ -527,7 +561,7 @@ def parse_expr(lst):
         index = 0
         for i in range(len(lst)):
             node = lst[i]
-            if isinstance(node, NegativeExpr):
+            if isinstance(node, UnaryOperator):
                 pre = node.precedence()
                 if pre > max_pre and not node.value:
                     max_pre = pre
@@ -538,8 +572,7 @@ def parse_expr(lst):
                     max_pre = pre
                     index = i
         operator = lst[index]
-        # print(lst)
-        if isinstance(operator, NegativeExpr):
+        if isinstance(operator, UnaryOperator):
             operator.value = lst[index + 1]
             lst.pop(index + 1)
         else:

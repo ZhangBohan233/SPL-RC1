@@ -7,7 +7,7 @@ MIDDLE = {"(", ")"}
 BINARY_OPERATORS = {"+", "-", "*", "/", "%", "<", ">", "==", ">=", "<=", "!=", "&&", "||"}
 OTHERS = {"="}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE)
-RESERVED = {"class", "function", "if", "else", "new", "extends"}
+RESERVED = {"class", "function", "if", "else", "new", "extends", "return"}
 OMITS = {"\n", "\r", "\t", " "}
 
 
@@ -130,11 +130,13 @@ class Lexer:
         in_expr = False
         in_call_expr = False
         in_cond = False
-        in_call = False
+        # in_call = False
+        call_nest = 0
         # in_continue_call = False
         brace_count = 0
         class_brace = -1
         extra_precedence = 0
+
         while True:
             try:
                 token = self.tokens[i]
@@ -179,7 +181,8 @@ class Lexer:
                         if i + 1 < len(self.tokens) and isinstance(self.tokens[i + 1], IdToken) and \
                                 self.tokens[i + 1].symbol == "(":
                             i += 1
-                            in_call = True
+                            call_nest += 1
+                            # in_call = True
                     elif sym == "if":
                         in_cond = True
                         parser.add_if()
@@ -194,6 +197,9 @@ class Lexer:
                             raise ParseException("Unexpected token at line {}".format(self.tokens[i].line_number()))
                     elif sym == "else":
                         pass
+                    elif sym == "return":
+                        parser.add_return()
+                        in_expr = True
                     elif sym == "{":
                         brace_count += 1
                         parser.new_block()
@@ -204,6 +210,11 @@ class Lexer:
                         if brace_count == class_brace:
                             parser.build_class()
                             class_brace = -1
+                        if not (isinstance(self.tokens[i + 1], IdToken) and self.tokens[i + 1].symbol == "else"):
+                            if in_expr:
+                                parser.build_expr()
+                                in_expr = False
+                            parser.build_line()
                     elif sym == "(":
                         # if i > 0 and isinstance(self.tokens[i - 1], IdToken) and self.tokens[i - 1].symbol == ")":
                         #     parser.add_continue_call(extra_precedence)
@@ -220,8 +231,9 @@ class Lexer:
                                     in_expr = False
                                 parser.build_condition()
                                 in_cond = False
-                            elif in_call:
+                            elif call_nest > 0:
                                 if in_call_expr:
+                                    # print("xxx")
                                     parser.build_call_expr()
                                     in_call_expr = False
                                 parser.build_call()
@@ -229,7 +241,8 @@ class Lexer:
                                     parser.build_expr()
                                     in_expr = False
                                 # parser.build_call()
-                                in_call = False
+                                # in_call = False
+                                call_nest -= 1
                         else:
                             if in_expr:
                                 extra_precedence -= 1
@@ -243,7 +256,8 @@ class Lexer:
                     elif sym == ".":
                         parser.add_dot(extra_precedence)
                         in_expr = True
-                        if in_call:
+                        # if in_call:
+                        if call_nest > 0:
                             in_call_expr = True
                     elif sym in BINARY_OPERATORS:
                         if sym == "-" and (i == 0 or is_neg(self.tokens[i - 1])):
@@ -251,7 +265,7 @@ class Lexer:
                         else:
                             parser.add_operator(sym, extra_precedence)
                         in_expr = True
-                        if in_call:
+                        if call_nest > 0:
                             in_call_expr = True
                     elif token.is_eol():
                         if in_expr:
@@ -264,7 +278,8 @@ class Lexer:
                             parser.add_call(sym)
                             # print("call " + self.tokens[i].symbol + str(self.tokens[i].line_number()))
                             i += 1
-                            in_call = True
+                            call_nest += 1
+                            # in_call = True
                         else:
                             parser.add_name(sym)
 
@@ -296,13 +311,16 @@ def is_neg(last_token):
     :return:
     :rtype: bool
     """
-    # 大三角
     if isinstance(last_token, IdToken):
         if last_token.is_eol():
             return True
         else:
             sym = last_token.symbol
             if sym in BINARY_OPERATORS:
+                return True
+            elif sym in SYMBOLS:
+                return True
+            elif sym == "(":
                 return True
             elif sym == "=":
                 return True
