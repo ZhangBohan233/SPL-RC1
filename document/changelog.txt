@@ -1,8 +1,16 @@
+===== Build 0008 : 2019/02/02 =====
+
+*Added syntax:
+    *Operator overload supports
+*Removed the old lexer and parser
+
 ===== Build 0007 : 2019/02/02 =====
 
 *Rewrote the conditional statement
 *Added syntax:
     *Implemented index operation [] (get item and set item)
+*Bug fixes:
+    *Parentheses at the beginning of a statement not working
 
 ===== Build 0006 : 2019/02/02 =====
 

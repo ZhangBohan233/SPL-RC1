@@ -20,10 +20,15 @@ class TypeA {
     function copy() {
         return new TB(value, pre);
     }
+
+    operator -(other) {
+        return new TypeA(value - other.value);
+    }
 }
 
 b = new TypeA(4);
+c = new TypeA(7);
 
-c = b.copy();
-
-d = new TB(7, 5);
+//d = b.add(c);
+d = b - c;
+d;

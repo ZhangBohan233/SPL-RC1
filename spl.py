@@ -1,8 +1,8 @@
 """ The main SPL runner. """
 
 import sys
-import spl_lexer2
-import spl_parser2
+import spl_lexer
+import spl_parser
 import spl_interpreter
 import time
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
     try:
         lex_start = time.time()
 
-        lexer = spl_lexer2.Lexer(f)
+        lexer = spl_lexer.Lexer(f)
         lexer.tokenize()
 
         if argv["tokens"]:
@@ -77,7 +77,7 @@ if __name__ == "__main__":
         if argv["debugger"]:
             spl_interpreter.DEBUG = True
 
-        block = spl_parser2.BlockStmt()
+        block = spl_parser.BlockStmt()
         block.lines = psr.elements
 
         interpret_start = time.time()

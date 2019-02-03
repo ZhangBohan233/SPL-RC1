@@ -4,12 +4,14 @@ EOF = -1
 EOL = ";"
 SYMBOLS = {"{", "}", ".", ","}
 MIDDLE = {"(", ")", "[", "]"}
-BINARY_OPERATORS = {"+", "-", "*", "/", "%", "<", ">", "==", ">=", "<=", "!=", "&&", "||",
-                    "&", "^", "|", "<<", ">>"}
+BINARY_OPERATORS = {"+": "add", "-": "sub", "*": "mul", "/": "div", "%": "mod",
+                    "<": "lt", ">": "gt", "==": "eq", ">=": "ge", "<=": "le", "!=": "neq",
+                    "&&": "and", "||": "or", "&": "band", "^": "xor", "|": "bor",
+                    "<<": "lshift", ">>": "rshift"}
 OTHERS = {"="}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE)
 RESERVED = {"class", "function", "if", "else", "new", "extends", "return", "break", "continue",
-            "true", "false", "null"}
+            "true", "false", "null", "operator"}
 OMITS = {"\n", "\r", "\t", " "}
 
 
@@ -129,8 +131,9 @@ class Lexer:
         parser = psr.Parser()
         i = 0
         func_count = 0
-        in_expr = False
-        in_call_expr = False
+        # in_expr = False
+        # expr_layer = 0
+        # in_call_expr = False
         in_cond = False
         # in_call = False
         call_nest = 0
@@ -146,24 +149,37 @@ class Lexer:
                     sym = token.symbol
                     if sym == "function":
                         i += 1
-                        f_token = self.tokens[i]
+                        f_token: IdToken = self.tokens[i]
                         f_name = f_token.symbol
-                        if f_name == "(":
-                            parser.add_function("af-{}".format(func_count))  # "af" stands for anonymous function
-                            func_count += 1
-                        else:
-                            parser.add_function(f_name)
-                            i += 1
-                        front_par = self.tokens[i]
-                        if isinstance(front_par, IdToken) and front_par.symbol == "(":
-                            i += 1
-                            params = []
-                            while isinstance(self.tokens[i], IdToken) and self.tokens[i].symbol != ")":
-                                sbl = self.tokens[i].symbol
-                                if sbl != ",":
-                                    params.append(sbl)
-                                i += 1
-                            parser.build_func_params(params)
+                        res = parse_def(f_name, self.tokens, i, func_count, parser)
+                        i = res[0]
+                        func_count = res[1]
+                        # i += 1
+                        # f_token = self.tokens[i]
+                        # f_name = f_token.symbol
+                        # if f_name == "(":
+                        #     parser.add_function("af-{}".format(func_count))  # "af" stands for anonymous function
+                        #     func_count += 1
+                        # else:
+                        #     parser.add_function(f_name)
+                        #     i += 1
+                        # front_par = self.tokens[i]
+                        # if isinstance(front_par, IdToken) and front_par.symbol == "(":
+                        #     i += 1
+                        #     params = []
+                        #     while isinstance(self.tokens[i], IdToken) and self.tokens[i].symbol != ")":
+                        #         sbl = self.tokens[i].symbol
+                        #         if sbl != ",":
+                        #             params.append(sbl)
+                        #         i += 1
+                        #     parser.build_func_params(params)
+                    elif sym == "operator":
+                        i += 1
+                        op_token: IdToken = self.tokens[i]
+                        op_name = "@" + BINARY_OPERATORS[op_token.symbol]
+                        res = parse_def(op_name, self.tokens, i, func_count, parser)
+                        i = res[0]
+                        func_count = res[1]
                     elif sym == "class":
                         i += 1
                         c_token = self.tokens[i]
@@ -184,6 +200,7 @@ class Lexer:
                                 self.tokens[i + 1].symbol == "(":
                             i += 1
                             call_nest += 1
+                            parser.add_call(class_name)
                             # in_call = True
                     elif sym == "if":
                         in_cond = True
@@ -201,7 +218,8 @@ class Lexer:
                         pass
                     elif sym == "return":
                         parser.add_return()
-                        in_expr = True
+                        # in_expr = True
+                        # expr_layer += 1
                     elif sym == "break":
                         parser.add_break()
                     elif sym == "continue":
@@ -221,75 +239,76 @@ class Lexer:
                             parser.build_class()
                             class_brace = -1
                         if not (isinstance(self.tokens[i + 1], IdToken) and self.tokens[i + 1].symbol == "else"):
-                            if in_expr:
-                                parser.build_expr()
-                                in_expr = False
+                            parser.build_expr()
                             parser.build_line()
                     elif sym == "(":
-                        # if i > 0 and isinstance(self.tokens[i - 1], IdToken) and self.tokens[i - 1].symbol == ")":
-                        #     parser.add_continue_call(extra_precedence)
-                        #     # in_expr = True
-                        #     in_continue_call = True
-                        #     in_call = True
-                        if in_expr:
-                            extra_precedence += 1
+                        # if parser.in_expr:
+                        extra_precedence += 1
                     elif sym == ")":
                         if extra_precedence == 0:
-                            if in_cond:
-                                if in_expr:
-                                    parser.build_expr()
-                                    in_expr = False
+                            if call_nest > 0:
+                                # parser.build_expr()
+                                parser.build_line()
+                                parser.build_call()
+                                call_nest -= 1
+                            elif in_cond:
+                                parser.build_expr()
                                 parser.build_condition()
                                 in_cond = False
-                            elif call_nest > 0:
-                                if in_call_expr:
-                                    # print("xxx")
-                                    parser.build_call_expr()
-                                    in_call_expr = False
-                                parser.build_call()
-                                if in_expr:
-                                    parser.build_expr()
-                                    in_expr = False
-                                # parser.build_call()
-                                # in_call = False
-                                call_nest -= 1
+
                         else:
-                            if in_expr:
-                                extra_precedence -= 1
+                            # if parser.in_expr:
+                            extra_precedence -= 1
+                    elif sym == "]":
+                        next_token = self.tokens[i + 1]
+                        if isinstance(next_token, IdToken) and next_token.symbol == "=":
+                            parser.build_get_set(True)
+                            parser.build_line()
+                            i += 1
+                        else:
+                            parser.build_get_set(False)
+                            parser.build_line()
+                            parser.build_call()
+                            call_nest -= 1
                     elif sym == "=":
                         parser.build_expr()
                         parser.add_assignment()
                     elif sym == ",":
-                        if in_expr:
-                            parser.build_expr()
-                            in_expr = False
+                        parser.build_expr()
+                        if call_nest > 0:
+                            parser.build_line()
                     elif sym == ".":
                         parser.add_dot(extra_precedence)
-                        in_expr = True
-                        # if in_call:
-                        if call_nest > 0:
-                            in_call_expr = True
                     elif sym in BINARY_OPERATORS:
                         if sym == "-" and (i == 0 or is_neg(self.tokens[i - 1])):
                             parser.add_neg(extra_precedence)
                         else:
                             parser.add_operator(sym, extra_precedence)
-                        in_expr = True
-                        if call_nest > 0:
-                            in_call_expr = True
                     elif token.is_eol():
-                        if in_expr:
-                            parser.build_expr()
-                            in_expr = False
+                        if parser.in_get:
+                            parser.in_get = False
+                            parser.build_line()
+                            parser.build_call()
+                            call_nest -= 1
+                        parser.build_expr()
+                        # print(parser.stack)
                         parser.build_line()
                     else:
-                        if isinstance(self.tokens[i + 1], IdToken) and self.tokens[i + 1].symbol == "(":
-                            # function call
-                            parser.add_call(sym)
-                            # print("call " + self.tokens[i].symbol + str(self.tokens[i].line_number()))
-                            i += 1
-                            call_nest += 1
-                            # in_call = True
+                        next_token = self.tokens[i + 1]
+                        if isinstance(next_token, IdToken):
+                            if next_token.symbol == "(":
+                                # function call
+                                parser.add_call(sym)
+                                call_nest += 1
+                                i += 1
+                            elif next_token.symbol == "[":
+                                parser.add_name(sym)
+                                parser.add_dot(extra_precedence)
+                                parser.add_get_set()
+                                call_nest += 1
+                                i += 1
+                            else:
+                                parser.add_name(sym)
                         else:
                             parser.add_name(sym)
 
@@ -309,6 +328,26 @@ class Lexer:
                 raise ParseException("Parse error at line {}".format(self.tokens[i].line_number()))
 
         return parser
+
+
+def parse_def(f_name, tokens, i, func_count, parser):
+    if f_name == "(":
+        parser.add_function("af-{}".format(func_count))  # "af" stands for anonymous function
+        func_count += 1
+    else:
+        parser.add_function(f_name)
+        i += 1
+    front_par = tokens[i]
+    if isinstance(front_par, IdToken) and front_par.symbol == "(":
+        i += 1
+        params = []
+        while isinstance(tokens[i], IdToken) and tokens[i].symbol != ")":
+            sbl = tokens[i].symbol
+            if sbl != ",":
+                params.append(sbl)
+            i += 1
+        parser.build_func_params(params)
+    return i, func_count
 
 
 def is_neg(last_token):

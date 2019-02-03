@@ -1,5 +1,6 @@
-from spl_parser2 import *
+from spl_parser import *
 from spl_lib import *
+from spl_lexer import BINARY_OPERATORS
 
 DEBUG = False
 
@@ -338,6 +339,18 @@ def evaluate(node, env):
 
 
 def arithmetic(left, right, symbol):
+    if isinstance(left, int) or isinstance(left, float):
+        return num_arithmetic(left, right, symbol)
+    elif isinstance(left, ClassInstance):
+        fc = FuncCall("@" + BINARY_OPERATORS[symbol])
+        left.env.temp_vars.append(right)
+        res = evaluate(fc, left.env)
+        return res
+    else:
+        raise InterpretException("Unknown type for operators")
+
+
+def num_arithmetic(left, right, symbol):
     if symbol == "+":
         result = left + right
     elif symbol == "-":
