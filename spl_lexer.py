@@ -15,6 +15,8 @@ RESERVED = {"class", "function", "if", "else", "new", "extends", "return", "brea
             "true", "false", "null", "operator"}
 OMITS = {"\n", "\r", "\t", " "}
 
+OP_EQ = {"+", "-", "*", "/", "%", "&", "^", "|", "<<", ">>"}
+
 SPL_PATH = os.getcwd()
 
 
@@ -130,6 +132,8 @@ class Lexer:
             elif part.isdigit():
                 self.tokens.append(NumToken(line_num, part))
             elif part in ALL:
+                self.tokens.append(IdToken(line_num, part))
+            elif part[:-1] in OP_EQ:
                 self.tokens.append(IdToken(line_num, part))
             elif part == EOL:
                 self.tokens.append(IdToken(line_num, EOL))
@@ -311,6 +315,8 @@ class Lexer:
                             parser.add_neg(extra_precedence)
                         else:
                             parser.add_operator(sym, extra_precedence)
+                    elif sym[:-1] in OP_EQ:
+                        parser.add_operator(sym, extra_precedence, True)
                     elif token.is_eol():
                         if parser.in_get:
                             parser.in_get = False
@@ -436,7 +442,7 @@ def normalize(string):
         s = string[0]
         last_type = char_type(s)
         self_concatenate = {0, 1, 8, 9, 10, 11, 14}
-        cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0), (15, 9)}
+        cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0), (15, 9), (17, 9), (16, 9), (10, 9), (11, 9)}
         for i in range(1, len(string), 1):
             char = string[i]
             t = char_type(char)
@@ -484,8 +490,8 @@ def char_type(ch):
         return 12
     elif ch == ",":
         return 13
-    elif ch == "/":
-        return 14
+    # elif ch == "/":
+    #     return 14
     elif ch == "!":
         return 15
     elif ch == "^":

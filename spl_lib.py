@@ -156,3 +156,11 @@ def typeof(obj):
 def make_list(*initial_elements):
     lst = List(*initial_elements)
     return lst
+
+
+def all_(lst):
+    return Boolean(all(lst))
+
+
+def any_(lst):
+    return Boolean(any(lst))

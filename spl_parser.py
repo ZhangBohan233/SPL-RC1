@@ -2,7 +2,9 @@ PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "==": 20, ">": 25, "<": 25, ">=": 25, "<=": 25,
               "!=": 20, "&&": 5, "||": 5, "&": 12, "^": 11, "|": 10,
               "<<": 40, ">>": 40,
-              ".": 500, "neg": 200, "return": 1}
+              ".": 500, "neg": 200, "return": 1,
+              "+=": 2, "-=": 2, "*=": 2, "/=": 2, "%=": 2,
+              "&=": 2, "^=": 2, "|=": 2, "<<=": 2, ">>=": 2}
 
 MULTIPLIER = 1000
 
@@ -47,12 +49,13 @@ class Parser:
             node = LiteralNode(lit)
             self.stack.append(node)
 
-    def add_operator(self, op, extra_precedence):
+    def add_operator(self, op, extra_precedence, assignment=False):
         if self.inner:
-            self.inner.add_operator(op, extra_precedence)
+            self.inner.add_operator(op, extra_precedence, assignment)
         else:
             self.in_expr = True
             op_node = OperatorNode(extra_precedence)
+            op_node.assignment = assignment
             op_node.operation = op
             self.stack.append(op_node)
 
@@ -422,6 +425,7 @@ class OperatorNode(BinaryExpr):
     def __init__(self, extra):
         BinaryExpr.__init__(self)
 
+        self.assignment = False
         self.extra_precedence = extra * MULTIPLIER
         # print(self.extra_precedence)
 

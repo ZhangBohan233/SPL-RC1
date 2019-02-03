@@ -61,6 +61,8 @@ class Environment:
         self.heap["time"] = NativeFunction(time)
         self.heap["type"] = NativeFunction(typeof)
         self.heap["list"] = NativeFunction(make_list)
+        self.heap["all"] = NativeFunction(all_)
+        self.heap["any"] = NativeFunction(any_)
 
     def terminate(self, exit_value):
         self.terminated = True
@@ -177,7 +179,7 @@ def evaluate(node, env):
     :type env: Environment
     :return:
     """
-    if not node:
+    if node is None:
         return None
     elif env.terminated:
         return env.exit_value
@@ -243,8 +245,17 @@ def evaluate(node, env):
     elif isinstance(node, OperatorNode):
         left = evaluate(node.left, env)
         right = evaluate(node.right, env)
-        symbol = node.operation
-        return arithmetic(left, right, symbol)
+        if node.assignment:
+            symbol = node.operation[:-1]
+            res = arithmetic(left, right, symbol)
+            asg = AssignmentNode()
+            asg.left = node.left
+            asg.operation = "="
+            asg.right = res
+            return evaluate(asg, env)
+        else:
+            symbol = node.operation
+            return arithmetic(left, right, symbol)
     elif isinstance(node, NegativeExpr):
         value = evaluate(node.value, env)
         return -value
@@ -333,10 +344,10 @@ def evaluate(node, env):
                 scope.temp_vars.append(evaluate(a, env))
             # print(scope.variables)
             evaluate(fc, scope)
-
-            # if env.outer:
-            #     print(env.get("value"))
         return instance
+    elif isinstance(node, int) or isinstance(node, float) or isinstance(node, Null) or isinstance(node, Boolean) or \
+            isinstance(node, NativeTypes):
+        return node
     else:
         raise InterpretException("Invalid Syntax Tree")
 
@@ -431,16 +442,9 @@ def native_types_call(instance, method, env):
         args.append(evaluate(x, env))
     name = method.f_name
     type_ = type(instance)
-    # object_methods = [method_name for method_name in dir(type_) if callable(getattr(type_, method_name))]
     method = getattr(type_, name)
     res = method(instance, *args)
     return res
-    # print(method)
-    # string = "instance.{}(".format(name)
-    # for arg in args:
-    #     string += str(arg)
-    # string += ")"
-    # return eval(string)
 
 
 class InterpretException(Exception):

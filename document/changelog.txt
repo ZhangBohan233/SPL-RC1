@@ -1,3 +1,11 @@
+===== Build 0010 : 2019/02/03 =====
+
+*Added syntax:
+    *Added dynamic assignment operators: +=, -=, *=, /=, %=, &=, ^=, |=, <<=, >>=
+    *Added native functions: all(list), any(list)
+*Bug fixes:
+    *Fixed that SPL might recognize 0 as None
+
 ===== Build 0009 : 2019/02/03 =====
 
 *Added SPL console:
