@@ -1,4 +1,5 @@
 import spl_parser as psr
+import os
 
 EOF = -1
 EOL = ";"
@@ -14,31 +15,53 @@ RESERVED = {"class", "function", "if", "else", "new", "extends", "return", "brea
             "true", "false", "null", "operator"}
 OMITS = {"\n", "\r", "\t", " "}
 
+SPL_PATH = os.getcwd()
+
 
 class Lexer:
     """
-    :type file: _io.TextIOWrapper
     :type tokens: list of Token
     """
 
-    def __init__(self, f):
-        self.file = f
+    def __init__(self):
         self.tokens = []
+        self.script_dir = ""
 
-    def tokenize(self):
+    def tokenize(self, source):
         self.tokens.clear()
-        line = self.file.readline()
+        if isinstance(source, list):
+            self.tokenize_text(source)
+        else:
+            self.tokenize_file(source)
+
+    def tokenize_file(self, file):
+        """
+        :type file: _io.TextIOWrapper
+        :param file:
+        :return:
+        """
+        line = file.readline()
         line_num = 1
         while line:
+            last_index = len(self.tokens)
             self.proceed_line(line, line_num)
-
-            line = self.file.readline()
+            # print(self.tokens[last_index:])
+            self.find_import(last_index, len(self.tokens))
+            line = file.readline()
             line_num += 1
 
         self.tokens.append(Token(EOF))
 
+    def tokenize_text(self, text):
+        for i in range(len(text)):
+            line_number = i + 1
+            line = text[i]
+            self.proceed_line(line, line_number)
+
+        self.tokens.append(Token(EOF))
+
     def proceed_line(self, line, line_num):
-        """
+        """ Tokenize a line.
 
         :param line: line to be proceed
         :param line_num: the line number
@@ -78,15 +101,25 @@ class Lexer:
                 literal += ch
             else:
                 non_literal += ch
+                if non_literal == "//":
+                    non_literal = ""
+                    break
 
         if len(non_literal) > 0:
             self.line_tokenize(non_literal, line_num)
 
     def line_tokenize(self, non_literal, line_num):
+        """
+        Tokenize a line, with string literals removed.
+
+        :param non_literal: text to be tokenize, no string literal
+        :param line_num: the line number
+        :return: None
+        """
         lst = normalize(non_literal)
         for part in lst:
-            if part == "//":
-                break
+            # if part == "//":
+            #     break
             if part.isidentifier():
                 if part in RESERVED:
                     self.tokens.append(IdToken(line_num, part))
@@ -105,28 +138,40 @@ class Lexer:
             else:
                 raise ParseException("Unknown symbol: '{}', at line {}".format(part, line_num))
 
-    # def pre_arrange(self):
-    #     lst = []
-    #     count = 0
-    #     i = 0
-    #     while i < len(self.tokens):
-    #         token = self.tokens[i]
-    #         if i < len(self.tokens) - 1:
-    #             next_token = self.tokens[i + 1]
-    #             if isinstance(token, IdToken) and isinstance(next_token, IdToken):
-    #                 if token.symbol == ")" and next_token.symbol == "(":
-    #                     lst.append(IdToken(token.line_number(), EOL))
-    #                     var = []
-    #                     if i > 1 and isinstance(self.tokens[i - 1], IdToken) and self.tokens[i - 1].symbol == "=":
-    #                         # var = []
-    #                         while len(lst) > 0 and not lst[-1].is_eol():
-    #                             var.append(lst.pop())
-    #                         var.reverse()
+    def find_import(self, from_, to):
+        for i in range(from_, to, 1):
+            token = self.tokens[i]
+            if isinstance(token, IdToken) and token.symbol == "import":
+                next_token: LiteralToken = self.tokens[i + 1]
+                name = next_token.text
+                self.tokens.pop(i)
+                self.tokens.pop(i)
+                if name[-3:] == ".sp":
+                    # user lib
+                    file_name = "{}{}{}".format(self.script_dir, os.sep, name)
+                else:
+                    # system lib
+                    file_name = "{}{}lib{}{}.sp".format(SPL_PATH, os.sep, os.sep, name)
+
+                self.import_file(file_name)
+                # print(self.tokens)
+                break
+
+    def import_file(self, full_path):
+        file = open(full_path, "r")
+        lexer = Lexer()
+        lexer.script_dir = get_dir(full_path)
+        lexer.tokenize(file)
+        # print(lexer.tokens)
+        self.tokens += lexer.tokens
+        self.tokens.pop()  # remove the EOF token
+        file.close()
 
     def parse(self):
         """
         :rtype: psr.Parser
-        :return:
+        :return: the parsed block
+        :rtype: psr.BlockStmt
         """
         parser = psr.Parser()
         i = 0
@@ -154,25 +199,6 @@ class Lexer:
                         res = parse_def(f_name, self.tokens, i, func_count, parser)
                         i = res[0]
                         func_count = res[1]
-                        # i += 1
-                        # f_token = self.tokens[i]
-                        # f_name = f_token.symbol
-                        # if f_name == "(":
-                        #     parser.add_function("af-{}".format(func_count))  # "af" stands for anonymous function
-                        #     func_count += 1
-                        # else:
-                        #     parser.add_function(f_name)
-                        #     i += 1
-                        # front_par = self.tokens[i]
-                        # if isinstance(front_par, IdToken) and front_par.symbol == "(":
-                        #     i += 1
-                        #     params = []
-                        #     while isinstance(self.tokens[i], IdToken) and self.tokens[i].symbol != ")":
-                        #         sbl = self.tokens[i].symbol
-                        #         if sbl != ",":
-                        #             params.append(sbl)
-                        #         i += 1
-                        #     parser.build_func_params(params)
                     elif sym == "operator":
                         i += 1
                         op_token: IdToken = self.tokens[i]
@@ -206,8 +232,9 @@ class Lexer:
                         in_cond = True
                         parser.add_if()
                         i += 1
-                        if not (isinstance(self.tokens[i], IdToken) and self.tokens[i].symbol == "("):
-                            raise ParseException("Unexpected token at line {}".format(self.tokens[i].line_number()))
+                        next_token = self.tokens[i]
+                        if not (isinstance(next_token, IdToken) and next_token.symbol == "("):
+                            raise ParseException("Unexpected token at line {}".format(next_token.line_number()))
                     elif sym == "while":
                         in_cond = True
                         parser.add_while()
@@ -327,10 +354,20 @@ class Lexer:
             except Exception:
                 raise ParseException("Parse error at line {}".format(self.tokens[i].line_number()))
 
-        return parser
+        return parser.get_as_block()
 
 
 def parse_def(f_name, tokens, i, func_count, parser):
+    """
+    Parses a function declaration into abstract syntax tree.
+
+    :param f_name: the function name
+    :param tokens: the list of all tokens
+    :param i: the current reading index of the token list
+    :param func_count: the count the anonymous functions
+    :param parser: the Parser object
+    :return: tuple(new index, new anonymous function count)
+    """
     if f_name == "(":
         parser.add_function("af-{}".format(func_count))  # "af" stands for anonymous function
         func_count += 1
@@ -385,6 +422,8 @@ def is_neg(last_token):
 
 def normalize(string):
     """
+    Splits a line to tokens.
+
     :type string: str
     :param string:
     :return:
@@ -544,6 +583,9 @@ class IdToken(Token):
 
         self.symbol = s
 
+    def __eq__(self, other):
+        return isinstance(other, IdToken) and other.symbol == self.symbol
+
     def is_identifier(self):
         return True
 
@@ -558,6 +600,15 @@ class IdToken(Token):
 
     def __repr__(self):
         return self.__str__()
+
+
+def get_dir(f_name: str):
+    if os.sep in f_name:
+        return f_name[:f_name.find(os.sep)]
+    elif "/" in f_name:
+        return f_name[:f_name.find("/")]
+    else:
+        return ""
 
 
 class LexerException(Exception):

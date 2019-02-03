@@ -128,6 +128,9 @@ class List(NativeTypes):
     def append(self, value):
         self.list.append(value)
 
+    def pop(self, index):
+        return self.list.pop(index)
+
 
 class StackNode:
     def __init__(self, value):

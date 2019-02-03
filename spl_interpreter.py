@@ -11,11 +11,14 @@ class Interpreter:
     :type argv: list
     """
 
-    def __init__(self, ast, argv):
-        self.ast = ast
+    def __init__(self, argv):
+        self.ast = None
         self.argv = argv
         self.env = Environment(True, HashMap())
         self.env.scope_name = "Global"
+
+    def set_ast(self, ast):
+        self.ast = ast
 
     def interpret(self):
         return evaluate(self.ast, self.env)

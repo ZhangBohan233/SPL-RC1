@@ -2,7 +2,7 @@
 
 import sys
 import spl_lexer
-import spl_parser
+# import spl_parser
 import spl_interpreter
 import time
 
@@ -12,8 +12,8 @@ spl.py
 
 
 def parse_arg(args):
-    d = {"file": None, "debugger": False, "timer": False, "ast": False, "tokens": False, "vars": False, "argv": [],
-         "exit": False}
+    d = {"file": None, "dir": None, "debugger": False, "timer": False, "ast": False, "tokens": False,
+         "vars": False, "argv": [], "exit": False}
     for i in range(1, len(args), 1):
         arg = args[i]
         if d["file"] is not None:
@@ -39,6 +39,7 @@ def parse_arg(args):
                 pass
             else:
                 d["file"] = arg
+                d["dir"] = spl_lexer.get_dir(d["file"])
                 d["argv"].append(arg)
     if d["file"] is None:
         print_usage()
@@ -63,26 +64,25 @@ if __name__ == "__main__":
     try:
         lex_start = time.time()
 
-        lexer = spl_lexer.Lexer(f)
-        lexer.tokenize()
+        lexer = spl_lexer.Lexer()
+        lexer.script_dir = argv["dir"]
+        lexer.tokenize(f)
 
         if argv["tokens"]:
             print(lexer.tokens)
 
         parse_start = time.time()
 
-        psr = lexer.parse()
+        block = lexer.parse()
         if argv["ast"]:
-            print(psr)
+            print(block)
         if argv["debugger"]:
             spl_interpreter.DEBUG = True
 
-        block = spl_parser.BlockStmt()
-        block.lines = psr.elements
-
         interpret_start = time.time()
 
-        itr = spl_interpreter.Interpreter(block, argv["argv"])
+        itr = spl_interpreter.Interpreter(argv["argv"])
+        itr.set_ast(block)
         result = itr.interpret()
 
         end = time.time()

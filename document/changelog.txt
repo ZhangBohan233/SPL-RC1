@@ -1,3 +1,13 @@
+===== Build 0009 : 2019/02/03 =====
+
+*Added SPL console:
+    *Currently only supports one line expression
+*Added syntax:
+    *Added import statement
+*Optimization:
+    *Repacked directories
+    *Move the comment filter forward, avoiding the string literal after "//" being tokenized
+
 ===== Build 0008 : 2019/02/02 =====
 
 *Added syntax:
