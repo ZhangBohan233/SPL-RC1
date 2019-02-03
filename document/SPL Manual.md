@@ -11,6 +11,11 @@ fancy-looking codes somehow shows your programming skills but harmful to readers
 So complicated syntax is not allowed in SPL. There should not be too much code 
 in one line.
 
+For these purpose, SPL does not support the following features:
+
+* Multiple line expressions
+* Sequential function calls
+
 SPL Key Features:
 
 * Dynamic variables

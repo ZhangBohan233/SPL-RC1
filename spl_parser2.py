@@ -17,6 +17,7 @@ class Parser:
         self.stack = []
         self.inner = None
         self.in_expr = False
+        self.in_get = False
         # self.condition = None
 
     def __str__(self):
@@ -81,6 +82,7 @@ class Parser:
         else:
             ifs = IfStmt()
             self.stack.append(ifs)
+            self.inner = Parser()
 
     def add_else(self):
         if self.inner:
@@ -95,6 +97,7 @@ class Parser:
         else:
             whs = WhileStmt()
             self.stack.append(whs)
+            self.inner = Parser()
 
     def add_function(self, f_name):
         if self.inner:
@@ -120,6 +123,35 @@ class Parser:
             fc = FuncCall(f_name)
             self.stack.append(fc)
             self.inner = Parser()
+
+    def add_get_set(self):
+        if self.inner:
+            self.inner.add_get_set()
+        else:
+            self.in_get = True
+            self.add_call("get/set")
+
+    def build_get_set(self, is_set):
+        if self.inner.inner:
+            self.inner.build_get_set(is_set)
+        else:
+
+            i = len(self.stack) - 1
+            if is_set:
+                while i >= 0:
+                    node = self.stack[i]
+                    if isinstance(node, FuncCall) and node.f_name == "get/set":
+                        node.f_name = "__setitem__"
+                        break
+                    i -= 1
+            else:
+                self.in_get = False
+                while i >= 0:
+                    node = self.stack[i]
+                    if isinstance(node, FuncCall) and node.f_name == "get/set":
+                        node.f_name = "__getitem__"
+                        break
+                    i -= 1
 
     def add_return(self):
         if self.inner:
@@ -157,20 +189,6 @@ class Parser:
             node = NullStmt()
             self.stack.append(node)
 
-    # def build_call_expr(self):
-    #     if self.inner:
-    #         self.inner.build_call_expr()
-    #     else:
-    #         lst = []
-    #         # print(self.stack)
-    #         while not isinstance(self.stack[-1], FuncCall):
-    #             lst.append(self.stack.pop())
-    #         lst.reverse()
-    #         # print(lst)
-    #
-    #         node = parse_expr(lst)
-    #         self.stack.append(node)
-
     def build_call(self):
         if self.inner.inner:
             self.inner.build_call()
@@ -189,12 +207,16 @@ class Parser:
             self.stack.append(call)
 
     def build_condition(self):
-        if self.inner:
+        if self.inner.inner:
             self.inner.build_condition()
         else:
-            expr = self.stack.pop()
+            self.inner.build_line()
+            expr = self.inner.get_as_block()
+            # print(expr)
+            self.inner = None
             cond_stmt: CondStmt = self.stack.pop()
             cond_stmt.condition = expr
+            # print(cond_stmt)
             self.stack.append(cond_stmt)
 
     def new_block(self):
@@ -401,6 +423,7 @@ class OperatorNode(BinaryExpr):
         BinaryExpr.__init__(self)
 
         self.extra_precedence = extra * MULTIPLIER
+        # print(self.extra_precedence)
 
     def precedence(self):
         return PRECEDENCE[self.operation] + self.extra_precedence

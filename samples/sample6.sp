@@ -6,4 +6,4 @@ function g(a) {
     return a;
 }
 
-c = f(g(3), 4) + g(4);
+c = f(g(3), 4) + g(4) * 6;

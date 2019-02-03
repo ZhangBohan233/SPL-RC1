@@ -119,6 +119,12 @@ class List(NativeTypes):
     def __repr__(self):
         return self.__str__()
 
+    def __getitem__(self, item):
+        return self.list[item]
+
+    def __setitem__(self, key, value):
+        self.list[key] = value
+
     def append(self, value):
         self.list.append(value)
 

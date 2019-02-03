@@ -1,3 +1,9 @@
+===== Build 0007 : 2019/02/02 =====
+
+*Rewrote the conditional statement
+*Added syntax:
+    *Implemented index operation [] (get item and set item)
+
 ===== Build 0006 : 2019/02/02 =====
 
 *Rewrote the lexer and parser for fixing nested function calls
