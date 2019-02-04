@@ -198,3 +198,5 @@ def any_(lst):
 
 
 NULL = Null()
+TRUE = Boolean(True)
+FALSE = Boolean(False)

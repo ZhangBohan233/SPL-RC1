@@ -598,6 +598,7 @@ class FuncCall(LeafNode):
 
         self.f_name = f_name
         self.args = None
+        self.is_get_set = False
         # self.header_block = None
 
     def __str__(self):

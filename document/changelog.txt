@@ -1,3 +1,10 @@
+===== Build 0012: 2019/02/04 =====
+
+*Added library functions:
+    *Added function "filter"
+*Optimization:
+    *Optimized boolean
+
 ===== Build 0011: 2019/02/03 =====
 
 *Added library functions:

@@ -44,8 +44,6 @@ class Environment:
         self.exit_value = None
         self.broken = False
         self.paused = False
-        # self.var_array = []
-        # self.heap1 = heap
 
         if is_global:
             self._add_natives()
@@ -199,10 +197,8 @@ def evaluate(node: Node, env: Environment):
         value = env.get(node.name, node.line_num)
         return value
     elif isinstance(node, BooleanStmt):
-        if node.value == "true":
-            return Boolean(True)
-        elif node.value == "false":
-            return Boolean(False)
+        if node.value in {"true", "false"}:
+            return get_boolean(node.value == "true")
         else:
             raise InterpretException("Unknown boolean value")
     elif isinstance(node, NullStmt):
@@ -383,7 +379,7 @@ def primitive_arithmetic(left: Primitive, right, symbol):
     else:
         raise InterpretException("Unsupported operation for primitive type " + left.type_name())
 
-    return Boolean(result)
+    return get_boolean(result)
 
 
 def num_arithmetic(left, right, symbol):
@@ -427,7 +423,7 @@ def num_arithmetic(left, right, symbol):
         raise InterpretException("No such symbol")
 
     if isinstance(result, bool):
-        return Boolean(result)
+        return get_boolean(result)
     else:
         return result
 
@@ -467,6 +463,13 @@ def native_types_call(instance, method, env):
     method = getattr(type_, name)
     res = method(instance, *args)
     return res
+
+
+def get_boolean(expr):
+    if expr:
+        return TRUE
+    else:
+        return FALSE
 
 
 class InterpretException(Exception):

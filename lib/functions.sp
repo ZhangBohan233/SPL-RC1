@@ -13,3 +13,19 @@ function map(ftn, lst) {
     }
     return res;
 }
+
+
+/*  */
+function filter(ftn, lst) {
+    res = list();
+    i = 0;
+    while (i < lst.length()) {
+        element = lst[i];
+        bool = ftn(element);
+        if (bool) {
+            res.append(element);
+        }
+        i += 1;
+    }
+    return res;
+}

@@ -1,3 +1,7 @@
+===== Build 0012 =====
+1 million while loop: ~14200 ms
+25 fib: ~5800 ms
+
 ===== Build 0011 =====
 1 million while loop: ~14000 ms
 25 fib: ~5800 ms

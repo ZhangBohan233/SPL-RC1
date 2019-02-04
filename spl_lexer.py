@@ -297,6 +297,16 @@ class Lexer:
                     elif sym == "(":
                         # if parser.in_expr:
                         extra_precedence += 1
+                        # if i == 0:
+                        #     extra_precedence += 1
+                        # else:
+                        #     prev = self.tokens[i - 1]
+                        #     if isinstance(prev, IdToken):
+                        #         if prev.is_eol() or prev.symbol == "=" or prev.symbol in BINARY_OPERATORS or \
+                        #                 (prev.symbol[-1] == "=" and prev.symbol[:-1] in OP_EQ):
+                        #             extra_precedence += 1
+                        #         else:
+                        #             parser.add_call(line)
                     elif sym == ")":
                         if extra_precedence == 0:
                             if call_nest > 0:
