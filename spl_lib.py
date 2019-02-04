@@ -1,7 +1,7 @@
 import time as time_lib
 import spl_interpreter as inter
 
-TYPE_NAMES = {"Null": "void", "Boolean": "boolean", "List": "list"}
+TYPE_NAMES = {"List": "list"}
 
 
 class Map:
@@ -74,12 +74,23 @@ class Stack:
         return self.head is None
 
 
-class Null:
+class Primitive:
     def __init__(self):
         pass
 
+    def type_name(self):
+        raise NotImplementedError
+
+
+class Null(Primitive):
+    def __init__(self):
+        Primitive.__init__(self)
+
     def __eq__(self, other):
         return isinstance(other, Null)
+
+    def __bool__(self):
+        return False
 
     def __str__(self):
         return "null"
@@ -87,19 +98,29 @@ class Null:
     def __repr__(self):
         return self.__str__()
 
+    def type_name(self):
+        return "void"
 
-class Boolean:
+
+class Boolean(Primitive):
     def __init__(self, value):
+        Primitive.__init__(self)
         self.value = value
 
     def __eq__(self, other):
         return isinstance(other, Boolean) and self.value == other.value
+
+    def __bool__(self):
+        return self.value
 
     def __str__(self):
         return "true" if self.value else "false"
 
     def __repr__(self):
         return self.__str__()
+
+    def type_name(self):
+        return "boolean"
 
 
 class NativeTypes:
@@ -131,11 +152,19 @@ class List(NativeTypes):
     def pop(self, index):
         return self.list.pop(index)
 
+    def length(self):
+        return len(self.list)
+
 
 class StackNode:
     def __init__(self, value):
         self.value = value
         self.after = None
+
+
+def print_(*args):
+    print(*args)
+    return NULL
 
 
 def time():
@@ -145,6 +174,8 @@ def time():
 def typeof(obj):
     if isinstance(obj, inter.ClassInstance):
         return obj.classname
+    elif isinstance(obj, Primitive):
+        return obj.type_name()
     else:
         t = type(obj)
         if t.__name__ in TYPE_NAMES:
@@ -164,3 +195,6 @@ def all_(lst):
 
 def any_(lst):
     return Boolean(any(lst))
+
+
+NULL = Null()

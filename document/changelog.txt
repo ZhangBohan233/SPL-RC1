@@ -1,3 +1,16 @@
+===== Build 0011: 2019/02/03 =====
+
+*Added library functions:
+    *Added function "map"
+*Optimization:
+    *Optimized null pointer
+*Bug fixes:
+    *Arithmetic between Boolean and Null
+    *Fixed null and boolean comparison
+    *Fixed a bug that line comment after code caused error
+*Added syntax:
+    *Docstring, quoted by /* and */
+
 ===== Build 0010 : 2019/02/03 =====
 
 *Added syntax:

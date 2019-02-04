@@ -44,9 +44,10 @@ class Lexer:
         """
         line = file.readline()
         line_num = 1
+        in_doc = False
         while line:
             last_index = len(self.tokens)
-            self.proceed_line(line, line_num)
+            in_doc = self.proceed_line(line, line_num, in_doc)
             # print(self.tokens[last_index:])
             self.find_import(last_index, len(self.tokens))
             line = file.readline()
@@ -58,57 +59,77 @@ class Lexer:
         for i in range(len(text)):
             line_number = i + 1
             line = text[i]
-            self.proceed_line(line, line_number)
+            self.proceed_line(line, line_number, False)
 
         self.tokens.append(Token(EOF))
 
-    def proceed_line(self, line, line_num):
+    def proceed_line(self, line: str, line_num, in_doc):
         """ Tokenize a line.
 
         :param line: line to be proceed
         :param line_num: the line number
-        :type line: str
-        :return:
+        :param in_doc: whether it is currently in docstring, before proceed this line
+        :return: whether it is currently in docstring, after proceed this line
         """
         in_single = False
         in_double = False
         literal = ""
         non_literal = ""
-        # lst = []
-        for ch in line:
-            if in_double:
-                if ch == '"':
-                    in_double = False
-                    self.tokens.append(LiteralToken(line_num, literal))
-                    literal = ""
-                    continue
-            elif in_single:
-                if ch == "'":
-                    in_single = False
-                    self.tokens.append(LiteralToken(line_num, literal))
-                    literal = ""
-                    continue
-            else:
-                if ch == '"':
-                    in_double = True
-                    self.line_tokenize(non_literal, line_num)
-                    non_literal = ""
-                    continue
-                elif ch == "'":
-                    in_single = True
-                    self.line_tokenize(non_literal, line_num)
-                    non_literal = ""
-                    continue
-            if in_single or in_double:
-                literal += ch
-            else:
-                non_literal += ch
-                if non_literal == "//":
-                    non_literal = ""
-                    break
+        # last_ch = ""
+
+        length = len(line)
+        i = -1
+        while i < length - 1:
+            i += 1
+            ch = line[i]
+            if not in_double and not in_single:
+                if in_doc:
+                    if ch == "*" and i < length - 1 and line[i + 1] == "/":
+                        in_doc = False
+                        i += 2
+                        continue
+                else:
+                    if ch == "/" and i < length - 1 and line[i + 1] == "*":
+                        in_doc = True
+                        i += 1
+
+            if not in_doc:
+                if in_double:
+                    if ch == '"':
+                        in_double = False
+                        self.tokens.append(LiteralToken(line_num, literal))
+                        literal = ""
+                        continue
+                elif in_single:
+                    if ch == "'":
+                        in_single = False
+                        self.tokens.append(LiteralToken(line_num, literal))
+                        literal = ""
+                        continue
+                else:
+                    if ch == '"':
+                        in_double = True
+                        self.line_tokenize(non_literal, line_num)
+                        non_literal = ""
+                        continue
+                    elif ch == "'":
+                        in_single = True
+                        self.line_tokenize(non_literal, line_num)
+                        non_literal = ""
+                        continue
+                if in_single or in_double:
+                    literal += ch
+                else:
+                    non_literal += ch
+                    if len(non_literal) > 1 and non_literal[-2:] == "//":
+                        self.line_tokenize(non_literal[:-2], line_num)
+                        non_literal = ""
+                        break
 
         if len(non_literal) > 0:
             self.line_tokenize(non_literal, line_num)
+
+        return in_doc
 
     def line_tokenize(self, non_literal, line_num):
         """
@@ -194,6 +215,7 @@ class Lexer:
         while True:
             try:
                 token = self.tokens[i]
+                line = token.line_number()
                 if isinstance(token, IdToken):
                     sym = token.symbol
                     if sym == "function":
@@ -214,7 +236,7 @@ class Lexer:
                         i += 1
                         c_token = self.tokens[i]
                         class_name = c_token.symbol
-                        parser.add_class(class_name)
+                        parser.add_class(c_token.line_number(), class_name)
                         class_brace = brace_count
                     elif sym == "extends":
                         i += 1
@@ -225,40 +247,40 @@ class Lexer:
                         i += 1
                         c_token = self.tokens[i]
                         class_name = c_token.symbol
-                        parser.add_class_new(class_name)
+                        parser.add_class_new(c_token.line_number(), class_name)
                         if i + 1 < len(self.tokens) and isinstance(self.tokens[i + 1], IdToken) and \
                                 self.tokens[i + 1].symbol == "(":
                             i += 1
                             call_nest += 1
-                            parser.add_call(class_name)
+                            parser.add_call(c_token.line_number(), class_name)
                             # in_call = True
                     elif sym == "if":
                         in_cond = True
-                        parser.add_if()
+                        parser.add_if(line)
                         i += 1
                         next_token = self.tokens[i]
                         if not (isinstance(next_token, IdToken) and next_token.symbol == "("):
                             raise ParseException("Unexpected token at line {}".format(next_token.line_number()))
                     elif sym == "while":
                         in_cond = True
-                        parser.add_while()
+                        parser.add_while(line)
                         i += 1
                         if not (isinstance(self.tokens[i], IdToken) and self.tokens[i].symbol == "("):
                             raise ParseException("Unexpected token at line {}".format(self.tokens[i].line_number()))
                     elif sym == "else":
                         pass
                     elif sym == "return":
-                        parser.add_return()
+                        parser.add_return(line)
                         # in_expr = True
                         # expr_layer += 1
                     elif sym == "break":
-                        parser.add_break()
+                        parser.add_break(line)
                     elif sym == "continue":
-                        parser.add_continue()
+                        parser.add_continue(line)
                     elif sym == "true" or sym == "false":
-                        parser.add_bool(sym)
+                        parser.add_bool(line, sym)
                     elif sym == "null":
-                        parser.add_null()
+                        parser.add_null(line)
                     elif sym == "{":
                         brace_count += 1
                         parser.new_block()
@@ -303,20 +325,20 @@ class Lexer:
                             call_nest -= 1
                     elif sym == "=":
                         parser.build_expr()
-                        parser.add_assignment()
+                        parser.add_assignment(line)
                     elif sym == ",":
                         parser.build_expr()
                         if call_nest > 0:
                             parser.build_line()
                     elif sym == ".":
-                        parser.add_dot(extra_precedence)
+                        parser.add_dot(line, extra_precedence)
                     elif sym in BINARY_OPERATORS:
                         if sym == "-" and (i == 0 or is_neg(self.tokens[i - 1])):
-                            parser.add_neg(extra_precedence)
+                            parser.add_neg(line, extra_precedence)
                         else:
-                            parser.add_operator(sym, extra_precedence)
+                            parser.add_operator(line, sym, extra_precedence)
                     elif sym[:-1] in OP_EQ:
-                        parser.add_operator(sym, extra_precedence, True)
+                        parser.add_operator(line, sym, extra_precedence, True)
                     elif token.is_eol():
                         if parser.in_get:
                             parser.in_get = False
@@ -331,26 +353,26 @@ class Lexer:
                         if isinstance(next_token, IdToken):
                             if next_token.symbol == "(":
                                 # function call
-                                parser.add_call(sym)
+                                parser.add_call(line, sym)
                                 call_nest += 1
                                 i += 1
                             elif next_token.symbol == "[":
-                                parser.add_name(sym)
-                                parser.add_dot(extra_precedence)
-                                parser.add_get_set()
+                                parser.add_name(line, sym)
+                                parser.add_dot(line, extra_precedence)
+                                parser.add_get_set(line)
                                 call_nest += 1
                                 i += 1
                             else:
-                                parser.add_name(sym)
+                                parser.add_name(line, sym)
                         else:
-                            parser.add_name(sym)
+                            parser.add_name(line, sym)
 
                 elif isinstance(token, NumToken):
                     value = token.value
-                    parser.add_number(value)
+                    parser.add_number(line, value)
                 elif isinstance(token, LiteralToken):
                     value = token.text
-                    parser.add_literal(value)
+                    parser.add_literal(line, value)
                 elif token.is_eof():
                     # parser.build_line()
                     break
@@ -375,10 +397,10 @@ def parse_def(f_name, tokens, i, func_count, parser):
     :return: tuple(new index, new anonymous function count)
     """
     if f_name == "(":
-        parser.add_function("af-{}".format(func_count))  # "af" stands for anonymous function
+        parser.add_function(tokens[i].line_number(), "af-{}".format(func_count))  # "af" stands for anonymous function
         func_count += 1
     else:
-        parser.add_function(f_name)
+        parser.add_function(tokens[i].line_number(), f_name)
         i += 1
     front_par = tokens[i]
     if isinstance(front_par, IdToken) and front_par.symbol == "(":
@@ -439,20 +461,21 @@ def normalize(string):
         return [string]
     else:
         lst = []
-        s = string[0]
-        last_type = char_type(s)
-        self_concatenate = {0, 1, 8, 9, 10, 11, 14}
-        cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0), (15, 9), (17, 9), (16, 9), (10, 9), (11, 9)}
-        for i in range(1, len(string), 1):
-            char = string[i]
-            t = char_type(char)
-            if (t in self_concatenate and t == last_type) or ((last_type, t) in cross_concatenate):
-                s += char
-            else:
-                lst.append(s)
-                s = char
-            last_type = t
-        lst.append(s)
+        if len(string) > 0:
+            s = string[0]
+            last_type = char_type(s)
+            self_concatenate = {0, 1, 8, 9, 10, 11, 14}
+            cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0), (15, 9), (17, 9), (16, 9), (10, 9), (11, 9)}
+            for i in range(1, len(string), 1):
+                char = string[i]
+                t = char_type(char)
+                if (t in self_concatenate and t == last_type) or ((last_type, t) in cross_concatenate):
+                    s += char
+                else:
+                    lst.append(s)
+                    s = char
+                last_type = t
+            lst.append(s)
         return lst
 
 

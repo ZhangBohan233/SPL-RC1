@@ -25,65 +25,65 @@ class Parser:
     def __str__(self):
         return str(self.elements)
 
-    def add_name(self, n):
+    def add_name(self, line, n):
         if self.inner:
-            self.inner.add_name(n)
+            self.inner.add_name(line, n)
         else:
-            node = NameNode(n)
+            node = NameNode(line, n)
             self.stack.append(node)
 
-    def add_number(self, v):
+    def add_number(self, line, v):
         if self.inner:
-            self.inner.add_number(v)
+            self.inner.add_number(line, v)
         else:
             if "." in v:
-                node = FloatNode(v)
+                node = FloatNode(line, v)
             else:
-                node = IntNode(v)
+                node = IntNode(line, v)
             self.stack.append(node)
 
-    def add_literal(self, lit):
+    def add_literal(self, line, lit):
         if self.inner:
-            self.inner.add_literal(lit)
+            self.inner.add_literal(line, lit)
         else:
-            node = LiteralNode(lit)
+            node = LiteralNode(line, lit)
             self.stack.append(node)
 
-    def add_operator(self, op, extra_precedence, assignment=False):
+    def add_operator(self, line, op, extra_precedence, assignment=False):
         if self.inner:
-            self.inner.add_operator(op, extra_precedence, assignment)
+            self.inner.add_operator(line, op, extra_precedence, assignment)
         else:
             self.in_expr = True
-            op_node = OperatorNode(extra_precedence)
+            op_node = OperatorNode(line, extra_precedence)
             op_node.assignment = assignment
             op_node.operation = op
             self.stack.append(op_node)
 
-    def add_neg(self, extra_precedence):
+    def add_neg(self, line, extra_precedence):
         if self.inner:
-            self.inner.add_neg(extra_precedence)
+            self.inner.add_neg(line, extra_precedence)
         else:
             self.in_expr = True
-            node = NegativeExpr(extra_precedence)
+            node = NegativeExpr(line, extra_precedence)
             self.stack.append(node)
 
-    def add_assignment(self):
+    def add_assignment(self, line):
         if self.inner:
-            self.inner.add_assignment()
+            self.inner.add_assignment(line)
         else:
             # print(len(self.stack))
 
             name = self.stack.pop()
-            ass_node = AssignmentNode()
+            ass_node = AssignmentNode(line)
             ass_node.left = name
             ass_node.operation = "="
             self.stack.append(ass_node)
 
-    def add_if(self):
+    def add_if(self, line):
         if self.inner:
-            self.inner.add_if()
+            self.inner.add_if(line)
         else:
-            ifs = IfStmt()
+            ifs = IfStmt(line)
             self.stack.append(ifs)
             self.inner = Parser()
 
@@ -94,19 +94,19 @@ class Parser:
             pass
             # node = self.stack.pop()
 
-    def add_while(self):
+    def add_while(self, line):
         if self.inner:
-            self.inner.add_while()
+            self.inner.add_while(line)
         else:
-            whs = WhileStmt()
+            whs = WhileStmt(line)
             self.stack.append(whs)
             self.inner = Parser()
 
-    def add_function(self, f_name):
+    def add_function(self, line, f_name):
         if self.inner:
-            self.inner.add_function(f_name)
+            self.inner.add_function(line, f_name)
         else:
-            func = DefStmt(f_name)
+            func = DefStmt(line, f_name)
             self.stack.append(func)
 
     def build_func_params(self, params: list):
@@ -114,25 +114,25 @@ class Parser:
             self.inner.build_func_params(params)
         else:
             func = self.stack.pop()
-            lst = [NameNode(x) for x in params]
+            lst = [NameNode(func.line_num, x) for x in params]
             func.params = lst
             self.stack.append(func)
 
-    def add_call(self, f_name):
+    def add_call(self, line, f_name):
         # print(f_name)
         if self.inner:
-            self.inner.add_call(f_name)
+            self.inner.add_call(line, f_name)
         else:
-            fc = FuncCall(f_name)
+            fc = FuncCall(line, f_name)
             self.stack.append(fc)
             self.inner = Parser()
 
-    def add_get_set(self):
+    def add_get_set(self, line):
         if self.inner:
-            self.inner.add_get_set()
+            self.inner.add_get_set(line)
         else:
             self.in_get = True
-            self.add_call("get/set")
+            self.add_call(line, "get/set")
 
     def build_get_set(self, is_set):
         if self.inner.inner:
@@ -156,40 +156,40 @@ class Parser:
                         break
                     i -= 1
 
-    def add_return(self):
+    def add_return(self, line):
         if self.inner:
-            self.inner.add_return()
+            self.inner.add_return(line)
         else:
             self.in_expr = True
-            rtn = ReturnStmt()
+            rtn = ReturnStmt(line)
             self.stack.append(rtn)
 
-    def add_break(self):
+    def add_break(self, line):
         if self.inner:
-            self.inner.add_break()
+            self.inner.add_break(line)
         else:
-            node = BreakStmt()
+            node = BreakStmt(line)
             self.stack.append(node)
 
-    def add_continue(self):
+    def add_continue(self, line):
         if self.inner:
-            self.inner.add_continue()
+            self.inner.add_continue(line)
         else:
-            node = ContinueStmt()
+            node = ContinueStmt(line)
             self.stack.append(node)
 
-    def add_bool(self, v):
+    def add_bool(self, line, v):
         if self.inner:
-            self.inner.add_bool(v)
+            self.inner.add_bool(line, v)
         else:
-            node = BooleanStmt(v)
+            node = BooleanStmt(line, v)
             self.stack.append(node)
 
-    def add_null(self):
+    def add_null(self, line):
         if self.inner:
-            self.inner.add_null()
+            self.inner.add_null(line)
         else:
-            node = NullStmt()
+            node = NullStmt(line)
             self.stack.append(node)
 
     def build_call(self):
@@ -228,11 +228,11 @@ class Parser:
         else:
             self.inner = Parser()
 
-    def add_class(self, class_name):
+    def add_class(self, line, class_name):
         if self.inner:
-            self.inner.add_class(class_name)
+            self.inner.add_class(line, class_name)
         else:
-            cs = ClassStmt(class_name)
+            cs = ClassStmt(line, class_name)
             self.stack.append(cs)
 
     def add_extends(self, superclass_name):
@@ -251,19 +251,19 @@ class Parser:
             class_node.block = node
             self.stack.append(class_node)
 
-    def add_class_new(self, class_name):
+    def add_class_new(self, line, class_name):
         if self.inner:
-            self.inner.add_class_new(class_name)
+            self.inner.add_class_new(line, class_name)
         else:
-            node = ClassInit(class_name)
+            node = ClassInit(line, class_name)
             self.stack.append(node)
 
-    def add_dot(self, extra_precedence):
+    def add_dot(self, line, extra_precedence):
         if self.inner:
-            self.inner.add_dot(extra_precedence)
+            self.inner.add_dot(line, extra_precedence)
         else:
             self.in_expr = True
-            node = Dot(extra_precedence)
+            node = Dot(line, extra_precedence)
             self.stack.append(node)
 
     def build_block(self):
@@ -284,11 +284,6 @@ class Parser:
             lst = []
             while len(self.stack) > 0:
                 node = self.stack[-1]
-                # if isinstance(node, NumNode) or isinstance(node, NameNode) or isinstance(node, OperatorNode) or \
-                #         isinstance(node, UnaryOperator) or isinstance(node, LiteralNode) or \
-                #         isinstance(node, NullStmt) or isinstance(node, BooleanStmt):
-                #     lst.append(node)
-                #     self.stack.pop()
                 if isinstance(node, NumNode) or isinstance(node, NameNode) or isinstance(node, OperatorNode) or \
                         isinstance(node, UnaryOperator) or isinstance(node, LiteralNode) or \
                         (isinstance(node, FuncCall) and node.args is not None) or isinstance(node, ClassInit) or \
@@ -343,26 +338,19 @@ class Parser:
                 self.elements.append(res)
 
     def get_as_block(self):
-        block = BlockStmt()
+        block = BlockStmt(0)
         block.lines = self.elements
         return block
 
 
 class Node:
-    def __init__(self):
-        pass
-
-
-class BlockLine(Node):
-    def __init__(self):
-        Node.__init__(self)
-
-        self.line = []
+    def __init__(self, line):
+        self.line_num = line
 
 
 class LeafNode(Node):
-    def __init__(self):
-        Node.__init__(self)
+    def __init__(self, line):
+        Node.__init__(self, line)
 
 
 class BinaryExpr(Node):
@@ -371,8 +359,8 @@ class BinaryExpr(Node):
     :type left:
     """
 
-    def __init__(self):
-        Node.__init__(self)
+    def __init__(self, line):
+        Node.__init__(self, line)
 
         self.left = None
         self.right = None
@@ -386,8 +374,8 @@ class BinaryExpr(Node):
 
 
 class NumNode(LeafNode):
-    def __init__(self, v):
-        LeafNode.__init__(self)
+    def __init__(self, line, v):
+        LeafNode.__init__(self, line)
 
         self.value = v
 
@@ -399,18 +387,18 @@ class NumNode(LeafNode):
 
 
 class IntNode(NumNode):
-    def __init__(self, v):
-        NumNode.__init__(self, v)
+    def __init__(self, line, v):
+        NumNode.__init__(self, line, v)
 
 
 class FloatNode(NumNode):
-    def __init__(self, v):
-        NumNode.__init__(self, v)
+    def __init__(self, line, v):
+        NumNode.__init__(self, line, v)
 
 
 class LiteralNode(LeafNode):
-    def __init__(self, lit):
-        LeafNode.__init__(self)
+    def __init__(self, line, lit):
+        LeafNode.__init__(self, line)
 
         self.literal = lit
 
@@ -422,8 +410,8 @@ class LiteralNode(LeafNode):
 
 
 class OperatorNode(BinaryExpr):
-    def __init__(self, extra):
-        BinaryExpr.__init__(self)
+    def __init__(self, line, extra):
+        BinaryExpr.__init__(self, line)
 
         self.assignment = False
         self.extra_precedence = extra * MULTIPLIER
@@ -435,8 +423,8 @@ class OperatorNode(BinaryExpr):
 
 class UnaryOperator(Node):
 
-    def __init__(self, extra):
-        Node.__init__(self)
+    def __init__(self, line, extra):
+        Node.__init__(self, line)
 
         self.value = None
         self.operation = None
@@ -453,8 +441,8 @@ class UnaryOperator(Node):
 
 
 class NameNode(LeafNode):
-    def __init__(self, n):
-        LeafNode.__init__(self)
+    def __init__(self, line, n):
+        LeafNode.__init__(self, line)
 
         self.name = n
         self.index = None
@@ -468,13 +456,13 @@ class NameNode(LeafNode):
 
 
 class AssignmentNode(BinaryExpr):
-    def __init__(self):
-        BinaryExpr.__init__(self)
+    def __init__(self, line):
+        BinaryExpr.__init__(self, line)
 
 
 class NegativeExpr(UnaryOperator):
-    def __init__(self, extra):
-        UnaryOperator.__init__(self, extra)
+    def __init__(self, line, extra):
+        UnaryOperator.__init__(self, line, extra)
 
         self.operation = "neg"
         self.value = None
@@ -487,15 +475,15 @@ class NegativeExpr(UnaryOperator):
 
 
 class ReturnStmt(UnaryOperator):
-    def __init__(self):
-        UnaryOperator.__init__(self, 0)
+    def __init__(self, line):
+        UnaryOperator.__init__(self, line, 0)
 
         self.operation = "return"
 
 
 class BreakStmt(LeafNode):
-    def __init__(self):
-        LeafNode.__init__(self)
+    def __init__(self, line):
+        LeafNode.__init__(self, line)
 
     def __str__(self):
         return "break"
@@ -505,8 +493,8 @@ class BreakStmt(LeafNode):
 
 
 class ContinueStmt(LeafNode):
-    def __init__(self):
-        LeafNode.__init__(self)
+    def __init__(self, line):
+        LeafNode.__init__(self, line)
 
     def __str__(self):
         return "continue"
@@ -516,8 +504,8 @@ class ContinueStmt(LeafNode):
 
 
 class BooleanStmt(LeafNode):
-    def __init__(self, v):
-        LeafNode.__init__(self)
+    def __init__(self, line, v):
+        LeafNode.__init__(self, line)
 
         self.value = v
 
@@ -529,8 +517,8 @@ class BooleanStmt(LeafNode):
 
 
 class NullStmt(LeafNode):
-    def __init__(self):
-        LeafNode.__init__(self)
+    def __init__(self, line):
+        LeafNode.__init__(self, line)
 
     def __str__(self):
         return "null"
@@ -540,8 +528,8 @@ class NullStmt(LeafNode):
 
 
 class BlockStmt(Node):
-    def __init__(self):
-        Node.__init__(self)
+    def __init__(self, line):
+        Node.__init__(self, line)
 
         self.lines = []
 
@@ -556,15 +544,15 @@ class BlockStmt(Node):
 
 
 class CondStmt(Node):
-    def __init__(self):
-        Node.__init__(self)
+    def __init__(self, line):
+        Node.__init__(self, line)
 
         self.condition = None
 
 
 class IfStmt(CondStmt):
-    def __init__(self):
-        CondStmt.__init__(self)
+    def __init__(self, line):
+        CondStmt.__init__(self, line)
 
         self.then_block = None
         self.else_block = None
@@ -577,8 +565,8 @@ class IfStmt(CondStmt):
 
 
 class WhileStmt(CondStmt):
-    def __init__(self):
-        CondStmt.__init__(self)
+    def __init__(self, line):
+        CondStmt.__init__(self, line)
 
         self.body = None
 
@@ -590,8 +578,8 @@ class WhileStmt(CondStmt):
 
 
 class DefStmt(Node):
-    def __init__(self, f_name):
-        Node.__init__(self)
+    def __init__(self, line, f_name):
+        Node.__init__(self, line)
 
         self.name = f_name
         self.params = []
@@ -605,8 +593,8 @@ class DefStmt(Node):
 
 
 class FuncCall(LeafNode):
-    def __init__(self, f_name):
-        LeafNode.__init__(self)
+    def __init__(self, line, f_name):
+        LeafNode.__init__(self, line)
 
         self.f_name = f_name
         self.args = None
@@ -620,8 +608,8 @@ class FuncCall(LeafNode):
 
 
 class ClassStmt(Node):
-    def __init__(self, name):
-        Node.__init__(self)
+    def __init__(self, line, name):
+        Node.__init__(self, line)
 
         self.class_name = name
         self.superclass_name = None
@@ -635,8 +623,8 @@ class ClassStmt(Node):
 
 
 class ClassInit(LeafNode):
-    def __init__(self, name):
-        LeafNode.__init__(self)
+    def __init__(self, line, name):
+        LeafNode.__init__(self, line)
 
         self.class_name = name
         self.args = None
@@ -652,8 +640,8 @@ class ClassInit(LeafNode):
 
 
 class Dot(OperatorNode):
-    def __init__(self, extra):
-        OperatorNode.__init__(self, extra)
+    def __init__(self, line, extra):
+        OperatorNode.__init__(self, line, extra)
 
         self.operation = "."
 

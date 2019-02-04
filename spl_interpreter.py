@@ -57,7 +57,7 @@ class Environment:
             return str(super)
 
     def _add_natives(self):
-        self.heap["print"] = NativeFunction(print)
+        self.heap["print"] = NativeFunction(print_)
         self.heap["time"] = NativeFunction(time)
         self.heap["type"] = NativeFunction(typeof)
         self.heap["list"] = NativeFunction(make_list)
@@ -94,13 +94,16 @@ class Environment:
             if not found:
                 self.variables[key] = value
 
-    def get(self, key):
+    def get(self, key: str, line_num):
         if key in self.variables:
             return self.variables[key]
         elif self.outer:
-            return self.outer.get(key)
+            return self.outer.get(key, line_num)
         else:
-            return self.heap[key]
+            if key in self.heap:
+                return self.heap[key]
+            else:
+                raise SplException("Usage before assignment, at line {}".format(line_num))
 
     def get_class(self, classname):
         return self.heap[classname]
@@ -170,21 +173,22 @@ class ClassInstance:
         return self.__str__()
 
 
-def evaluate(node, env):
+def evaluate(node: Node, env: Environment):
     """
+    Evaluates a abstract syntax tree node, with the corresponding worrking environment.
 
-    :param node:
-    :param env:
-    :type node: Node
-    :type env: Environment
-    :return:
+    :param node: the node in abstract syntax tree to be evaluated
+    :param env: the working environment
+    :return: the evaluation result
     """
     if node is None:
-        return None
+        return NULL
+    elif node == NULL:
+        return NULL
     elif env.terminated:
         return env.exit_value
     elif env.paused:
-        return None
+        return NULL
     elif isinstance(node, IntNode):
         return int(node.value)
     elif isinstance(node, FloatNode):
@@ -192,7 +196,7 @@ def evaluate(node, env):
     elif isinstance(node, LiteralNode):
         return node.literal
     elif isinstance(node, NameNode):
-        value = env.get(node.name)
+        value = env.get(node.name, node.line_num)
         return value
     elif isinstance(node, BooleanStmt):
         if node.value == "true":
@@ -202,7 +206,7 @@ def evaluate(node, env):
         else:
             raise InterpretException("Unknown boolean value")
     elif isinstance(node, NullStmt):
-        return Null()
+        return NULL
     elif isinstance(node, BreakStmt):
         env.break_loop()
     elif isinstance(node, ContinueStmt):
@@ -224,7 +228,7 @@ def evaluate(node, env):
             # print(name_lst)
             scope = env
             for t in name_lst[:-1]:
-                scope = scope.get(t).env
+                scope = scope.get(t, node.line_num).env
             scope.assign(name_lst[-1], value)
             return value
     elif isinstance(node, Dot):
@@ -248,7 +252,7 @@ def evaluate(node, env):
         if node.assignment:
             symbol = node.operation[:-1]
             res = arithmetic(left, right, symbol)
-            asg = AssignmentNode()
+            asg = AssignmentNode(node.line_num)
             asg.left = node.left
             asg.operation = "="
             asg.right = res
@@ -291,7 +295,7 @@ def evaluate(node, env):
         env.assign(node.name, f)
         return f
     elif isinstance(node, FuncCall):
-        func = env.get(node.f_name)
+        func = env.get(node.f_name, node.line_num)
         if isinstance(func, Function):
             scope = Environment(False, env.heap)
             scope.scope_name = "Function scope<{}>".format(node.f_name)
@@ -338,7 +342,7 @@ def evaluate(node, env):
 
         if node.args:
             # constructor: Function = scope.variables[node.class_name]
-            fc = FuncCall(node.class_name)
+            fc = FuncCall(node.line_num, node.class_name)
             fc.args = node.args
             for a in fc.args.lines:
                 scope.temp_vars.append(evaluate(a, env))
@@ -349,19 +353,37 @@ def evaluate(node, env):
             isinstance(node, NativeTypes):
         return node
     else:
-        raise InterpretException("Invalid Syntax Tree")
+        raise InterpretException("Invalid Syntax Tree, at line {}".format(node.line_num))
 
 
 def arithmetic(left, right, symbol):
     if isinstance(left, int) or isinstance(left, float):
         return num_arithmetic(left, right, symbol)
+    elif isinstance(left, Primitive):
+        return primitive_arithmetic(left, right, symbol)
     elif isinstance(left, ClassInstance):
-        fc = FuncCall("@" + BINARY_OPERATORS[symbol])
+        fc = FuncCall(0, "@" + BINARY_OPERATORS[symbol])
         left.env.temp_vars.append(right)
         res = evaluate(fc, left.env)
         return res
     else:
         raise InterpretException("Unknown type for operators")
+
+
+def primitive_arithmetic(left: Primitive, right, symbol):
+    if symbol == "==":
+        result = left == right
+    elif symbol == "!=":
+        result = left != right
+    elif symbol == "&&":
+        result = left and right
+    elif symbol == "||":
+        result = left or right
+
+    else:
+        raise InterpretException("Unsupported operation for primitive type " + left.type_name())
+
+    return Boolean(result)
 
 
 def num_arithmetic(left, right, symbol):
@@ -450,3 +472,8 @@ def native_types_call(instance, method, env):
 class InterpretException(Exception):
     def __init__(self, msg=""):
         Exception.__init__(self, msg)
+
+
+class SplException(InterpretException):
+    def __init__(self, msg=""):
+        InterpretException.__init__(self, msg)
