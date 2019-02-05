@@ -66,6 +66,7 @@ if __name__ == "__main__":
 
         lexer = spl_lexer.Lexer()
         lexer.script_dir = argv["dir"]
+        lexer.file_name = file_name
         lexer.tokenize(f)
 
         if argv["tokens"]:

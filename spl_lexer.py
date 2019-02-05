@@ -12,7 +12,7 @@ BINARY_OPERATORS = {"+": "add", "-": "sub", "*": "mul", "/": "div", "%": "mod",
 OTHERS = {"="}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE)
 RESERVED = {"class", "function", "if", "else", "new", "extends", "return", "break", "continue",
-            "true", "false", "null", "operator"}
+            "true", "false", "null", "operator", "while", "for", "import"}
 OMITS = {"\n", "\r", "\t", " "}
 
 OP_EQ = {"+", "-", "*", "/", "%", "&", "^", "|", "<<", ">>"}
@@ -28,6 +28,7 @@ class Lexer:
     def __init__(self):
         self.tokens = []
         self.script_dir = ""
+        self.file_name = ""
 
     def tokenize(self, source):
         self.tokens.clear()
@@ -46,28 +47,29 @@ class Lexer:
         line_num = 1
         in_doc = False
         while line:
+            tp = (line_num, self.file_name)
             last_index = len(self.tokens)
-            in_doc = self.proceed_line(line, line_num, in_doc)
+            in_doc = self.proceed_line(line, tp, in_doc)
             # print(self.tokens[last_index:])
             self.find_import(last_index, len(self.tokens))
             line = file.readline()
             line_num += 1
 
-        self.tokens.append(Token(EOF))
+        self.tokens.append(Token((EOF, self.file_name)))
 
     def tokenize_text(self, text):
         for i in range(len(text)):
             line_number = i + 1
             line = text[i]
-            self.proceed_line(line, line_number, False)
+            self.proceed_line(line, (line_number, "console"), False)
 
-        self.tokens.append(Token(EOF))
+        self.tokens.append(Token((EOF, self.file_name)))
 
-    def proceed_line(self, line: str, line_num, in_doc):
+    def proceed_line(self, line: str, line_num: (int, str), in_doc):
         """ Tokenize a line.
 
         :param line: line to be proceed
-        :param line_num: the line number
+        :param line_num: the line number and the name of source file
         :param in_doc: whether it is currently in docstring, before proceed this line
         :return: whether it is currently in docstring, after proceed this line
         """
@@ -185,6 +187,7 @@ class Lexer:
     def import_file(self, full_path):
         file = open(full_path, "r")
         lexer = Lexer()
+        lexer.file_name = full_path
         lexer.script_dir = get_dir(full_path)
         lexer.tokenize(file)
         # print(lexer.tokens)
@@ -215,7 +218,7 @@ class Lexer:
         while True:
             try:
                 token = self.tokens[i]
-                line = token.line_number()
+                line = (token.line_number(), token.file_name())
                 if isinstance(token, IdToken):
                     sym = token.symbol
                     if sym == "function":
@@ -260,13 +263,19 @@ class Lexer:
                         i += 1
                         next_token = self.tokens[i]
                         if not (isinstance(next_token, IdToken) and next_token.symbol == "("):
-                            raise ParseException("Unexpected token at line {}".format(next_token.line_number()))
+                            unexpected_token(token)
                     elif sym == "while":
                         in_cond = True
                         parser.add_while(line)
                         i += 1
                         if not (isinstance(self.tokens[i], IdToken) and self.tokens[i].symbol == "("):
-                            raise ParseException("Unexpected token at line {}".format(self.tokens[i].line_number()))
+                            unexpected_token(token)
+                    elif sym == "for":
+                        in_cond = True
+                        parser.add_for_loop(line)
+                        i += 1
+                        if not (isinstance(self.tokens[i], IdToken) and self.tokens[i].symbol == "("):
+                            unexpected_token(token)
                     elif sym == "else":
                         pass
                     elif sym == "return":
@@ -387,12 +396,23 @@ class Lexer:
                     # parser.build_line()
                     break
                 else:
-                    raise ParseException("Unexpected token at line {}".format(self.tokens[i].line_number()))
+                    unexpected_token(token)
                 i += 1
             except Exception:
-                raise ParseException("Parse error at line {}".format(self.tokens[i].line_number()))
+                raise ParseException("Parse error in '{}', at line {}".format(self.tokens[i].file_name(),
+                                                                              self.tokens[i].line_number()))
 
         return parser.get_as_block()
+
+
+def unexpected_token(token):
+    if isinstance(token, IdToken):
+        raise ParseException("Unexpected token: '{}', in {}, at line {}".format(token.symbol,
+                                                                                token.file_name(),
+                                                                                token.line_number()))
+    else:
+        raise ParseException("Unexpected token in '{}', at line {}".format(token.file_name(),
+                                                                           token.line_number()))
 
 
 def parse_def(f_name, tokens, i, func_count, parser):
@@ -406,22 +426,43 @@ def parse_def(f_name, tokens, i, func_count, parser):
     :param parser: the Parser object
     :return: tuple(new index, new anonymous function count)
     """
+    tup = (tokens[i].line_number(), tokens[i].file_name())
     if f_name == "(":
-        parser.add_function(tokens[i].line_number(), "af-{}".format(func_count))  # "af" stands for anonymous function
+        parser.add_function(tup, "af-{}".format(func_count))  # "af" stands for anonymous function
         func_count += 1
     else:
-        parser.add_function(tokens[i].line_number(), f_name)
+        parser.add_function(tup, f_name)
         i += 1
     front_par = tokens[i]
     if isinstance(front_par, IdToken) and front_par.symbol == "(":
         i += 1
         params = []
-        while isinstance(tokens[i], IdToken) and tokens[i].symbol != ")":
-            sbl = tokens[i].symbol
-            if sbl != ",":
-                params.append(sbl)
+        presets = []
+        ps = False
+        while True:
+            token = tokens[i]
+            if isinstance(token, IdToken):
+                sbl = token.symbol
+            elif isinstance(tokens[i], NumToken):
+                sbl = token.value
+            else:
+                sbl = token.text
+            # print(str(sbl) + " " + str(ps))
+            if sbl == ")":
+                # i -= 1
+                break
+            elif sbl != ",":
+                if ps:
+                    ps = False
+                    presets.append(token)
+                elif sbl == "=":
+                    ps = True
+                else:
+                    params.append(sbl)
             i += 1
-        parser.build_func_params(params)
+        presets = [InvalidToken() for _ in range(len(params) - len(presets))] + presets
+        # print(presets)
+        parser.build_func_params(params, presets)
     return i, func_count
 
 
@@ -554,7 +595,8 @@ def is_float(num_str):
 class Token:
 
     def __init__(self, line):
-        self.line = line
+        self.line = line[0]
+        self.file = line[1]
 
     def __str__(self):
         if self.is_eof():
@@ -579,6 +621,9 @@ class Token:
 
     def is_identifier(self):
         return False
+
+    def file_name(self):
+        return self.file
 
     def line_number(self):
         return self.line
@@ -636,6 +681,17 @@ class IdToken(Token):
             return "Id(EOL)"
         else:
             return "Id({})".format(self.symbol)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class InvalidToken:
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return "invalid"
 
     def __repr__(self):
         return self.__str__()

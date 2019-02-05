@@ -1,3 +1,6 @@
+import spl_lexer as lex
+
+
 PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "==": 20, ">": 25, "<": 25, ">=": 25, "<=": 25,
               "!=": 20, "&&": 5, "||": 5, "&": 12, "^": 11, "|": 10,
@@ -36,10 +39,7 @@ class Parser:
         if self.inner:
             self.inner.add_number(line, v)
         else:
-            if "." in v:
-                node = FloatNode(line, v)
-            else:
-                node = IntNode(line, v)
+            node = get_number_node(line, v)
             self.stack.append(node)
 
     def add_literal(self, line, lit):
@@ -102,6 +102,14 @@ class Parser:
             self.stack.append(whs)
             self.inner = Parser()
 
+    def add_for_loop(self, line):
+        if self.inner:
+            self.inner.add_for_loop(line)
+        else:
+            fls = ForLoopStmt(line)
+            self.stack.append(fls)
+            self.inner = Parser()
+
     def add_function(self, line, f_name):
         if self.inner:
             self.inner.add_function(line, f_name)
@@ -109,13 +117,27 @@ class Parser:
             func = DefStmt(line, f_name)
             self.stack.append(func)
 
-    def build_func_params(self, params: list):
+    def build_func_params(self, params: list, presets: list):
         if self.inner:
-            self.inner.build_func_params(params)
+            self.inner.build_func_params(params, presets)
         else:
             func = self.stack.pop()
-            lst = [NameNode(func.line_num, x) for x in params]
+            loc = (func.line_num, func.file)
+            lst = [NameNode(loc, x) for x in params]
+            pst = []
+            for a in presets:
+                if isinstance(a, lex.IdToken):
+                    pst.append(NameNode(loc, a.symbol))
+                elif isinstance(a, lex.NumToken):
+                    pst.append(get_number_node(loc, a.value))
+                elif isinstance(a, lex.LiteralToken):
+                    pst.append(LiteralNode(loc, a.text))
+                elif isinstance(a, lex.InvalidToken):
+                    pst.append(a)
+                else:
+                    lex.unexpected_token(a)
             func.params = lst
+            func.presets = pst
             self.stack.append(func)
 
     def add_call(self, line, f_name):
@@ -327,7 +349,7 @@ class Parser:
                         node.then_block = res
                         node.else_block = res2
                         res = node
-                    elif isinstance(node, WhileStmt):
+                    elif isinstance(node, WhileStmt) or isinstance(node, ForLoopStmt):
                         node.body = res
                         res = node
                     elif isinstance(node, DefStmt):
@@ -338,14 +360,22 @@ class Parser:
                 self.elements.append(res)
 
     def get_as_block(self):
-        block = BlockStmt(0)
+        block = BlockStmt((0, "block"))
         block.lines = self.elements
         return block
 
 
+def get_number_node(line, v: str):
+    if "." in v:
+        return FloatNode(line, v)
+    else:
+        return IntNode(line, v)
+
+
 class Node:
     def __init__(self, line):
-        self.line_num = line
+        self.line_num = line[0]
+        self.file = line[1]
 
 
 class LeafNode(Node):
@@ -577,16 +607,31 @@ class WhileStmt(CondStmt):
         return self.__str__()
 
 
+class ForLoopStmt(CondStmt):
+    def __init__(self, line):
+        CondStmt.__init__(self, line)
+
+        self.body = None
+        # self.stop = self.condition
+
+    def __str__(self):
+        return "for ({}) do {}".format(self.condition, self.body)
+
+    def __repr__(self):
+        return self.__str__()
+
+
 class DefStmt(Node):
     def __init__(self, line, f_name):
         Node.__init__(self, line)
 
         self.name = f_name
         self.params = []
+        self.presets = []
         self.body = None
 
     def __str__(self):
-        return "func({}({}) -> {})".format(self.name, self.params, self.body)
+        return "func({}({} :{}) -> {})".format(self.name, self.params, self.presets, self.body)
 
     def __repr__(self):
         return self.__str__()

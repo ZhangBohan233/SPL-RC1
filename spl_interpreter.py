@@ -127,9 +127,10 @@ class Function:
     :type outer_scope: Environment
     """
 
-    def __init__(self, params, body):
+    def __init__(self, params, presets, body):
         # self.name = f_name
         self.params = params
+        self.presets = presets
         self.body = body
         self.outer_scope = None
 
@@ -248,7 +249,7 @@ def evaluate(node: Node, env: Environment):
         if node.assignment:
             symbol = node.operation[:-1]
             res = arithmetic(left, right, symbol)
-            asg = AssignmentNode(node.line_num)
+            asg = AssignmentNode((node.line_num, node.file))
             asg.left = node.left
             asg.operation = "="
             asg.right = res
@@ -280,13 +281,25 @@ def evaluate(node: Node, env: Environment):
             return evaluate(node.else_block, env)
     elif isinstance(node, WhileStmt):
         result = 0
-        while not env.broken and evaluate(node.condition, env).value:
+        while not env.broken and evaluate(node.condition, env):
             result = evaluate(node.body, env)
             env.paused = False  # reset the environment the the next iteration
         env.broken = False  # reset the environment for next loop
         return result
+    elif isinstance(node, ForLoopStmt):
+        con: BlockStmt = node.condition
+        start = con.lines[0]
+        end = con.lines[1]
+        step = con.lines[2]
+        result = evaluate(start, env)
+        while not env.broken and evaluate(end, env):
+            evaluate(node.body, env)
+            env.paused = False
+            result = evaluate(step, env)
+        env.broken = False
+        return result
     elif isinstance(node, DefStmt):
-        f = Function(node.params, node.body)
+        f = Function(node.params, node.presets, node.body)
         f.outer_scope = env
         env.assign(node.name, f)
         return f
@@ -304,7 +317,12 @@ def evaluate(node: Node, env: Environment):
             else:
                 for i in range(len(func.params)):
                     # Assign function arguments
-                    e = evaluate(node.args.lines[i], env)
+                    if i < len(node.args.lines):
+                        arg = node.args.lines[i]
+                    else:
+                        arg = func.presets[i]
+                    # print(arg)
+                    e = evaluate(arg, env)
                     scope.assign(func.params[i].name, e)
             result = evaluate(func.body, scope)
             return result
@@ -349,7 +367,7 @@ def evaluate(node: Node, env: Environment):
             isinstance(node, NativeTypes):
         return node
     else:
-        raise InterpretException("Invalid Syntax Tree, at line {}".format(node.line_num))
+        raise InterpretException("Invalid Syntax Tree in {}, at line {}".format(node.file, node.line_num))
 
 
 def arithmetic(left, right, symbol):

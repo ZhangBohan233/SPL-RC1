@@ -1,3 +1,10 @@
+===== Build 0013: 2019/02/05 =====
+
+*Added file tracing
+*Added syntax:
+    *For loop
+    *Default value for function argument
+
 ===== Build 0012: 2019/02/04 =====
 
 *Added library functions:

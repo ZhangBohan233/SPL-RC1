@@ -4,12 +4,10 @@
  */
 function map(ftn, lst) {
     res = list();
-    i = 0;
-    while (i < lst.length()) {
+    for (i = 0; i < lst.length(); i += 1) {
         element = lst[i];
         cal = ftn(element);
         res.append(cal);
-        i += 1;
     }
     return res;
 }
@@ -18,14 +16,12 @@ function map(ftn, lst) {
 /*  */
 function filter(ftn, lst) {
     res = list();
-    i = 0;
-    while (i < lst.length()) {
+    for (i = 0; i < lst.length(); i += 1) {
         element = lst[i];
         bool = ftn(element);
         if (bool) {
             res.append(element);
         }
-        i += 1;
     }
     return res;
 }
