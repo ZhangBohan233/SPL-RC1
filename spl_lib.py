@@ -52,6 +52,7 @@ class Stack:
     """
     :type head: StackNode
     """
+
     def __init__(self):
         self.head = None
 
@@ -70,6 +71,12 @@ class Stack:
 
     def empty(self):
         return self.head is None
+
+
+class StackNode:
+    def __init__(self, value):
+        self.value = value
+        self.after = None
 
 
 class Primitive:
@@ -178,17 +185,60 @@ class List(NativeTypes):
     def append(self, value):
         self.list.append(value)
 
+    def contains(self, item):
+        return item in self.list
+
+    def insert(self, index, item):
+        self.list.insert(index, item)
+
     def pop(self, index):
         return self.list.pop(index)
+
+    def clear(self):
+        return self.list.clear()
 
     def length(self):
         return len(self.list)
 
 
-class StackNode:
-    def __init__(self, value):
-        self.value = value
-        self.after = None
+class Pair(NativeTypes):
+    def __init__(self):
+        NativeTypes.__init__(self)
+
+        self.pair = {}
+
+    def __str__(self):
+        return str(self.pair)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __getitem__(self, item):
+        return self.pair[item]
+
+    def __setitem__(self, key, value):
+        self.pair[key] = value
+
+    def contains(self, item):
+        return item in self.pair
+
+    def size(self):
+        return len(self.pair)
+
+    def type_name(self):
+        return "pair"
+
+
+class System(NativeTypes):
+    argv = None
+
+    def __init__(self, argv_: list):
+        NativeTypes.__init__(self)
+
+        type(self).argv = argv_
+
+    def type_name(self):
+        return "system"
 
 
 def print_(*args):
@@ -215,6 +265,11 @@ def typeof(obj):
 def make_list(*initial_elements):
     lst = List(*initial_elements)
     return lst
+
+
+def make_pair():
+    pair = Pair()
+    return pair
 
 
 def to_int(v):

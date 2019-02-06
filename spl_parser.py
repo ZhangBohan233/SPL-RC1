@@ -165,18 +165,23 @@ class Parser:
             self.stack.append(fc)
             self.inner = Parser()
 
+    def is_in_get(self):
+        if self.inner:
+            return self.inner.is_in_get()
+        else:
+            return self.in_get
+
     def add_get_set(self, line):
         if self.inner:
             self.inner.add_get_set(line)
         else:
-            self.in_get = True
             self.add_call(line, "get/set")
+            self.inner.in_get = True
 
     def build_get_set(self, is_set):
         if self.inner.inner:
             self.inner.build_get_set(is_set)
         else:
-
             i = len(self.stack) - 1
             if is_set:
                 while i >= 0:
@@ -186,7 +191,6 @@ class Parser:
                         break
                     i -= 1
             else:
-                self.in_get = False
                 while i >= 0:
                     node = self.stack[i]
                     if isinstance(node, FuncCall) and node.f_name == "get/set":

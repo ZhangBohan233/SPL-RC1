@@ -1,3 +1,12 @@
+===== Build 0015: 2019/02/06 =====
+
+*Bug fixes:
+    *Fixed list setitem (list[index] = item) sometimes does not work
+    *Cannot get attributes in NativeTypes
+*Added built-in types:
+    *Pair
+    *System : use "system.argv" to get command line arguments
+
 ===== Build 0014: 2019/02/05 =====
 
 *Added syntax:

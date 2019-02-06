@@ -363,10 +363,10 @@ class Lexer:
                     elif sym[:-1] in OP_EQ:
                         parser.add_operator(line, sym, extra_precedence, True)
                     elif token.is_eol():
-                        if parser.in_get:
-                            parser.in_get = False
-                            parser.build_line()
+                        if parser.is_in_get():
+                            # parser.build_line()
                             parser.build_call()
+                            # parser.in_get = False
                             call_nest -= 1
                         parser.build_expr()
                         # print(parser.stack)

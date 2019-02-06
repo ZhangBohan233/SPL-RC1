@@ -15,6 +15,7 @@ class Interpreter:
         self.ast = None
         self.argv = argv
         self.env = Environment(True, HashMap())
+        self.env.heap["system"] = System(argv)
         self.env.scope_name = "Global"
 
     def set_ast(self, ast):
@@ -59,6 +60,7 @@ class Environment:
         self.heap["time"] = NativeFunction(time)
         self.heap["type"] = NativeFunction(typeof)
         self.heap["list"] = NativeFunction(make_list)
+        self.heap["pair"] = NativeFunction(make_pair)
         self.heap["int"] = NativeFunction(to_int)
         self.heap["float"] = NativeFunction(to_float)
 
@@ -230,11 +232,16 @@ def evaluate(node: Node, env: Environment):
             scope.assign(name_lst[-1], value)
             return value
     elif isinstance(node, Dot):
-        instance: ClassInstance = evaluate(node.left, env)
+        instance = evaluate(node.left, env)
         obj = node.right
         if isinstance(obj, NameNode):
-            attr = instance.env.variables[obj.name]
-            return attr
+            if isinstance(instance, NativeTypes):
+                return native_types_invoke(instance, obj)
+            elif isinstance(instance, ClassInstance):
+                attr = instance.env.variables[obj.name]
+                return attr
+            else:
+                raise InterpretException("Not a class instance")
         elif isinstance(obj, FuncCall):
             if isinstance(instance, NativeTypes):
                 try:
@@ -505,6 +512,19 @@ def native_types_call(instance, method, env):
     type_ = type(instance)
     method = getattr(type_, name)
     res = method(instance, *args)
+    return res
+
+
+def native_types_invoke(instance: NativeTypes, node: NameNode):
+    """
+
+    :param instance:
+    :param node:
+    :return:
+    """
+    name = node.name
+    type_ = type(instance)
+    res = getattr(type_, name)
     return res
 
 

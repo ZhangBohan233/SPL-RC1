@@ -41,11 +41,11 @@ function merge_sort(lst) {
                     cache.append(lst[i1 + x]);
                 }
                 for (x = 0; x < c_len; x += 1) {
-                    lst.set(i + x, cache[x]);
+                    lst[i + x] = cache[x];
                 }
             } else {
                 for (x = 0; x < ci; x += 1) {
-                    lst.set(i + x, cache[x]);
+                    lst[i + x] = cache[x];
                 }
             }
         }
