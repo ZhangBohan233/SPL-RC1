@@ -1,3 +1,6 @@
+===== Build 0014 =====
+1000 element merge sort: ~1000 ms
+
 ===== Build 0012 =====
 1 million while loop: ~14200 ms
 25 fib: ~5800 ms

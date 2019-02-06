@@ -25,3 +25,41 @@ function filter(ftn, lst) {
     }
     return res;
 }
+
+
+/*
+ * Returns true iff every element in <lst> satisfies boolean function <ftn>.
+ */
+function all(ftn, lst) {
+    for (i = 0; i < lst.length(); i += 1) {
+        element = lst[i];
+        if (ftn == null) {
+            res = element;
+        } else {
+            res = ftn(element);
+        }
+        if (!res) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+/*
+ * Returns true iff any element in <lst> satisfies boolean function <ftn>.
+ */
+function any(ftn, lst) {
+    for (i = 0; i < lst.length(); i += 1) {
+        element = lst[i];
+        if (ftn == null) {
+            res = element;
+        } else {
+            res = ftn(element);
+        }
+        if (res) {
+            return true;
+        }
+    }
+    return false;
+}

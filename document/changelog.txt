@@ -1,3 +1,22 @@
+===== Build 0014: 2019/02/05 =====
+
+*Added syntax:
+    *Not statement "!"
+*Bug fixes:
+    *Some unfixed bugs caused by the augmentation of file name
+    *Presets arguments cannot be "true", "false", or "null"
+    *Object comparison to null
+    *Return statement sometimes does not terminate loops
+*Added native type:
+    *string
+*Added native functions:
+    *int, float
+*Added built-in lib:
+    *"math"
+*Implemented built-in function:
+    *merge_sort
+*Moved native functions "all" and "any" to lib
+
 ===== Build 0013: 2019/02/05 =====
 
 *Added file tracing

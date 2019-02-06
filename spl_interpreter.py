@@ -59,11 +59,12 @@ class Environment:
         self.heap["time"] = NativeFunction(time)
         self.heap["type"] = NativeFunction(typeof)
         self.heap["list"] = NativeFunction(make_list)
-        self.heap["all"] = NativeFunction(all_)
-        self.heap["any"] = NativeFunction(any_)
+        self.heap["int"] = NativeFunction(to_int)
+        self.heap["float"] = NativeFunction(to_float)
 
     def terminate(self, exit_value):
         self.terminated = True
+        self.broken = True
         self.exit_value = exit_value
 
     def break_loop(self):
@@ -101,7 +102,7 @@ class Environment:
             if key in self.heap:
                 return self.heap[key]
             else:
-                raise SplException("Usage before assignment, at line {}".format(line_num))
+                raise SplException("Usage before assignment for name '{}', at line {}".format(key, line_num))
 
     def get_class(self, classname):
         return self.heap[classname]
@@ -193,7 +194,7 @@ def evaluate(node: Node, env: Environment):
     elif isinstance(node, FloatNode):
         return float(node.value)
     elif isinstance(node, LiteralNode):
-        return node.literal
+        return String(node.literal)
     elif isinstance(node, NameNode):
         value = env.get(node.name, node.line_num)
         return value
@@ -236,7 +237,11 @@ def evaluate(node: Node, env: Environment):
             return attr
         elif isinstance(obj, FuncCall):
             if isinstance(instance, NativeTypes):
-                return native_types_call(instance, obj, env)
+                try:
+                    return native_types_call(instance, obj, env)
+                except IndexError as ie:
+                    raise IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
+                                                   .format(node.file, node.line_num))
             elif isinstance(instance, ClassInstance):
                 return evaluate(obj, instance.env)
             else:
@@ -260,6 +265,12 @@ def evaluate(node: Node, env: Environment):
     elif isinstance(node, NegativeExpr):
         value = evaluate(node.value, env)
         return -value
+    elif isinstance(node, NotExpr):
+        value = evaluate(node.value, env)
+        if value:
+            return FALSE
+        else:
+            return TRUE
     elif isinstance(node, ReturnStmt):
         value = node.value
         res = evaluate(value, env)
@@ -293,9 +304,9 @@ def evaluate(node: Node, env: Environment):
         step = con.lines[2]
         result = evaluate(start, env)
         while not env.broken and evaluate(end, env):
-            evaluate(node.body, env)
+            result = evaluate(node.body, env)
             env.paused = False
-            result = evaluate(step, env)
+            evaluate(step, env)
         env.broken = False
         return result
     elif isinstance(node, DefStmt):
@@ -356,7 +367,7 @@ def evaluate(node: Node, env: Environment):
 
         if node.args:
             # constructor: Function = scope.variables[node.class_name]
-            fc = FuncCall(node.line_num, node.class_name)
+            fc = FuncCall((node.line_num, node.file), node.class_name)
             fc.args = node.args
             for a in fc.args.lines:
                 scope.temp_vars.append(evaluate(a, env))
@@ -381,7 +392,18 @@ def arithmetic(left, right, symbol):
         res = evaluate(fc, left.env)
         return res
     else:
-        raise InterpretException("Unknown type for operators")
+        return raw_type_comparison(left, right, symbol)
+
+
+def raw_type_comparison(left, right, symbol):
+    if symbol == "==":
+        result = left == right
+    elif symbol == "!=":
+        result = left != right
+    else:
+        raise InterpretException("Unsupported operation for raw type " + left.type_name())
+
+    return get_boolean(result)
 
 
 def primitive_arithmetic(left: Primitive, right, symbol):
@@ -408,7 +430,10 @@ def num_arithmetic(left, right, symbol):
     elif symbol == "*":
         result = left * right
     elif symbol == "/":
-        result = left // right
+        if isinstance(left, int):
+            result = left // right
+        else:
+            result = left / right
     elif symbol == "%":
         result = left % right
     elif symbol == "==":
@@ -498,3 +523,8 @@ class InterpretException(Exception):
 class SplException(InterpretException):
     def __init__(self, msg=""):
         InterpretException.__init__(self, msg)
+
+
+class IndexOutOfRangeException(SplException):
+    def __init__(self, msg):
+        SplException.__init__(self, msg)

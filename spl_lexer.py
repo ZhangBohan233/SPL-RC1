@@ -9,8 +9,9 @@ BINARY_OPERATORS = {"+": "add", "-": "sub", "*": "mul", "/": "div", "%": "mod",
                     "<": "lt", ">": "gt", "==": "eq", ">=": "ge", "<=": "le", "!=": "neq",
                     "&&": "and", "||": "or", "&": "band", "^": "xor", "|": "bor",
                     "<<": "lshift", ">>": "rshift"}
+UNARY_OPERATORS = {"!": "not"}
 OTHERS = {"="}
-ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE)
+ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
 RESERVED = {"class", "function", "if", "else", "new", "extends", "return", "break", "continue",
             "true", "false", "null", "operator", "while", "for", "import"}
 OMITS = {"\n", "\r", "\t", " "}
@@ -239,7 +240,7 @@ class Lexer:
                         i += 1
                         c_token = self.tokens[i]
                         class_name = c_token.symbol
-                        parser.add_class(c_token.line_number(), class_name)
+                        parser.add_class((c_token.line_number(), c_token.file_name()), class_name)
                         class_brace = brace_count
                     elif sym == "extends":
                         i += 1
@@ -250,12 +251,12 @@ class Lexer:
                         i += 1
                         c_token = self.tokens[i]
                         class_name = c_token.symbol
-                        parser.add_class_new(c_token.line_number(), class_name)
+                        parser.add_class_new((c_token.line_number(), c_token.file_name()), class_name)
                         if i + 1 < len(self.tokens) and isinstance(self.tokens[i + 1], IdToken) and \
                                 self.tokens[i + 1].symbol == "(":
                             i += 1
                             call_nest += 1
-                            parser.add_call(c_token.line_number(), class_name)
+                            parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
                             # in_call = True
                     elif sym == "if":
                         in_cond = True
@@ -356,6 +357,9 @@ class Lexer:
                             parser.add_neg(line, extra_precedence)
                         else:
                             parser.add_operator(line, sym, extra_precedence)
+                    elif sym in UNARY_OPERATORS:
+                        if sym == "!":
+                            parser.add_not(line, extra_precedence)
                     elif sym[:-1] in OP_EQ:
                         parser.add_operator(line, sym, extra_precedence, True)
                     elif token.is_eol():

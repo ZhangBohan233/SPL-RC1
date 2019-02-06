@@ -22,3 +22,26 @@ SPL Key Features:
 * Object oriented
 * Functional programming
 * Slow
+
+### SPL Basic Syntax:
+
+SPL uses braces `{` `}` as block indentation. 
+
+Lines should be terminated by the line terminator `;`.lines with a back brace `}` can have terminator omitted.
+
+SPL is a dynamic language. There is ne need for declaring type when declare a variable.
+For example the expression:
+
+`a = 1;`
+
+declares a variable `a` and sets it to integer 1.
+
+### SPL Built-in types:
+
+SPL has several built-in types:
+
+* `int` Integer
+* `float` Floating point number
+* `string` String literal
+* `boolean` Boolean value, `true` or `false`
+* `void` The type name of the `null` pointer

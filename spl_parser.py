@@ -1,11 +1,10 @@
 import spl_lexer as lex
 
-
 PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "==": 20, ">": 25, "<": 25, ">=": 25, "<=": 25,
               "!=": 20, "&&": 5, "||": 5, "&": 12, "^": 11, "|": 10,
               "<<": 40, ">>": 40,
-              ".": 500, "neg": 200, "return": 1,
+              ".": 500, "!": 200, "neg": 200, "return": 1,
               "+=": 2, "-=": 2, "*=": 2, "/=": 2, "%=": 2,
               "&=": 2, "^=": 2, "|=": 2, "<<=": 2, ">>=": 2}
 
@@ -65,6 +64,14 @@ class Parser:
         else:
             self.in_expr = True
             node = NegativeExpr(line, extra_precedence)
+            self.stack.append(node)
+
+    def add_not(self, line, extra_precedence):
+        if self.inner:
+            self.inner.add_not(line, extra_precedence)
+        else:
+            self.in_expr = True
+            node = NotExpr(line, extra_precedence)
             self.stack.append(node)
 
     def add_assignment(self, line):
@@ -127,7 +134,16 @@ class Parser:
             pst = []
             for a in presets:
                 if isinstance(a, lex.IdToken):
-                    pst.append(NameNode(loc, a.symbol))
+                    sbl = a.symbol
+                    if sbl in lex.RESERVED:
+                        if sbl == "true" or sbl == "false":
+                            pst.append(BooleanStmt(loc, sbl))
+                        elif sbl == "null":
+                            pst.append(NullStmt(loc))
+                        else:
+                            lex.unexpected_token(a)
+                    else:
+                        pst.append(NameNode(loc, sbl))
                 elif isinstance(a, lex.NumToken):
                     pst.append(get_number_node(loc, a.value))
                 elif isinstance(a, lex.LiteralToken):
@@ -324,8 +340,6 @@ class Parser:
     def build_line(self):
         if self.inner:
             self.inner.build_line()
-        # elif self.condition:
-        #     self.condition.build_line()
         else:
             self.build_expr()
             if len(self.stack) > 0:
@@ -495,13 +509,13 @@ class NegativeExpr(UnaryOperator):
         UnaryOperator.__init__(self, line, extra)
 
         self.operation = "neg"
-        self.value = None
 
-    # def __str__(self):
-    #     return "-" + str(self.value)
-    #
-    # def __repr__(self):
-    #     return self.__str__()
+
+class NotExpr(UnaryOperator):
+    def __init__(self, line, extra):
+        UnaryOperator.__init__(self, line, extra)
+
+        self.operation = "!"
 
 
 class ReturnStmt(UnaryOperator):

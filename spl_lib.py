@@ -1,8 +1,6 @@
 import time as time_lib
 import spl_interpreter as inter
 
-TYPE_NAMES = {"List": "list"}
-
 
 class Map:
     def __init__(self):
@@ -103,7 +101,7 @@ class Null(Primitive):
 
 
 class Boolean(Primitive):
-    def __init__(self, value):
+    def __init__(self, value: bool):
         Primitive.__init__(self)
         self.value = value
 
@@ -127,6 +125,28 @@ class NativeTypes:
     def __init__(self):
         pass
 
+    def type_name(self):
+        raise NotImplementedError
+
+
+class String(NativeTypes):
+    def __init__(self, lit):
+        NativeTypes.__init__(self)
+
+        self.literal = lit
+
+    def __str__(self):
+        return self.literal
+
+    def __repr__(self):
+        return self.literal
+
+    def __getitem__(self, index):
+        return self.literal[index]
+
+    def type_name(self):
+        return "string"
+
 
 class List(NativeTypes):
     def __init__(self, *initial):
@@ -145,6 +165,15 @@ class List(NativeTypes):
 
     def __setitem__(self, key, value):
         self.list[key] = value
+
+    def set(self, key, value):
+        self.__setitem__(key, value)
+
+    def get(self, key):
+        self.__getitem__(key)
+
+    def type_name(self):
+        return "list"
 
     def append(self, value):
         self.list.append(value)
@@ -176,12 +205,11 @@ def typeof(obj):
         return obj.classname
     elif isinstance(obj, Primitive):
         return obj.type_name()
+    elif isinstance(obj, NativeTypes):
+        return obj.type_name()
     else:
         t = type(obj)
-        if t.__name__ in TYPE_NAMES:
-            return TYPE_NAMES[t.__name__]
-        else:
-            return t
+        return t.__name__
 
 
 def make_list(*initial_elements):
@@ -189,12 +217,12 @@ def make_list(*initial_elements):
     return lst
 
 
-def all_(lst):
-    return Boolean(all(lst))
+def to_int(v):
+    return int(v)
 
 
-def any_(lst):
-    return Boolean(any(lst))
+def to_float(v):
+    return float(v)
 
 
 NULL = Null()

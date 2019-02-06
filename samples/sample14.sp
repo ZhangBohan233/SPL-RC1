@@ -2,7 +2,14 @@
 //import "user/u1.sp";
 import "algorithm";
 
+lst = list();
 
-a = 5;
-b = merge_sort(2);
-print(b + a - faa);
+lst = rand_list(1000, -32768, 32767);
+//print(lst);
+
+st = time();
+merge_sort(lst);
+end = time();
+
+print(lst);
+print(end - st);
