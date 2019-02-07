@@ -1,3 +1,15 @@
+===== Build 0017: 2019/02/07 =====
+
+*Added native functions:
+    *input()
+    *f_open()
+*Added built-in library:
+    *io
+*Depreciated native function "time()", replaced with "system.time()"
+*Bug fixes:
+    *Unavailable console
+    *String escape not displaying properly
+
 ===== Build 0016: 2019/02/06 =====
 
 *Added syntax:

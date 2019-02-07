@@ -145,3 +145,7 @@ f = foo(3);
 f();
 ```
 and both of the codes will return `4`;
+
+### Objects
+
+SPL is object oriented. Objects in SPL are stored in key-value pairs.

@@ -166,6 +166,9 @@ class String(NativeTypes):
     def __getitem__(self, index):
         return self.literal[index]
 
+    def contains(self, char):
+        return TRUE if char in self.literal else FALSE
+
     def type_name(self):
         return "string"
 
@@ -244,6 +247,37 @@ class Pair(NativeTypes):
         return "pair"
 
 
+class Set(NativeTypes):
+    def __init__(self):
+        NativeTypes.__init__(self)
+
+        self.set = set()
+
+    def __str__(self):
+        return str(self.set)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def size(self):
+        return len(self.set)
+
+    def add(self, item):
+        self.set.add(item)
+
+    def pop(self):
+        self.set.pop()
+
+    def clear(self):
+        self.set.clear()
+
+    def contains(self, item):
+        return TRUE if item in self.set else FALSE
+
+    def type_name(self):
+        return "set"
+
+
 class System(NativeTypes):
     argv = None
 
@@ -252,8 +286,76 @@ class System(NativeTypes):
 
         type(self).argv = argv_
 
+    def time(self):
+        return int(time_lib.time() * 1000)
+
     def type_name(self):
         return "system"
+
+
+class File(NativeTypes):
+    """
+    :type fp:
+    """
+    def __init__(self, fp, mode):
+        NativeTypes.__init__(self)
+
+        self.mode = mode
+        self.fp = fp
+
+    def read_one(self):
+        r = self.fp.read(1)
+        if r:
+            if self.mode == "r":
+                return String(r)
+            elif self.mode == "rb":
+                return int(self.fp.read(1)[0])
+            else:
+                raise IOException("Wrong mode")
+        else:
+            return NULL
+
+    def read(self):
+        if self.mode == "r":
+            return String(self.fp.read())
+        elif self.mode == "rb":
+            return List(*list(self.fp.read()))
+        else:
+            raise IOException("Wrong mode")
+
+    def readline(self):
+        if self.mode == "r":
+            s = self.fp.readline()
+            if s:
+                return String(s)
+            else:
+                return NULL
+        else:
+            raise IOException("Wrong mode")
+
+    def write(self, s):
+        if "w" in self.mode:
+            if "b" in self.mode:
+                self.fp.write(bytes(s))
+            else:
+                self.fp.write(str(s))
+            return NULL
+        else:
+            raise IOException("Wrong mode")
+
+    def flush(self):
+        if "w" in self.mode:
+            self.fp.flush()
+            return NULL
+        else:
+            raise IOException("Wrong mode")
+
+    def close(self):
+        self.fp.close()
+        return NULL
+
+    def type_name(self):
+        return "file"
 
 
 def print_(*args):
@@ -261,8 +363,9 @@ def print_(*args):
     return NULL
 
 
-def time():
-    return int(time_lib.time() * 1000)
+def input_(prompt):
+    s = input(prompt)
+    return s
 
 
 def typeof(obj):
@@ -287,6 +390,11 @@ def make_pair():
     return pair
 
 
+def make_set():
+    s = Set()
+    return s
+
+
 def to_int(v):
     return int(v)
 
@@ -297,6 +405,14 @@ def to_float(v):
 
 def to_str(v):
     return String(str(v))
+
+
+def f_open(file, mode=String("r"), encoding=String("utf-8")):
+    if not mode.contains("b"):
+        f = open(str(file), str(mode), encoding=str(encoding))
+    else:
+        f = open(str(file), str(mode))
+    return File(f, str(mode))
 
 
 class InterpretException(Exception):
@@ -315,6 +431,11 @@ class TypeException(SplException):
 
 
 class IndexOutOfRangeException(SplException):
+    def __init__(self, msg):
+        SplException.__init__(self, msg)
+
+
+class IOException(SplException):
     def __init__(self, msg):
         SplException.__init__(self, msg)
 

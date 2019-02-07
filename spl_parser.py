@@ -148,7 +148,7 @@ class Parser:
                     pst.append(get_number_node(loc, a.value))
                 elif isinstance(a, lex.LiteralToken):
                     pst.append(LiteralNode(loc, a.text))
-                elif isinstance(a, lex.InvalidToken):
+                elif isinstance(a, InvalidToken):
                     pst.append(a)
                 else:
                     lex.unexpected_token(a)
@@ -750,6 +750,17 @@ class Dot(OperatorNode):
 #
 #     def __repr__(self):
 #         return self.__str__()
+
+
+class InvalidToken(Node):
+    def __init__(self, line):
+        Node.__init__(self, line)
+
+    def __str__(self):
+        return "invalid"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 def parse_expr(lst):

@@ -6,8 +6,30 @@ import spl_lexer
 import spl_interpreter
 import time
 
-HELP = """
-spl.py 
+INSTRUCTION = """Welcome to Slowest Programming Language.
+
+Try "spl.py help" to see usage."""
+
+PY_HELP = """Name
+    spl.py  -  Slowest Programming Language command line interface.
+
+Usage
+    spl.py [OPTIONS]... FILE [ARGV]...
+    
+Description
+OPTIONS:    
+    -ast,    --abstract syntax tree    shows the structure of the abstract syntax tree
+    -debug,  --debugger                enables debugger
+    -exit,   --exit value              shows the program's exit value
+    -timer,  --timer                   enables the timer
+    -tokens, --tokens                  shows language tokens
+    -vars,   --variables               prints out all global variables after execution
+    
+ARGV:
+    command-line argument for the spl program
+    
+Example
+    spl.py -ast -tokens example.sp -something
 """
 
 
@@ -36,7 +58,8 @@ def parse_arg(args):
                 else:
                     print("unknown flag: -" + flag)
             elif arg == "help":
-                pass
+                print_help()
+                return None
             else:
                 d["file"] = arg
                 d["dir"] = spl_lexer.get_dir(d["file"])
@@ -49,7 +72,11 @@ def parse_arg(args):
 
 
 def print_usage():
-    print(HELP)
+    print(INSTRUCTION)
+
+
+def print_help():
+    print(PY_HELP)
 
 
 if __name__ == "__main__":

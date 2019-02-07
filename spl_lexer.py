@@ -13,7 +13,7 @@ UNARY_OPERATORS = {"!": "not"}
 OTHERS = {"="}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
 RESERVED = {"class", "function", "def", "if", "else", "new", "extends", "return", "break", "continue",
-            "true", "false", "null", "operator", "while", "for", "import"}
+            "true", "false", "null", "operator", "while", "for", "import", "throw"}
 OMITS = {"\n", "\r", "\t", " "}
 
 OP_EQ = {"+", "-", "*", "/", "%", "&", "^", "|", "<<", ">>"}
@@ -48,9 +48,9 @@ class Lexer:
         line_num = 1
         in_doc = False
         while line:
-            tp = (line_num, self.file_name)
+            tup = (line_num, self.file_name)
             last_index = len(self.tokens)
-            in_doc = self.proceed_line(line, tp, in_doc)
+            in_doc = self.proceed_line(line, tup, in_doc)
             # print(self.tokens[last_index:])
             self.find_import(last_index, len(self.tokens))
             line = file.readline()
@@ -58,10 +58,10 @@ class Lexer:
 
         self.tokens.append(Token((EOF, self.file_name)))
 
-    def tokenize_text(self, text):
-        for i in range(len(text)):
+    def tokenize_text(self, lines):
+        for i in range(len(lines)):
             line_number = i + 1
-            line = text[i]
+            line = lines[i]
             self.proceed_line(line, (line_number, "console"), False)
 
         self.tokens.append(Token((EOF, self.file_name)))
@@ -240,7 +240,7 @@ class Lexer:
                         func_count = res[1]
                     elif sym == "class":
                         i += 1
-                        c_token = self.tokens[i]
+                        c_token: IdToken = self.tokens[i]
                         class_name = c_token.symbol
                         parser.add_class((c_token.line_number(), c_token.file_name()), class_name)
                         class_brace = brace_count
@@ -280,7 +280,7 @@ class Lexer:
                         if not (isinstance(self.tokens[i], IdToken) and self.tokens[i].symbol == "("):
                             unexpected_token(token)
                     elif sym == "else":
-                        pass
+                        pass  # this case is automatically handled by the if-block
                     elif sym == "return":
                         parser.add_return(line)
                         # in_expr = True
@@ -293,6 +293,8 @@ class Lexer:
                         parser.add_bool(line, sym)
                     elif sym == "null":
                         parser.add_null(line)
+                    elif sym == "throw":
+                        pass
                     elif sym == "{":
                         brace_count += 1
                         parser.new_block()
@@ -476,7 +478,7 @@ def parse_def(f_name, tokens, i, func_count, parser):
                 else:
                     params.append(sbl)
             i += 1
-        presets = [InvalidToken(tup) for _ in range(len(params) - len(presets))] + presets
+        presets = [psr.InvalidToken(tup) for _ in range(len(params) - len(presets))] + presets
         # print(presets)
         parser.build_func_params(params, presets)
     return i, func_count
@@ -663,10 +665,10 @@ class NumToken(Token):
 
 
 class LiteralToken(Token):
-    def __init__(self, line, t):
+    def __init__(self, line, t: str):
         Token.__init__(self, line)
 
-        self.text = t
+        self.text = t.encode().decode('unicode_escape')
 
     def is_literal(self):
         return True
@@ -698,17 +700,6 @@ class IdToken(Token):
             return "Id(EOL)"
         else:
             return "Id({})".format(self.symbol)
-
-    def __repr__(self):
-        return self.__str__()
-
-
-class InvalidToken(psr.Node):
-    def __init__(self, line):
-        psr.Node.__init__(self, line)
-
-    def __str__(self):
-        return "invalid"
 
     def __repr__(self):
         return self.__str__()

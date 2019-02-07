@@ -57,13 +57,15 @@ class Environment:
 
     def _add_natives(self):
         self.heap["print"] = NativeFunction(print_)
-        self.heap["time"] = NativeFunction(time)
         self.heap["type"] = NativeFunction(typeof)
         self.heap["list"] = NativeFunction(make_list)
         self.heap["pair"] = NativeFunction(make_pair)
+        self.heap["set"] = NativeFunction(make_set)
         self.heap["int"] = NativeFunction(to_int)
         self.heap["float"] = NativeFunction(to_float)
         self.heap["string"] = NativeFunction(to_str)
+        self.heap["input"] = NativeFunction(input_)
+        self.heap["f_open"] = NativeFunction(f_open)
 
     def terminate(self, exit_value):
         self.terminated = True
@@ -96,16 +98,17 @@ class Environment:
             if not found:
                 self.variables[key] = value
 
-    def get(self, key: str, line_num):
+    def get(self, key: str, line_file):
         if key in self.variables:
             return self.variables[key]
         elif self.outer:
-            return self.outer.get(key, line_num)
+            return self.outer.get(key, line_file)
         else:
             if key in self.heap:
                 return self.heap[key]
             else:
-                raise SplException("Usage before assignment for name '{}', at line {}".format(key, line_num))
+                raise SplException("Usage before assignment for name '{}', in file {}, at line {}"
+                                   .format(key, line_file[1], line_file[0]))
 
     def get_class(self, classname):
         return self.heap[classname]
@@ -199,7 +202,7 @@ def evaluate(node: Node, env: Environment):
     elif isinstance(node, LiteralNode):
         return String(node.literal)
     elif isinstance(node, NameNode):
-        value = env.get(node.name, node.line_num)
+        value = env.get(node.name, (node.line_num, node.file))
         return value
     elif isinstance(node, BooleanStmt):
         if node.value in {"true", "false"}:
@@ -229,7 +232,7 @@ def evaluate(node: Node, env: Environment):
             # print(name_lst)
             scope = env
             for t in name_lst[:-1]:
-                scope = scope.get(t, node.line_num).env
+                scope = scope.get(t, (node.line_num, node.file)).env
             scope.assign(name_lst[-1], value)
             return value
     elif isinstance(node, Dot):
@@ -331,7 +334,7 @@ def evaluate(node: Node, env: Environment):
         env.assign(node.name, f)
         return f
     elif isinstance(node, FuncCall):
-        func = env.get(node.f_name, node.line_num)
+        func = env.get(node.f_name, (node.line_num, node.file))
         if isinstance(func, Function):
             scope = Environment(False, env.heap)
             scope.scope_name = "Function scope<{}>".format(node.f_name)
