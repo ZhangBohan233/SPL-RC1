@@ -6,7 +6,7 @@ PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "<<": 40, ">>": 40,
               ".": 500, "!": 200, "neg": 200, "return": 1,
               "+=": 2, "-=": 2, "*=": 2, "/=": 2, "%=": 2,
-              "&=": 2, "^=": 2, "|=": 2, "<<=": 2, ">>=": 2}
+              "&=": 2, "^=": 2, "|=": 2, "<<=": 2, ">>=": 2, "=>": 500}
 
 MULTIPLIER = 1000
 
@@ -164,6 +164,17 @@ class Parser:
             fc = FuncCall(line, f_name)
             self.stack.append(fc)
             self.inner = Parser()
+
+    def add_anonymous_call(self, line, extra):
+        if self.inner:
+            self.inner.add_anonymous_call(line, extra)
+        else:
+            self.in_expr = True
+            op_node = AnonymousCall(line, extra)
+            op_node.assignment = False
+            op_node.operation = "=>"
+            self.stack.append(op_node)
+            self.add_call(line, "=>")
 
     def is_in_get(self):
         if self.inner:
@@ -323,6 +334,7 @@ class Parser:
             if not self.in_expr:
                 return
             self.in_expr = False
+            # print(type(self.stack[1]))
             lst = []
             while len(self.stack) > 0:
                 node = self.stack[-1]
@@ -347,7 +359,7 @@ class Parser:
         else:
             self.build_expr()
             if len(self.stack) > 0:
-                res = None
+                res = self.stack.pop()
                 res2 = None
                 # print(self.stack)
                 while len(self.stack) > 0:
@@ -372,6 +384,9 @@ class Parser:
                         res = node
                     elif isinstance(node, DefStmt):
                         node.body = res
+                        res = node
+                    elif isinstance(node, ReturnStmt):
+                        node.value = res
                         res = node
                     else:
                         res = node
@@ -506,6 +521,11 @@ class NameNode(LeafNode):
 class AssignmentNode(BinaryExpr):
     def __init__(self, line):
         BinaryExpr.__init__(self, line)
+
+
+class AnonymousCall(OperatorNode):
+    def __init__(self, line, extra):
+        OperatorNode.__init__(self, line, extra)
 
 
 class NegativeExpr(UnaryOperator):
@@ -656,6 +676,9 @@ class DefStmt(Node):
 
 
 class FuncCall(LeafNode):
+    """
+    :type args: BlockStmt
+    """
     def __init__(self, line, f_name):
         LeafNode.__init__(self, line)
 

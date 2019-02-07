@@ -115,6 +115,9 @@ class Boolean(Primitive):
     def __eq__(self, other):
         return isinstance(other, Boolean) and self.value == other.value
 
+    def __neg__(self):
+        return FALSE if self.value else TRUE
+
     def __bool__(self):
         return self.value
 
@@ -147,6 +150,18 @@ class String(NativeTypes):
 
     def __repr__(self):
         return self.literal
+
+    def __eq__(self, other):
+        return TRUE if isinstance(other, String) and self.literal == other.literal else FALSE
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __add__(self, other):
+        if isinstance(other, String):
+            return String(self.literal + other.literal)
+        else:
+            raise TypeException("Cannot add <string> with {}".format(typeof(other)))
 
     def __getitem__(self, index):
         return self.literal[index]
@@ -186,7 +201,7 @@ class List(NativeTypes):
         self.list.append(value)
 
     def contains(self, item):
-        return item in self.list
+        return TRUE if item in self.list else FALSE
 
     def insert(self, index, item):
         self.list.insert(index, item)
@@ -220,7 +235,7 @@ class Pair(NativeTypes):
         self.pair[key] = value
 
     def contains(self, item):
-        return item in self.pair
+        return TRUE if item in self.pair else FALSE
 
     def size(self):
         return len(self.pair)
@@ -278,6 +293,30 @@ def to_int(v):
 
 def to_float(v):
     return float(v)
+
+
+def to_str(v):
+    return String(str(v))
+
+
+class InterpretException(Exception):
+    def __init__(self, msg=""):
+        Exception.__init__(self, msg)
+
+
+class SplException(InterpretException):
+    def __init__(self, msg=""):
+        InterpretException.__init__(self, msg)
+
+
+class TypeException(SplException):
+    def __init__(self, msg):
+        SplException.__init__(self, msg)
+
+
+class IndexOutOfRangeException(SplException):
+    def __init__(self, msg):
+        SplException.__init__(self, msg)
 
 
 NULL = Null()

@@ -13,7 +13,10 @@ function map(ftn, lst) {
 }
 
 
-/*  */
+/*
+ * Filters elements in <lst> with function <ftn>.
+ * Only elements make <ftn> returns <true> will be in the retuning list.
+ */
 function filter(ftn, lst) {
     res = list();
     for (i = 0; i < lst.length(); i += 1) {

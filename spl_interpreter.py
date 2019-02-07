@@ -63,6 +63,7 @@ class Environment:
         self.heap["pair"] = NativeFunction(make_pair)
         self.heap["int"] = NativeFunction(to_int)
         self.heap["float"] = NativeFunction(to_float)
+        self.heap["string"] = NativeFunction(to_str)
 
     def terminate(self, exit_value):
         self.terminated = True
@@ -250,11 +251,19 @@ def evaluate(node: Node, env: Environment):
                     raise IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
                                                    .format(node.file, node.line_num))
             elif isinstance(instance, ClassInstance):
-                return evaluate(obj, instance.env)
+                result = evaluate(obj, instance.env)
+                env.assign("=>", result)
+                return result
             else:
                 raise InterpretException("Not a class instance")
         else:
             raise InterpretException("Unknown Syntax")
+    elif isinstance(node, AnonymousCall):
+        evaluate(node.left, env)
+        right = node.right.args
+        fc = FuncCall((node.line_num, node.file), "=>")
+        fc.args = right
+        return evaluate(fc, env)
     elif isinstance(node, OperatorNode):
         left = evaluate(node.left, env)
         right = evaluate(node.right, env)
@@ -293,7 +302,7 @@ def evaluate(node: Node, env: Environment):
         return result
     elif isinstance(node, IfStmt):
         cond = evaluate(node.condition, env)
-        if cond.value:
+        if cond:
             return evaluate(node.then_block, env)
         else:
             return evaluate(node.else_block, env)
@@ -343,6 +352,7 @@ def evaluate(node: Node, env: Environment):
                     e = evaluate(arg, env)
                     scope.assign(func.params[i].name, e)
             result = evaluate(func.body, scope)
+            env.assign("=>", result)
             return result
         elif isinstance(func, NativeFunction):
             args = []
@@ -384,6 +394,9 @@ def evaluate(node: Node, env: Environment):
     elif isinstance(node, int) or isinstance(node, float) or isinstance(node, Null) or isinstance(node, Boolean) or \
             isinstance(node, NativeTypes):
         return node
+    elif isinstance(node, lex.InvalidToken):
+        raise InterpretException("Non-default argument follows default argument, in {}, at line {}"
+                                 .format(node.file, node.line_num))
     else:
         raise InterpretException("Invalid Syntax Tree in {}, at line {}".format(node.file, node.line_num))
 
@@ -391,6 +404,8 @@ def evaluate(node: Node, env: Environment):
 def arithmetic(left, right, symbol):
     if isinstance(left, int) or isinstance(left, float):
         return num_arithmetic(left, right, symbol)
+    elif isinstance(left, String):
+        return string_arithmetic(left, right, symbol)
     elif isinstance(left, Primitive):
         return primitive_arithmetic(left, right, symbol)
     elif isinstance(left, ClassInstance):
@@ -400,6 +415,19 @@ def arithmetic(left, right, symbol):
         return res
     else:
         return raw_type_comparison(left, right, symbol)
+
+
+def string_arithmetic(left, right, symbol):
+    if symbol == "==":
+        result = left == right
+    elif symbol == "!=":
+        result = left != right
+    elif symbol == "+":
+        result = left + right
+    else:
+        raise TypeException("Unsupported operation between string and " + typeof(right))
+
+    return result
 
 
 def raw_type_comparison(left, right, symbol):
@@ -533,18 +561,3 @@ def get_boolean(expr):
         return TRUE
     else:
         return FALSE
-
-
-class InterpretException(Exception):
-    def __init__(self, msg=""):
-        Exception.__init__(self, msg)
-
-
-class SplException(InterpretException):
-    def __init__(self, msg=""):
-        InterpretException.__init__(self, msg)
-
-
-class IndexOutOfRangeException(SplException):
-    def __init__(self, msg):
-        SplException.__init__(self, msg)

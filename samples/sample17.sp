@@ -1,7 +1,10 @@
-p = pair();
 
-p[3] = 6;
-p[4] = "aas";
+function foo(n) {
+    function () {
+        n = n + 1;
+        return n;
+    }
+}
+f = foo(3)=>();
 
-print(p);
-print(system.argv);
+print(f);

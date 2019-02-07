@@ -76,7 +76,9 @@ if __name__ == "__main__":
 
         block = lexer.parse()
         if argv["ast"]:
+            print("===== Abstract Syntax Tree =====")
             print(block)
+            print("===== End of AST =====")
         if argv["debugger"]:
             spl_interpreter.DEBUG = True
 

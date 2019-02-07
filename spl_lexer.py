@@ -12,7 +12,7 @@ BINARY_OPERATORS = {"+": "add", "-": "sub", "*": "mul", "/": "div", "%": "mod",
 UNARY_OPERATORS = {"!": "not"}
 OTHERS = {"="}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
-RESERVED = {"class", "function", "if", "else", "new", "extends", "return", "break", "continue",
+RESERVED = {"class", "function", "def", "if", "else", "new", "extends", "return", "break", "continue",
             "true", "false", "null", "operator", "while", "for", "import"}
 OMITS = {"\n", "\r", "\t", " "}
 
@@ -161,6 +161,8 @@ class Lexer:
                 self.tokens.append(IdToken(line_num, part))
             elif part == EOL:
                 self.tokens.append(IdToken(line_num, EOL))
+            elif part == "=>":
+                self.tokens.append(IdToken(line_num, part))
             elif part in OMITS:
                 pass
             else:
@@ -222,7 +224,7 @@ class Lexer:
                 line = (token.line_number(), token.file_name())
                 if isinstance(token, IdToken):
                     sym = token.symbol
-                    if sym == "function":
+                    if sym == "function" or sym == "def":
                         i += 1
                         f_token: IdToken = self.tokens[i]
                         f_name = f_token.symbol
@@ -351,7 +353,17 @@ class Lexer:
                         if call_nest > 0:
                             parser.build_line()
                     elif sym == ".":
+                        # next_token = self.tokens[i + 1]
+                        # if isinstance(next_token, IdToken) and next_token.symbol == "(":
+                        #     parser.build_line()
+                        #     parser.add_anonymous_call(line)
+                        #     call_nest += 1
+                        # else:
                         parser.add_dot(line, extra_precedence)
+                    elif sym == "=>":
+                        parser.add_anonymous_call(line, extra_precedence)
+                        i += 1
+                        call_nest += 1
                     elif sym in BINARY_OPERATORS:
                         if sym == "-" and (i == 0 or is_neg(self.tokens[i - 1])):
                             parser.add_neg(line, extra_precedence)
@@ -464,7 +476,7 @@ def parse_def(f_name, tokens, i, func_count, parser):
                 else:
                     params.append(sbl)
             i += 1
-        presets = [InvalidToken() for _ in range(len(params) - len(presets))] + presets
+        presets = [InvalidToken(tup) for _ in range(len(params) - len(presets))] + presets
         # print(presets)
         parser.build_func_params(params, presets)
     return i, func_count
@@ -520,7 +532,8 @@ def normalize(string):
             s = string[0]
             last_type = char_type(s)
             self_concatenate = {0, 1, 8, 9, 10, 11, 14}
-            cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0), (15, 9), (17, 9), (16, 9), (10, 9), (11, 9)}
+            cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0), (15, 9), (17, 9), (16, 9), (10, 9), (11, 9),
+                                 (9, 8)}
             for i in range(1, len(string), 1):
                 char = string[i]
                 t = char_type(char)
@@ -690,9 +703,9 @@ class IdToken(Token):
         return self.__str__()
 
 
-class InvalidToken:
-    def __init__(self):
-        pass
+class InvalidToken(psr.Node):
+    def __init__(self, line):
+        psr.Node.__init__(self, line)
 
     def __str__(self):
         return "invalid"

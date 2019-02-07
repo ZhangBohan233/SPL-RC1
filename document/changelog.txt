@@ -1,3 +1,14 @@
+===== Build 0016: 2019/02/06 =====
+
+*Added syntax:
+    *"=>" for calling the returning value of the last function
+*Bug fixes:
+    *Fixed a bug that return statement cannot followed by function declaration.
+    *Missing positional argument may caused internal crash
+*Added native function: string()
+*Added operations between string literals
+*Added functions in "math" library
+
 ===== Build 0015: 2019/02/06 =====
 
 *Bug fixes:
