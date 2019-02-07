@@ -9,6 +9,7 @@
 *Bug fixes:
     *Unavailable console
     *String escape not displaying properly
+*Added command-line helps
 
 ===== Build 0016: 2019/02/06 =====
 
