@@ -363,9 +363,9 @@ def print_(*args):
     return NULL
 
 
-def input_(prompt):
-    s = input(prompt)
-    return s
+def input_(*prompt):
+    s = input(*prompt)
+    return String(s)
 
 
 def typeof(obj):

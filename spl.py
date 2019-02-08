@@ -81,54 +81,52 @@ def print_help():
 
 if __name__ == "__main__":
     argv = parse_arg(sys.argv)
-    if not argv:
-        exit(0)
+    if argv:
+        file_name = argv["file"]
 
-    file_name = argv["file"]
+        f = open(file_name, "r")
 
-    f = open(file_name, "r")
+        try:
+            lex_start = time.time()
 
-    try:
-        lex_start = time.time()
+            lexer = spl_lexer.Lexer()
+            lexer.script_dir = argv["dir"]
+            lexer.file_name = file_name
+            lexer.tokenize(f)
 
-        lexer = spl_lexer.Lexer()
-        lexer.script_dir = argv["dir"]
-        lexer.file_name = file_name
-        lexer.tokenize(f)
+            if argv["tokens"]:
+                print(lexer.tokens)
 
-        if argv["tokens"]:
-            print(lexer.tokens)
+            parse_start = time.time()
 
-        parse_start = time.time()
+            block = lexer.parse()
+            if argv["ast"]:
+                print("===== Abstract Syntax Tree =====")
+                print(block)
+                print("===== End of AST =====")
+            if argv["debugger"]:
+                spl_interpreter.DEBUG = True
 
-        block = lexer.parse()
-        if argv["ast"]:
-            print("===== Abstract Syntax Tree =====")
-            print(block)
-            print("===== End of AST =====")
-        if argv["debugger"]:
-            spl_interpreter.DEBUG = True
+            interpret_start = time.time()
 
-        interpret_start = time.time()
+            itr = spl_interpreter.Interpreter(argv["argv"])
+            itr.set_ast(block)
+            result = itr.interpret()
 
-        itr = spl_interpreter.Interpreter(argv["argv"])
-        itr.set_ast(block)
-        result = itr.interpret()
+            end = time.time()
 
-        end = time.time()
+            if argv["exit"]:
+                print("Process finished with exit value " + str(result))
 
-        if argv["exit"]:
-            print("Process finished with exit value " + str(result))
+            if argv["vars"]:
+                print(itr.env.variables)
+                print("Heap: " + str(itr.env.heap))
 
-        if argv["vars"]:
-            print(itr.env.variables)
-            print("Heap: " + str(itr.env.heap))
+            if argv["timer"]:
+                print("Time used: tokenize: {}s, parse: {}s, execute: {}s.".format
+                      (parse_start - lex_start, interpret_start - parse_start, end - interpret_start))
 
-        if argv["timer"]:
-            print("Time used: tokenize: {}s, parse: {}s, execute: {}s.".format
-                  (parse_start - lex_start, interpret_start - parse_start, end - interpret_start))
-
-    except Exception as e:
-        raise e
-    finally:
-        f.close()
+        except Exception as e:
+            raise e
+        finally:
+            f.close()

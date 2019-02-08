@@ -1,3 +1,8 @@
+===== Build 0018: 2019/02/07 =====
+
+*Bug fixes:
+    *fixed bug that "input()" does not work properly.
+
 ===== Build 0017: 2019/02/07 =====
 
 *Added native functions:

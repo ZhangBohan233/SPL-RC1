@@ -146,6 +146,57 @@ f();
 ```
 and both of the codes will return `4`;
 
+Notice that the following two code segments
+```
+function fun() {
+    return 1;
+}
+```
+and
+```
+fun = function () {
+    return 1;
+}
+```
+are equivalent. But the first style is recommended for SPL.
+
 ### Objects
 
 SPL is object oriented. Objects in SPL are stored in key-value pairs.
+
+#### Class declaration:
+
+SPL uses keyword `class` to specify a class declaration. Attributes of a class
+lies directly under the class layer. For example:
+```
+class Person {
+    name = "unknown";
+    age = 0;
+}
+```
+Class constructor is a method that has same name of that class.
+```
+class Person {
+    name = "unknown";
+    age = 0;
+    function Person(n) {
+        name = n;
+    }
+}
+```
+
+Class inheritance uses the keyword `extends`. The subclass has all attributes
+of its superclass.
+
+```
+class Student extends Person {
+    grade = 0;
+    function Student(n, g) {
+        Person(n);
+        grade = g;
+    }
+}
+```
+
+SPL allows override. If you defined a method in the subclass which is already
+defined in the superclass, you will call the nearest one.

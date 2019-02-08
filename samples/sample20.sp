@@ -1,5 +1,5 @@
-f = f_open("console.py", "rb");
+s = input("What is your name?");
 
-st = f.read_one();
-print(st);
-//print(st[0]);
+print("Your name is: " + s);
+
+input();

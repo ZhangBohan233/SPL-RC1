@@ -397,7 +397,7 @@ def evaluate(node: Node, env: Environment):
     elif isinstance(node, int) or isinstance(node, float) or isinstance(node, Null) or isinstance(node, Boolean) or \
             isinstance(node, NativeTypes):
         return node
-    elif isinstance(node, lex.InvalidToken):
+    elif isinstance(node, InvalidToken):
         raise InterpretException("Non-default argument follows default argument, in {}, at line {}"
                                  .format(node.file, node.line_num))
     else:
@@ -522,6 +522,7 @@ def class_inheritance(cla, env, scope):
     """
     if cla.superclass_name:
         class_inheritance(env.get_class(cla.superclass_name), env, scope)
+        # scope.assign("super", scope.get(cla.superclass_name, (0, "class")))
 
     evaluate(cla.body, scope)
 

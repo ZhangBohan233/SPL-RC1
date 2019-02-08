@@ -117,6 +117,14 @@ class Parser:
             self.stack.append(fls)
             self.inner = Parser()
 
+    # def add_throw(self, line, exc_name):
+    #     if self.inner:
+    #         self.inner.add_throw(line, exc_name)
+    #     else:
+    #         exc = ThrowStmt(line, exc_name)
+    #         self.stack.append(exc)
+    #         self.inner = Parser()
+
     def add_function(self, line, f_name):
         if self.inner:
             self.inner.add_function(line, f_name)
@@ -758,6 +766,20 @@ class InvalidToken(Node):
 
     def __str__(self):
         return "invalid"
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class ThrowStmt(Node):
+    def __init__(self, line, exc_name):
+        Node.__init__(self, line)
+
+        self.e_name = exc_name
+        self.args = None
+
+    def __str__(self):
+        return "Throw({})".format(self.args)
 
     def __repr__(self):
         return self.__str__()
