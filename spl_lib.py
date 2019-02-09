@@ -1,5 +1,6 @@
 import time as time_lib
 import spl_interpreter as inter
+import spl_lexer as lex
 
 
 class Map:
@@ -131,6 +132,14 @@ class Boolean(Primitive):
         return "boolean"
 
 
+class NullPointer:
+    def __init__(self):
+        pass
+
+    def __eq__(self, other):
+        return isinstance(other, NullPointer)
+
+
 class NativeTypes:
     def __init__(self):
         pass
@@ -143,13 +152,13 @@ class String(NativeTypes):
     def __init__(self, lit):
         NativeTypes.__init__(self)
 
-        self.literal = lit
+        self.literal: str = lit
 
     def __str__(self):
         return self.literal
 
     def __repr__(self):
-        return self.literal
+        return self.__str__()
 
     def __eq__(self, other):
         return TRUE if isinstance(other, String) and self.literal == other.literal else FALSE
@@ -280,11 +289,13 @@ class Set(NativeTypes):
 
 class System(NativeTypes):
     argv = None
+    encoding = None
 
-    def __init__(self, argv_: list):
+    def __init__(self, argv_: list, enc: str):
         NativeTypes.__init__(self)
 
         type(self).argv = argv_
+        setattr(self, "encoding", enc)
 
     def time(self):
         return int(time_lib.time() * 1000)
@@ -415,6 +426,15 @@ def f_open(file, mode=String("r"), encoding=String("utf-8")):
     return File(f, str(mode))
 
 
+def eval_(expr):
+    lexer = lex.Lexer()
+    lexer.file_name = "expression"
+    lexer.script_dir = "expression"
+    lexer.tokenize([str(expr)])
+    block = lexer.parse()
+    return block
+
+
 class InterpretException(Exception):
     def __init__(self, msg=""):
         Exception.__init__(self, msg)
@@ -443,3 +463,4 @@ class IOException(SplException):
 NULL = Null()
 TRUE = Boolean(True)
 FALSE = Boolean(False)
+NULLPTR = NullPointer()

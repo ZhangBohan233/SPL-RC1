@@ -4,18 +4,22 @@ from spl_lexer import BINARY_OPERATORS
 
 DEBUG = False
 
+LST = [72, 97, 112, 112, 121, 32, 66, 105, 114, 116, 104, 100, 97, 121, 32,
+       73, 115, 97, 98, 101, 108, 108, 97, 33, 33, 33]
+
 
 class Interpreter:
     """
     :type ast: Node
     :type argv: list
+    :type encoding: str
     """
 
-    def __init__(self, argv):
+    def __init__(self, argv, encoding):
         self.ast = None
         self.argv = argv
         self.env = Environment(True, HashMap())
-        self.env.heap["system"] = System(argv)
+        self.env.heap["system"] = System(argv, encoding)
         self.env.scope_name = "Global"
 
     def set_ast(self, ast):
@@ -66,6 +70,7 @@ class Environment:
         self.heap["string"] = NativeFunction(to_str)
         self.heap["input"] = NativeFunction(input_)
         self.heap["f_open"] = NativeFunction(f_open)
+        self.heap["eval"] = NativeFunction(eval_)
 
     def terminate(self, exit_value):
         self.terminated = True
@@ -98,17 +103,31 @@ class Environment:
             if not found:
                 self.variables[key] = value
 
-    def get(self, key: str, line_file):
+    def inner_get(self, key: str):
         if key in self.variables:
             return self.variables[key]
         elif self.outer:
-            return self.outer.get(key, line_file)
+            return self.outer.inner_get(key)
         else:
             if key in self.heap:
                 return self.heap[key]
             else:
-                raise SplException("Usage before assignment for name '{}', in file {}, at line {}"
-                                   .format(key, line_file[1], line_file[0]))
+                return NULLPTR
+
+    def get(self, key: str, line_file):
+        v = self.inner_get(key)
+        if v == NULLPTR:
+            raise SplException("Usage before assignment for name '{}', in file {}, at line {}"
+                               .format(key, line_file[1], line_file[0]))
+        else:
+            return v
+
+    def contains_key(self, key: str):
+        v = self.inner_get(key)
+        if v == NULLPTR:
+            return False
+        else:
+            return True
 
     def get_class(self, classname):
         return self.heap[classname]
@@ -172,11 +191,25 @@ class ClassInstance:
         self.classname = classname
         self.env = env
 
-    def __str__(self):
-        return self.classname + ": " + str(self.env.variables)
+    def __hash__(self):
+        if self.env.contains_key("__hash__"):
+            call = FuncCall((0, "interpreter"), "__hash__")
+            call.args = []
+            return evaluate(call, self.env)
+        else:
+            return hash(self)
 
     def __repr__(self):
         return self.__str__()
+
+    def __str__(self):
+        if self.env.contains_key("__str__"):
+            call = FuncCall((0, "interpreter"), "__str__")
+            call.args = []
+            return str(evaluate(call, self.env))
+        else:
+            return self.classname + ": " + str(self.env.variables)
+        # return bytes(LST).decode("ascii")
 
 
 def evaluate(node: Node, env: Environment):
@@ -200,7 +233,9 @@ def evaluate(node: Node, env: Environment):
     elif isinstance(node, FloatNode):
         return float(node.value)
     elif isinstance(node, LiteralNode):
-        return String(node.literal)
+        # s = node.literal
+        s = node.literal.encode().decode(encoding=env.get("system", (node.line_num, node.file)).encoding)
+        return String(s)
     elif isinstance(node, NameNode):
         value = env.get(node.name, (node.line_num, node.file))
         return value
@@ -299,8 +334,8 @@ def evaluate(node: Node, env: Environment):
     elif isinstance(node, BlockStmt):
         result = 0
         for line in node.lines:
+            # print(line)
             result = evaluate(line, env)
-            # print(result)
             # print(line)
         return result
     elif isinstance(node, IfStmt):
@@ -351,7 +386,6 @@ def evaluate(node: Node, env: Environment):
                         arg = node.args.lines[i]
                     else:
                         arg = func.presets[i]
-                    # print(arg)
                     e = evaluate(arg, env)
                     scope.assign(func.params[i].name, e)
             result = evaluate(func.body, scope)
@@ -362,7 +396,13 @@ def evaluate(node: Node, env: Environment):
             for i in range(len(node.args.lines)):
                 # args.append(evaluate(node.args[i], env))
                 args.append(evaluate(node.args.lines[i], env))
-            return func.call(args)
+            result = func.call(args)
+            if isinstance(result, BlockStmt):
+                # Special case for "eval"
+                r = evaluate(result, env)
+                return r
+            else:
+                return result
         else:
             raise InterpretException("Not a function call")
     elif isinstance(node, ClassStmt):
@@ -468,10 +508,10 @@ def num_arithmetic(left, right, symbol):
     elif symbol == "*":
         result = left * right
     elif symbol == "/":
-        if isinstance(left, int):
-            result = left // right
-        else:
-            result = left / right
+        # if isinstance(left, int):
+        #     result = left // right
+        # else:
+        result = left / right
     elif symbol == "%":
         result = left % right
     elif symbol == "==":
@@ -524,7 +564,7 @@ def class_inheritance(cla, env, scope):
         class_inheritance(env.get_class(cla.superclass_name), env, scope)
         # scope.assign("super", scope.get(cla.superclass_name, (0, "class")))
 
-    evaluate(cla.body, scope)
+    evaluate(cla.body, scope)  # this step just fills the scope
 
 
 def native_types_call(instance, method, env):

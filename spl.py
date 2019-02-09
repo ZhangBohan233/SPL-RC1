@@ -6,37 +6,44 @@ import spl_lexer
 import spl_interpreter
 import time
 
+EXE_NAME = "spl.py"
+
 INSTRUCTION = """Welcome to Slowest Programming Language.
 
-Try "spl.py help" to see usage."""
+Try "{} help" to see usage.""".format(EXE_NAME)
 
-PY_HELP = """Name
-    spl.py  -  Slowest Programming Language command line interface.
+HELP = """Name
+    {}  -  Slowest Programming Language command line interface.
 
 Usage
-    spl.py [OPTIONS]... FILE [ARGV]...
+    {} [OPTIONS]... FILE [ARGV]...
     
 Description
 OPTIONS:    
-    -ast,    --abstract syntax tree    shows the structure of the abstract syntax tree
+    -ast,    --abstract syntax tree    shows the structure of the abstract syntax tree     
     -debug,  --debugger                enables debugger
     -exit,   --exit value              shows the program's exit value
     -timer,  --timer                   enables the timer
     -tokens, --tokens                  shows language tokens
     -vars,   --variables               prints out all global variables after execution
     
+FLAGS:
+    -Dfile ENCODING    --file encoding    changes the sp file decoding
+    
 ARGV:
     command-line argument for the spl program
     
 Example
-    spl.py -ast -tokens example.sp -something
-"""
+    {} -ast -tokens example.sp -something
+""".format(EXE_NAME, EXE_NAME, EXE_NAME)
 
 
 def parse_arg(args):
     d = {"file": None, "dir": None, "debugger": False, "timer": False, "ast": False, "tokens": False,
-         "vars": False, "argv": [], "exit": False}
-    for i in range(1, len(args), 1):
+         "vars": False, "argv": [], "encoding": "ascii", "exit": False}
+    # for i in range(1, len(args), 1):
+    i = 1
+    while i < len(args):
         arg = args[i]
         if d["file"] is not None:
             d["argv"].append(arg)
@@ -55,6 +62,9 @@ def parse_arg(args):
                     d["vars"] = True
                 elif flag == "exit":
                     d["exit"] = True
+                elif flag == "Dfile":
+                    i += 1
+                    d["encoding"] = args[i]
                 else:
                     print("unknown flag: -" + flag)
             elif arg == "help":
@@ -64,6 +74,7 @@ def parse_arg(args):
                 d["file"] = arg
                 d["dir"] = spl_lexer.get_dir(d["file"])
                 d["argv"].append(arg)
+        i += 1
     if d["file"] is None:
         print_usage()
         return None
@@ -76,7 +87,7 @@ def print_usage():
 
 
 def print_help():
-    print(PY_HELP)
+    print(HELP)
 
 
 if __name__ == "__main__":
@@ -84,7 +95,8 @@ if __name__ == "__main__":
     if argv:
         file_name = argv["file"]
 
-        f = open(file_name, "r")
+        encoding = argv["encoding"]
+        f = open(file_name, "r", encoding=encoding)
 
         try:
             lex_start = time.time()
@@ -109,7 +121,7 @@ if __name__ == "__main__":
 
             interpret_start = time.time()
 
-            itr = spl_interpreter.Interpreter(argv["argv"])
+            itr = spl_interpreter.Interpreter(argv["argv"], encoding)
             itr.set_ast(block)
             result = itr.interpret()
 

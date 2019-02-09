@@ -12,7 +12,7 @@ if __name__ == "__main__":
     line_terminated = True
 
     lex2 = spl_interpreter.lex.Lexer()
-    itr = spl_interpreter.Interpreter([])
+    itr = spl_interpreter.Interpreter([], "utf8")
     lines = []
     while True:
         if line_terminated:

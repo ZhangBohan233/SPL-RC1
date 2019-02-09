@@ -411,7 +411,7 @@ class Lexer:
                     value = token.text
                     parser.add_literal(line, value)
                 elif token.is_eof():
-                    # parser.build_line()
+                    parser.build_line()
                     break
                 else:
                     unexpected_token(token)

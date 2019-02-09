@@ -5,6 +5,10 @@ class Person {
         name = n;
     }
 
+    function __str__() {
+        return "asd";
+    }
+
     function get_name() {
         return "gg";
     }
@@ -27,3 +31,4 @@ class Student extends Person {
 
 a = new Student("ta", 1);
 print(a.get_name());
+print(a);

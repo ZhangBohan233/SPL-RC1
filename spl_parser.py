@@ -468,6 +468,9 @@ class FloatNode(NumNode):
 
 
 class LiteralNode(LeafNode):
+    """
+    :type literal: str
+    """
     def __init__(self, line, lit):
         LeafNode.__init__(self, line)
 

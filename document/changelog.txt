@@ -1,3 +1,15 @@
+===== Build 0019: 2019/02/09 =====
+
+*Functionality augment:
+    *Added support for object builtin method override
+*Added native function:
+    *"eval"
+*Optimization:
+    *Semicolon at the last of file might be omitted
+    *Changed integer division
+*Bug unfixed:
+    *UTF-8 coding
+
 ===== Build 0018: 2019/02/07 =====
 
 *Bug fixes:
