@@ -1,3 +1,15 @@
+===== Build 0020: 2019/02/10 =====
+
+*Added syntax:
+    *Multiple inheritance
+    *Abstract method
+    *Compiler label followed by "@"
+    *Private access of a class method or attribute
+*Bug fixes:
+    *Fixed encoding problem
+*Added abstract library classes:
+    *Queue, Stack
+
 ===== Build 0019: 2019/02/09 =====
 
 *Functionality augment:

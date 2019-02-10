@@ -10,13 +10,19 @@ BINARY_OPERATORS = {"+": "add", "-": "sub", "*": "mul", "/": "div", "%": "mod",
                     "&&": "and", "||": "or", "&": "band", "^": "xor", "|": "bor",
                     "<<": "lshift", ">>": "rshift"}
 UNARY_OPERATORS = {"!": "not"}
-OTHERS = {"="}
+OTHERS = {"=", "@"}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
 RESERVED = {"class", "function", "def", "if", "else", "new", "extends", "return", "break", "continue",
-            "true", "false", "null", "operator", "while", "for", "import", "throw"}
+            "true", "false", "null", "operator", "while", "for", "import", "throw", "abstract",
+            "private"}
 OMITS = {"\n", "\r", "\t", " "}
 
 OP_EQ = {"+", "-", "*", "/", "%", "&", "^", "|", "<<", ">>"}
+
+ESCAPES = {"n": "\n", "t": "\t", "0": "\0", "a": "\a", "r": "\r", "f": "\f", "v": "\v", "b": "\b", "\\": "\\"}
+
+PUBLIC = 0
+PRIVATE = 1
 
 SPL_PATH = os.getcwd()
 
@@ -207,13 +213,9 @@ class Lexer:
         parser = psr.Parser()
         i = 0
         func_count = 0
-        # in_expr = False
-        # expr_layer = 0
-        # in_call_expr = False
         in_cond = False
-        # in_call = False
+        auth = PUBLIC
         call_nest = 0
-        # in_continue_call = False
         brace_count = 0
         class_brace = -1
         extra_precedence = 0
@@ -228,14 +230,15 @@ class Lexer:
                         i += 1
                         f_token: IdToken = self.tokens[i]
                         f_name = f_token.symbol
-                        res = parse_def(f_name, self.tokens, i, func_count, parser)
+                        res = parse_def(f_name, self.tokens, i, func_count, parser, auth)
                         i = res[0]
                         func_count = res[1]
+                        auth = PUBLIC
                     elif sym == "operator":
                         i += 1
                         op_token: IdToken = self.tokens[i]
                         op_name = "@" + BINARY_OPERATORS[op_token.symbol]
-                        res = parse_def(op_name, self.tokens, i, func_count, parser)
+                        res = parse_def(op_name, self.tokens, i, func_count, parser, PUBLIC)
                         i = res[0]
                         func_count = res[1]
                     elif sym == "class":
@@ -246,9 +249,19 @@ class Lexer:
                         class_brace = brace_count
                     elif sym == "extends":
                         i += 1
-                        c_token = self.tokens[i]
-                        superclass_name = c_token.symbol
-                        parser.add_extends(superclass_name)
+                        cla = parser.get_current_class()
+                        while True:
+                            c_token = self.tokens[i]
+                            superclass_name = c_token.symbol
+                            parser.add_extends(superclass_name, cla)
+                            if isinstance(self.tokens[i + 1], IdToken) and self.tokens[i + 1].symbol == ",":
+                                i += 2
+                            else:
+                                break
+                    elif sym == "abstract":
+                        parser.add_abstract(line)
+                    elif sym == "private":
+                        auth = PRIVATE
                     elif sym == "new":
                         i += 1
                         c_token = self.tokens[i]
@@ -295,6 +308,8 @@ class Lexer:
                         parser.add_null(line)
                     elif sym == "throw":
                         pass
+                    elif sym == "@":
+                        i += 1
                     elif sym == "{":
                         brace_count += 1
                         parser.new_block()
@@ -394,15 +409,16 @@ class Lexer:
                                 call_nest += 1
                                 i += 1
                             elif next_token.symbol == "[":
-                                parser.add_name(line, sym)
+                                parser.add_name(line, sym, auth)
                                 parser.add_dot(line, extra_precedence)
                                 parser.add_get_set(line)
                                 call_nest += 1
                                 i += 1
                             else:
-                                parser.add_name(line, sym)
+                                parser.add_name(line, sym, auth)
                         else:
-                            parser.add_name(line, sym)
+                            parser.add_name(line, sym, auth)
+                        auth = PUBLIC
 
                 elif isinstance(token, NumToken):
                     value = token.value
@@ -420,6 +436,8 @@ class Lexer:
                 raise ParseException("Parse error in '{}', at line {}".format(self.tokens[i].file_name(),
                                                                               self.tokens[i].line_number()))
 
+        if in_cond or call_nest != 0 or brace_count != 0 or extra_precedence != 0:
+            raise ParseException("Reach the end while parsing")
         return parser.get_as_block()
 
 
@@ -433,7 +451,7 @@ def unexpected_token(token):
                                                                            token.line_number()))
 
 
-def parse_def(f_name, tokens, i, func_count, parser):
+def parse_def(f_name, tokens, i, func_count, parser, auth):
     """
     Parses a function declaration into abstract syntax tree.
 
@@ -442,14 +460,15 @@ def parse_def(f_name, tokens, i, func_count, parser):
     :param i: the current reading index of the token list
     :param func_count: the count the anonymous functions
     :param parser: the Parser object
+    :param auth: the authority of this function
     :return: tuple(new index, new anonymous function count)
     """
     tup = (tokens[i].line_number(), tokens[i].file_name())
     if f_name == "(":
-        parser.add_function(tup, "af-{}".format(func_count))  # "af" stands for anonymous function
+        parser.add_function(tup, "af-{}".format(func_count), auth)  # "af" stands for anonymous function
         func_count += 1
     else:
-        parser.add_function(tup, f_name)
+        parser.add_function(tup, f_name, auth)
         i += 1
     front_par = tokens[i]
     if isinstance(front_par, IdToken) and front_par.symbol == "(":
@@ -591,6 +610,8 @@ def char_type(ch):
         return 16
     elif ch in {"+", "-", "*", "/", "%"}:
         return 17
+    elif ch == "@":
+        return 18
 
 
 def is_float(num_str):
@@ -668,7 +689,9 @@ class LiteralToken(Token):
     def __init__(self, line, t: str):
         Token.__init__(self, line)
 
-        self.text = t.encode().decode('unicode_escape')
+        # self.text = t.encode().decode('unicode_escape').encode('utf8').decode('utf8')
+        # self.text = t.encode().decode('unicode_escape')
+        self.text = replace_escapes(t)
 
     def is_literal(self):
         return True
@@ -703,6 +726,25 @@ class IdToken(Token):
 
     def __repr__(self):
         return self.__str__()
+
+
+def replace_escapes(text: str):
+    lst = []
+    in_slash = False
+    for i in range(len(text)):
+        ch = text[i]
+        if in_slash:
+            in_slash = False
+            if ch in ESCAPES:
+                lst.append(ESCAPES[ch])
+            else:
+                lst.append("\\" + ch)
+        else:
+            if ch == "\\":
+                in_slash = True
+            else:
+                lst.append(ch)
+    return "".join(lst)
 
 
 def get_dir(f_name: str):

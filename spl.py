@@ -40,7 +40,7 @@ Example
 
 def parse_arg(args):
     d = {"file": None, "dir": None, "debugger": False, "timer": False, "ast": False, "tokens": False,
-         "vars": False, "argv": [], "encoding": "ascii", "exit": False}
+         "vars": False, "argv": [], "encoding": None, "exit": False}
     # for i in range(1, len(args), 1):
     i = 1
     while i < len(args):
@@ -96,7 +96,11 @@ if __name__ == "__main__":
         file_name = argv["file"]
 
         encoding = argv["encoding"]
-        f = open(file_name, "r", encoding=encoding)
+        if encoding is not None:
+            assert isinstance(encoding, str)
+            f = open(file_name, "r", encoding=encoding)
+        else:
+            f = open(file_name, "r")
 
         try:
             lex_start = time.time()

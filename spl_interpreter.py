@@ -39,6 +39,7 @@ class Environment:
         self.is_global = is_global
         self.heap = heap  # Heap-allocated variables (global)
         self.variables = HashMap()  # Stack variables
+        self.privates = set()
         self.outer = None  # Outer environment, only used for inner functions
         self.temp_vars = []
 
@@ -60,17 +61,20 @@ class Environment:
             return str(super)
 
     def _add_natives(self):
-        self.heap["print"] = NativeFunction(print_)
-        self.heap["type"] = NativeFunction(typeof)
-        self.heap["list"] = NativeFunction(make_list)
-        self.heap["pair"] = NativeFunction(make_pair)
-        self.heap["set"] = NativeFunction(make_set)
-        self.heap["int"] = NativeFunction(to_int)
-        self.heap["float"] = NativeFunction(to_float)
-        self.heap["string"] = NativeFunction(to_str)
-        self.heap["input"] = NativeFunction(input_)
-        self.heap["f_open"] = NativeFunction(f_open)
-        self.heap["eval"] = NativeFunction(eval_)
+        self.add_heap("print", NativeFunction(print_))
+        self.add_heap("type", NativeFunction(typeof))
+        self.add_heap("pair", NativeFunction(make_pair))
+        self.add_heap("list", NativeFunction(make_list))
+        self.add_heap("set", NativeFunction(make_set))
+        self.add_heap("int", NativeFunction(to_int))
+        self.add_heap("float", NativeFunction(to_float))
+        self.add_heap("string", NativeFunction(to_str))
+        self.add_heap("input", NativeFunction(input_))
+        self.add_heap("f_open", NativeFunction(f_open))
+        self.add_heap("eval", NativeFunction(eval_))
+
+    def add_heap(self, k, v):
+        self.heap[k] = v
 
     def terminate(self, exit_value):
         self.terminated = True
@@ -103,6 +107,22 @@ class Environment:
             if not found:
                 self.variables[key] = value
 
+    def add_private(self, key):
+        if key in self.variables:
+            self.privates.add(key)
+        else:
+            # look for outer first
+            out = self.outer
+            found = False
+            while out:
+                if key in out.variables:
+                    out.privates.add(key)
+                    found = True
+                    break
+                out = out.outer
+            if not found:
+                self.privates.add(key)
+
     def inner_get(self, key: str):
         if key in self.variables:
             return self.variables[key]
@@ -114,7 +134,22 @@ class Environment:
             else:
                 return NULLPTR
 
+    def is_private(self, key):
+        if key in self.privates:
+            return True
+        elif self.outer:
+            return self.outer.is_private(key)
+        else:
+            return False
+
     def get(self, key: str, line_file):
+        """
+
+        :param key:
+        :param line_file:
+        :return:
+        :rtype: Variable
+        """
         v = self.inner_get(key)
         if v == NULLPTR:
             raise SplException("Usage before assignment for name '{}', in file {}, at line {}"
@@ -129,8 +164,8 @@ class Environment:
         else:
             return True
 
-    def get_class(self, classname):
-        return self.heap[classname]
+    def get_class(self, class_name):
+        return self.heap[class_name]
 
 
 class NativeFunction:
@@ -171,24 +206,24 @@ class Class:
     def __init__(self, class_name, body):
         self.class_name = class_name
         self.body = body
-        self.superclass_name = None
+        self.superclass_names = []
 
     def __str__(self):
-        if self.superclass_name:
-            return "Class<> extends " + self.superclass_name
+        if len(self.superclass_names):
+            return "Class<{}> extends {}".format(self.class_name, self.superclass_names)
         else:
-            return "Class<>"
+            return "Class<{}>".format(self.class_name)
 
     def __repr__(self):
         return self.__str__()
 
 
 class ClassInstance:
-    def __init__(self, env, classname):
+    def __init__(self, env, class_name):
         """
         :type env: Environment
         """
-        self.classname = classname
+        self.class_name = class_name
         self.env = env
 
     def __hash__(self):
@@ -199,6 +234,12 @@ class ClassInstance:
         else:
             return hash(self)
 
+    def __eq__(self, other):
+        pass
+
+    def __ne__(self, other):
+        pass
+
     def __repr__(self):
         return self.__str__()
 
@@ -208,7 +249,7 @@ class ClassInstance:
             call.args = []
             return str(evaluate(call, self.env))
         else:
-            return self.classname + ": " + str(self.env.variables)
+            return self.class_name + ": " + str(self.env.variables)
         # return bytes(LST).decode("ascii")
 
 
@@ -234,7 +275,7 @@ def evaluate(node: Node, env: Environment):
         return float(node.value)
     elif isinstance(node, LiteralNode):
         # s = node.literal
-        s = node.literal.encode().decode(encoding=env.get("system", (node.line_num, node.file)).encoding)
+        s = node.literal
         return String(s)
     elif isinstance(node, NameNode):
         value = env.get(node.name, (node.line_num, node.file))
@@ -255,6 +296,8 @@ def evaluate(node: Node, env: Environment):
         value = evaluate(node.right, env)
         if isinstance(key, NameNode):
             env.assign(key.name, value)
+            if key.auth == lex.PRIVATE:
+                env.add_private(key.name)
             return value
         elif isinstance(key, Dot):
             node = key
@@ -271,31 +314,7 @@ def evaluate(node: Node, env: Environment):
             scope.assign(name_lst[-1], value)
             return value
     elif isinstance(node, Dot):
-        instance = evaluate(node.left, env)
-        obj = node.right
-        if isinstance(obj, NameNode):
-            if isinstance(instance, NativeTypes):
-                return native_types_invoke(instance, obj)
-            elif isinstance(instance, ClassInstance):
-                attr = instance.env.variables[obj.name]
-                return attr
-            else:
-                raise InterpretException("Not a class instance")
-        elif isinstance(obj, FuncCall):
-            if isinstance(instance, NativeTypes):
-                try:
-                    return native_types_call(instance, obj, env)
-                except IndexError as ie:
-                    raise IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
-                                                   .format(node.file, node.line_num))
-            elif isinstance(instance, ClassInstance):
-                result = evaluate(obj, instance.env)
-                env.assign("=>", result)
-                return result
-            else:
-                raise InterpretException("Not a class instance")
-        else:
-            raise InterpretException("Unknown Syntax")
+        return call_dot(node, env)
     elif isinstance(node, AnonymousCall):
         evaluate(node.left, env)
         right = node.right.args
@@ -367,47 +386,14 @@ def evaluate(node: Node, env: Environment):
         f = Function(node.params, node.presets, node.body)
         f.outer_scope = env
         env.assign(node.name, f)
+        if node.auth == lex.PRIVATE:
+            env.add_private(node.name)
         return f
     elif isinstance(node, FuncCall):
-        func = env.get(node.f_name, (node.line_num, node.file))
-        if isinstance(func, Function):
-            scope = Environment(False, env.heap)
-            scope.scope_name = "Function scope<{}>".format(node.f_name)
-            scope.outer = func.outer_scope  # supports for closure
-
-            if len(env.temp_vars) == len(func.params):
-                for i in range(len(func.params)):
-                    scope.assign(func.params[i].name, env.temp_vars[i])
-                env.temp_vars.clear()
-            else:
-                for i in range(len(func.params)):
-                    # Assign function arguments
-                    if i < len(node.args.lines):
-                        arg = node.args.lines[i]
-                    else:
-                        arg = func.presets[i]
-                    e = evaluate(arg, env)
-                    scope.assign(func.params[i].name, e)
-            result = evaluate(func.body, scope)
-            env.assign("=>", result)
-            return result
-        elif isinstance(func, NativeFunction):
-            args = []
-            for i in range(len(node.args.lines)):
-                # args.append(evaluate(node.args[i], env))
-                args.append(evaluate(node.args.lines[i], env))
-            result = func.call(args)
-            if isinstance(result, BlockStmt):
-                # Special case for "eval"
-                r = evaluate(result, env)
-                return r
-            else:
-                return result
-        else:
-            raise InterpretException("Not a function call")
+        return call_function(node, env)
     elif isinstance(node, ClassStmt):
         cla = Class(node.class_name, node.block)
-        cla.superclass_name = node.superclass_name
+        cla.superclass_names = node.superclass_names
         env.assign(node.class_name, cla)
         return cla
     elif isinstance(node, ClassInit):
@@ -440,8 +426,83 @@ def evaluate(node: Node, env: Environment):
     elif isinstance(node, InvalidToken):
         raise InterpretException("Non-default argument follows default argument, in {}, at line {}"
                                  .format(node.file, node.line_num))
+    elif isinstance(node, Abstract):
+        raise AbstractMethodException("Method is not implemented, in {}, at line {}".format(node.file, node.line_num))
     else:
         raise InterpretException("Invalid Syntax Tree in {}, at line {}".format(node.file, node.line_num))
+
+
+def call_function(node: FuncCall, env: Environment):
+    func = env.get(node.f_name, (node.line_num, node.file))
+    if isinstance(func, Function):
+        scope = Environment(False, env.heap)
+        scope.scope_name = "Function scope<{}>".format(node.f_name)
+        scope.outer = func.outer_scope  # supports for closure
+
+        if len(env.temp_vars) == len(func.params):
+            for i in range(len(func.params)):
+                scope.assign(func.params[i].name, env.temp_vars[i])
+            env.temp_vars.clear()
+        else:
+            for i in range(len(func.params)):
+                # Assign function arguments
+                if i < len(node.args.lines):
+                    arg = node.args.lines[i]
+                else:
+                    arg = func.presets[i]
+                e = evaluate(arg, env)
+                scope.assign(func.params[i].name, e)
+        result = evaluate(func.body, scope)
+        env.assign("=>", result)
+        return result
+    elif isinstance(func, NativeFunction):
+        args = []
+        for i in range(len(node.args.lines)):
+            # args.append(evaluate(node.args[i], env))
+            args.append(evaluate(node.args.lines[i], env))
+        result = func.call(args)
+        if isinstance(result, BlockStmt):
+            # Special case for "eval"
+            r = evaluate(result, env)
+            return r
+        else:
+            return result
+    else:
+        raise InterpretException("Not a function call")
+
+
+def call_dot(node: Dot, env: Environment):
+    instance = evaluate(node.left, env)
+    obj = node.right
+    if isinstance(obj, NameNode):
+        if isinstance(instance, NativeTypes):
+            return native_types_invoke(instance, obj)
+        elif isinstance(instance, ClassInstance):
+            if instance.env.is_private(obj.name):
+                raise UnauthorizedException("Class attribute {} has private access".format(obj.name))
+            else:
+                attr = instance.env.variables[obj.name]
+                return attr
+        else:
+            raise InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
+    elif isinstance(obj, FuncCall):
+        if isinstance(instance, NativeTypes):
+            try:
+                return native_types_call(instance, obj, env)
+            except IndexError as ie:
+                raise IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
+                                               .format(node.file, node.line_num))
+        elif isinstance(instance, ClassInstance):
+            if instance.env.is_private(obj.f_name):
+                raise UnauthorizedException("Class attribute {} has private access".format(obj.f_name))
+            else:
+                result = evaluate(obj, instance.env)
+                env.assign("=>", result)
+                return result
+        else:
+            raise InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
+    else:
+        raise InterpretException("Unknown Syntax")
 
 
 def arithmetic(left, right, symbol):
@@ -452,7 +513,7 @@ def arithmetic(left, right, symbol):
     elif isinstance(left, Primitive):
         return primitive_arithmetic(left, right, symbol)
     elif isinstance(left, ClassInstance):
-        fc = FuncCall(0, "@" + BINARY_OPERATORS[symbol])
+        fc = FuncCall((0, "interpreter"), "@" + BINARY_OPERATORS[symbol])
         left.env.temp_vars.append(right)
         res = evaluate(fc, left.env)
         return res
@@ -560,9 +621,8 @@ def class_inheritance(cla, env, scope):
     :type scope: Environment
     :return:
     """
-    if cla.superclass_name:
-        class_inheritance(env.get_class(cla.superclass_name), env, scope)
-        # scope.assign("super", scope.get(cla.superclass_name, (0, "class")))
+    for sc in cla.superclass_names:
+        class_inheritance(env.get_class(sc), env, scope)
 
     evaluate(cla.body, scope)  # this step just fills the scope
 

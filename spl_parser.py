@@ -27,11 +27,11 @@ class Parser:
     def __str__(self):
         return str(self.elements)
 
-    def add_name(self, line, n):
+    def add_name(self, line, n, auth):
         if self.inner:
-            self.inner.add_name(line, n)
+            self.inner.add_name(line, n, auth)
         else:
-            node = NameNode(line, n)
+            node = NameNode(line, n, auth)
             self.stack.append(node)
 
     def add_number(self, line, v):
@@ -125,11 +125,11 @@ class Parser:
     #         self.stack.append(exc)
     #         self.inner = Parser()
 
-    def add_function(self, line, f_name):
+    def add_function(self, line, f_name, auth):
         if self.inner:
-            self.inner.add_function(line, f_name)
+            self.inner.add_function(line, f_name, auth)
         else:
-            func = DefStmt(line, f_name)
+            func = DefStmt(line, f_name, auth)
             self.stack.append(func)
 
     def build_func_params(self, params: list, presets: list):
@@ -138,7 +138,7 @@ class Parser:
         else:
             func = self.stack.pop()
             loc = (func.line_num, func.file)
-            lst = [NameNode(loc, x) for x in params]
+            lst = [NameNode(loc, x, lex.PUBLIC) for x in params]
             pst = []
             for a in presets:
                 if isinstance(a, lex.IdToken):
@@ -151,7 +151,7 @@ class Parser:
                         else:
                             lex.unexpected_token(a)
                     else:
-                        pst.append(NameNode(loc, sbl))
+                        pst.append(NameNode(loc, sbl, lex.PUBLIC))
                 elif isinstance(a, lex.NumToken):
                     pst.append(get_number_node(loc, a.value))
                 elif isinstance(a, lex.LiteralToken):
@@ -296,12 +296,26 @@ class Parser:
             cs = ClassStmt(line, class_name)
             self.stack.append(cs)
 
-    def add_extends(self, superclass_name):
+    def get_current_class(self):
         if self.inner:
-            self.inner.add_extends(superclass_name)
+            return self.inner.get_current_class()
         else:
-            cs: ClassStmt = self.stack[-1]
-            cs.superclass_name = superclass_name
+            return self.stack[-1]
+
+    def add_extends(self, superclass_name: str, target_class):
+        if self.inner:
+            self.inner.add_extends(superclass_name, target_class)
+        else:
+            # cs: ClassStmt = self.stack[-1]
+            # cs.superclass_name = superclass_name
+            target_class: ClassStmt
+            target_class.superclass_names.append(superclass_name)
+
+    def add_abstract(self, line):
+        if self.inner:
+            self.inner.add_abstract(line)
+        else:
+            self.stack.append(Abstract(line))
 
     def build_class(self):
         if self.inner:
@@ -419,6 +433,14 @@ class Node:
         self.file = line[1]
 
 
+class Limited:
+    """
+    :type auth: int
+    """
+    def __init__(self, auth):
+        self.auth = auth
+
+
 class LeafNode(Node):
     def __init__(self, line):
         Node.__init__(self, line)
@@ -514,16 +536,21 @@ class UnaryOperator(Node):
         return self.__str__()
 
 
-class NameNode(LeafNode):
-    def __init__(self, line, n):
+class NameNode(LeafNode, Limited):
+    def __init__(self, line, n, auth):
         LeafNode.__init__(self, line)
+        Limited.__init__(self, auth)
 
         self.name = n
         self.index = None
         # self.nest = None
+        # print(str(auth) + " " + self.name)
 
     def __str__(self):
-        return "N(" + self.name + ")"
+        if self.auth == lex.PUBLIC:
+            return "N(" + self.name + ")"
+        else:
+            return "N(private " + self.name + ")"
 
     def __repr__(self):
         return self.__str__()
@@ -670,9 +697,10 @@ class ForLoopStmt(CondStmt):
         return self.__str__()
 
 
-class DefStmt(Node):
-    def __init__(self, line, f_name):
+class DefStmt(Node, Limited):
+    def __init__(self, line, f_name, auth):
         Node.__init__(self, line)
+        Limited.__init__(self, auth)
 
         self.name = f_name
         self.params = []
@@ -710,7 +738,7 @@ class ClassStmt(Node):
         Node.__init__(self, line)
 
         self.class_name = name
-        self.superclass_name = None
+        self.superclass_names = []
         self.block = None
 
     def __str__(self):
@@ -750,17 +778,15 @@ class Dot(OperatorNode):
         return self.__str__()
 
 
-# class ContinueCall(OperatorNode):
-#     def __init__(self, extra):
-#         OperatorNode.__init__(self, extra)
-#
-#         self.operation = ")("
-#
-#     def __str__(self):
-#         return "{}>>{}".format(self.left, self.right)
-#
-#     def __repr__(self):
-#         return self.__str__()
+class Abstract(LeafNode):
+    def __init__(self, line):
+        LeafNode.__init__(self, line)
+
+    def __str__(self):
+        return "abstract"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class InvalidToken(Node):

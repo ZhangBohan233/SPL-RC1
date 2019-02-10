@@ -1,6 +1,6 @@
 class GouZi {
 
-    event = "今天狗子生日！";
+    event = "样本25\n\t ggg";
     def GouZi() {
 
     }

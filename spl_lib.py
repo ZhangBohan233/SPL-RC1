@@ -381,7 +381,7 @@ def input_(*prompt):
 
 def typeof(obj):
     if isinstance(obj, inter.ClassInstance):
-        return obj.classname
+        return obj.class_name
     elif isinstance(obj, Primitive):
         return obj.type_name()
     elif isinstance(obj, NativeTypes):
@@ -456,6 +456,16 @@ class IndexOutOfRangeException(SplException):
 
 
 class IOException(SplException):
+    def __init__(self, msg):
+        SplException.__init__(self, msg)
+
+
+class AbstractMethodException(SplException):
+    def __init__(self, msg):
+        SplException.__init__(self, msg)
+
+
+class UnauthorizedException(SplException):
     def __init__(self, msg):
         SplException.__init__(self, msg)
 
