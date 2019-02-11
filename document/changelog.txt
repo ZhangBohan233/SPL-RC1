@@ -1,3 +1,11 @@
+===== Build 0021: 2019/02/10 =====
+
+*Added syntax:
+    *"===" and "!==" for comparing object memory address
+    *Operator "instanceof"
+    *instance id
+    *instance mark "this"
+
 ===== Build 0020: 2019/02/10 =====
 
 *Added syntax:

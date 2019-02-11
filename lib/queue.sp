@@ -70,23 +70,6 @@ class LLNode {
     after = null;
     value = null;
 
-    operator ==(other) {
-        if (type(other) == "LLNode") {
-            if (other.value == value) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    operator !=(other) {
-        if (type(other) == "LLNode") {
-            if (other.value == value) {
-                return false;
-            }
-        }
-        return true;
-    }
 }
 
 
@@ -155,7 +138,7 @@ class LinkedList extends Deque {
     function remove_first() {
         n = head;
         head = head.after;
-        if (head != null) {
+        if (head !== null) {
             head.before = null;
         }
         size_ -= 1;

@@ -6,7 +6,8 @@ PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "<<": 40, ">>": 40,
               ".": 500, "!": 200, "neg": 200, "return": 1,
               "+=": 2, "-=": 2, "*=": 2, "/=": 2, "%=": 2,
-              "&=": 2, "^=": 2, "|=": 2, "<<=": 2, ">>=": 2, "=>": 500}
+              "&=": 2, "^=": 2, "|=": 2, "<<=": 2, ">>=": 2, "=>": 500,
+              "===": 20, "!==": 20, "instanceof": 25}
 
 MULTIPLIER = 1000
 
@@ -301,6 +302,12 @@ class Parser:
             return self.inner.get_current_class()
         else:
             return self.stack[-1]
+
+    # def add_this(self, line):
+    #     if self.inner:
+    #         self.inner.add_this(line)
+    #     else:
+    #         self.stack.append(SelfCallStmt(line))
 
     def add_extends(self, superclass_name: str, target_class):
         if self.inner:
@@ -812,6 +819,17 @@ class ThrowStmt(Node):
 
     def __repr__(self):
         return self.__str__()
+
+
+# class SelfCallStmt(LeafNode):
+#     def __init__(self, line):
+#         LeafNode.__init__(self, line)
+#
+#     def __str__(self):
+#         return "this"
+#
+#     def __repr__(self):
+#         return self.__str__()
 
 
 def parse_expr(lst):

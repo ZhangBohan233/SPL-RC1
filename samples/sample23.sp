@@ -55,6 +55,23 @@ class Student extends Person, Human, Creature {
         return grade;
     }
 
+    operator ==(other) {
+        if (other instanceof 'Student') {
+            if (name == other.name) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    operator !=(other) {
+        return this == other;
+    }
+
+    function get() {
+        return this;
+    }
+
     //function get_name() {
     //    return name;
     //}
@@ -62,9 +79,9 @@ class Student extends Person, Human, Creature {
 
 
 a = new Student("ta", 1);
-print(a.get_name());
-a.die();
-print(a);
-a.set_grade(6);
-print(a.get_grade());
-a.test();
+print(type(a));
+b = new Student("ta", 1);
+print(a == b);
+print(a != b);
+c = b.get();
+print(c === a);

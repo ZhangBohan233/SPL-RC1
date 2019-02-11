@@ -80,6 +80,17 @@ class StackNode:
         self.after = None
 
 
+class Counter:
+    def __init__(self):
+        self.count = 0
+
+    def increment(self):
+        self.count += 1
+
+    def get(self):
+        return self.count
+
+
 class Primitive:
     def __init__(self):
         pass
@@ -381,14 +392,14 @@ def input_(*prompt):
 
 def typeof(obj):
     if isinstance(obj, inter.ClassInstance):
-        return obj.class_name
+        return String(obj.class_name)
     elif isinstance(obj, Primitive):
-        return obj.type_name()
+        return String(obj.type_name())
     elif isinstance(obj, NativeTypes):
-        return obj.type_name()
+        return String(obj.type_name())
     else:
         t = type(obj)
-        return t.__name__
+        return String(t.__name__)
 
 
 def make_list(*initial_elements):

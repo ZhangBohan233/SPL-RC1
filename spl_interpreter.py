@@ -4,6 +4,8 @@ from spl_lexer import BINARY_OPERATORS
 
 DEBUG = False
 
+ID_COUNTER = Counter()
+
 LST = [72, 97, 112, 112, 121, 32, 66, 105, 114, 116, 104, 100, 97, 121, 32,
        73, 115, 97, 98, 101, 108, 108, 97, 33, 33, 33]
 
@@ -225,6 +227,9 @@ class ClassInstance:
         """
         self.class_name = class_name
         self.env = env
+        self.env.variables["id"] = ID_COUNTER.get()
+        ID_COUNTER.increment()
+        self.env.variables["this"] = self
 
     def __hash__(self):
         if self.env.contains_key("__hash__"):
@@ -397,29 +402,10 @@ def evaluate(node: Node, env: Environment):
         env.assign(node.class_name, cla)
         return cla
     elif isinstance(node, ClassInit):
-        cla: Class = env.get_class(node.class_name)
-
-        scope = Environment(False, env.heap)
-        scope.scope_name = "Class scope<{}>".format(cla.class_name)
-        class_inheritance(cla, env, scope)
-
-        # print(scope.variables)
-        instance = ClassInstance(scope, node.class_name)
-        for k in scope.variables.key_set():
-            v = scope.variables[k]
-            if isinstance(v, Function):
-                # v.parent = instance
-                v.outer_scope = scope
-
-        if node.args:
-            # constructor: Function = scope.variables[node.class_name]
-            fc = FuncCall((node.line_num, node.file), node.class_name)
-            fc.args = node.args
-            for a in fc.args.lines:
-                scope.temp_vars.append(evaluate(a, env))
-            # print(scope.variables)
-            evaluate(fc, scope)
-        return instance
+        return init_class(node, env)
+    # elif isinstance(node, SelfCallStmt):
+    #     instance = env.variables
+    #     print(instance)
     elif isinstance(node, int) or isinstance(node, float) or isinstance(node, Null) or isinstance(node, Boolean) or \
             isinstance(node, NativeTypes):
         return node
@@ -430,6 +416,32 @@ def evaluate(node: Node, env: Environment):
         raise AbstractMethodException("Method is not implemented, in {}, at line {}".format(node.file, node.line_num))
     else:
         raise InterpretException("Invalid Syntax Tree in {}, at line {}".format(node.file, node.line_num))
+
+
+def init_class(node: ClassInit, env: Environment):
+    cla: Class = env.get_class(node.class_name)
+
+    scope = Environment(False, env.heap)
+    scope.scope_name = "Class scope<{}>".format(cla.class_name)
+    class_inheritance(cla, env, scope)
+
+    # print(scope.variables)
+    instance = ClassInstance(scope, node.class_name)
+    for k in scope.variables.key_set():
+        v = scope.variables[k]
+        if isinstance(v, Function):
+            # v.parent = instance
+            v.outer_scope = scope
+
+    if node.args:
+        # constructor: Function = scope.variables[node.class_name]
+        fc = FuncCall((node.line_num, node.file), node.class_name)
+        fc.args = node.args
+        for a in fc.args.lines:
+            scope.temp_vars.append(evaluate(a, env))
+        # print(scope.variables)
+        evaluate(fc, scope)
+    return instance
 
 
 def call_function(node: FuncCall, env: Environment):
@@ -513,12 +525,28 @@ def arithmetic(left, right, symbol):
     elif isinstance(left, Primitive):
         return primitive_arithmetic(left, right, symbol)
     elif isinstance(left, ClassInstance):
+        return instance_arithmetic(left, right, symbol)
+    else:
+        return raw_type_comparison(left, right, symbol)
+
+
+def instance_arithmetic(left: ClassInstance, right, symbol):
+    if symbol == "===":
+        return TRUE if isinstance(right, ClassInstance) and \
+                       left.env.variables["id"] == right.env.variables["id"] else FALSE
+    elif symbol == "!==":
+        return TRUE if not isinstance(right, ClassInstance) or \
+                       left.env.variables["id"] != right.env.variables["id"] else FALSE
+    elif symbol == "instanceof":
+        if isinstance(right, String):
+            return TRUE if left.class_name == right.literal else FALSE
+        else:
+            raise TypeException("Class name must be String object")
+    else:
         fc = FuncCall((0, "interpreter"), "@" + BINARY_OPERATORS[symbol])
         left.env.temp_vars.append(right)
         res = evaluate(fc, left.env)
         return res
-    else:
-        return raw_type_comparison(left, right, symbol)
 
 
 def string_arithmetic(left, right, symbol):
@@ -528,6 +556,15 @@ def string_arithmetic(left, right, symbol):
         result = left != right
     elif symbol == "+":
         result = left + right
+    elif symbol == "===":
+        result = left == right
+    elif symbol == "!==":
+        result = left != right
+    elif symbol == "instanceof":
+        if isinstance(right, String):
+            return TRUE if left.type_name() == right.literal else FALSE
+        else:
+            raise TypeException("Class name must be String object")
     else:
         raise TypeException("Unsupported operation between string and " + typeof(right))
 
@@ -539,6 +576,15 @@ def raw_type_comparison(left, right, symbol):
         result = left == right
     elif symbol == "!=":
         result = left != right
+    elif symbol == "===":
+        result = left == right
+    elif symbol == "!==":
+        result = left != right
+    elif symbol == "instanceof":
+        if isinstance(right, String):
+            return TRUE if type(left).__name__ == right.literal else FALSE
+        else:
+            raise TypeException("Class name must be String object")
     else:
         raise InterpretException("Unsupported operation for raw type " + left.type_name())
 
@@ -554,7 +600,15 @@ def primitive_arithmetic(left: Primitive, right, symbol):
         result = left and right
     elif symbol == "||":
         result = left or right
-
+    elif symbol == "===":
+        result = left == right
+    elif symbol == "!==":
+        result = left != right
+    elif symbol == "instanceof":
+        if isinstance(right, String):
+            return TRUE if left.type_name() == right.literal else FALSE
+        else:
+            raise TypeException("Class name must be String object")
     else:
         raise InterpretException("Unsupported operation for primitive type " + left.type_name())
 
@@ -601,6 +655,15 @@ def num_arithmetic(left, right, symbol):
         result = left ^ right
     elif symbol == "|":
         result = left | right
+    elif symbol == "===":
+        result = left == right
+    elif symbol == "!==":
+        result = left != right
+    elif symbol == "instanceof":
+        if isinstance(right, String):
+            return TRUE if type(left).__name__ == right.literal else FALSE
+        else:
+            raise TypeException("Class name must be String object")
     else:
         raise InterpretException("No such symbol")
 

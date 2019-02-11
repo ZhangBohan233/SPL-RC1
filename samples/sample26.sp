@@ -10,3 +10,5 @@ print(a.remove_first());
 print(a.remove_first());
 print(a.remove_first());
 print(a);
+
+print(1 instanceof 'int');

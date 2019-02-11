@@ -8,7 +8,7 @@ MIDDLE = {"(", ")", "[", "]"}
 BINARY_OPERATORS = {"+": "add", "-": "sub", "*": "mul", "/": "div", "%": "mod",
                     "<": "lt", ">": "gt", "==": "eq", ">=": "ge", "<=": "le", "!=": "neq",
                     "&&": "and", "||": "or", "&": "band", "^": "xor", "|": "bor",
-                    "<<": "lshift", ">>": "rshift"}
+                    "<<": "lshift", ">>": "rshift", "===": "", "!==": "", "instanceof": ""}
 UNARY_OPERATORS = {"!": "not"}
 OTHERS = {"=", "@"}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
@@ -308,6 +308,8 @@ class Lexer:
                         parser.add_null(line)
                     elif sym == "throw":
                         pass
+                    # elif sym == "this":
+                    #     parser.add_this(line)
                     elif sym == "@":
                         i += 1
                     elif sym == "{":
