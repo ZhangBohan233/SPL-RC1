@@ -11,6 +11,34 @@ PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
 
 MULTIPLIER = 1000
 
+NODE = 0
+INT_NODE = 1
+FLOAT_NODE = 2
+LITERAL_NODE = 3
+NAME_NODE = 4
+BOOLEAN_STMT = 5
+NULL_STMT = 6
+BREAK_STMT = 7
+CONTINUE_STMT = 8
+ASSIGNMENT_NODE = 9
+DOT = 10
+ANONYMOUS_CALL = 11
+OPERATOR_NODE = 12
+NEGATIVE_EXPR = 13
+NOT_EXPR = 14
+RETURN_STMT = 15
+BLOCK_STMT = 16
+IF_STMT = 17
+WHILE_STMT = 18
+FOR_LOOP_STMT = 19
+DEF_STMT = 20
+FUNCTION_CALL = 21
+CLASS_STMT = 22
+CLASS_INIT = 23
+INVALID_TOKEN = 24
+ABSTRACT = 25
+THROW_STMT = 26
+
 
 class Parser:
     """
@@ -438,6 +466,7 @@ class Node:
     def __init__(self, line):
         self.line_num = line[0]
         self.file = line[1]
+        self.type = NODE
 
 
 class Limited:
@@ -480,7 +509,7 @@ class NumNode(LeafNode):
         self.value = v
 
     def __str__(self):
-        return "Num(" + self.value + ")"
+        return "Num(" + str(self.value) + ")"
 
     def __repr__(self):
         return self.__str__()
@@ -488,12 +517,16 @@ class NumNode(LeafNode):
 
 class IntNode(NumNode):
     def __init__(self, line, v):
-        NumNode.__init__(self, line, v)
+        NumNode.__init__(self, line, int(v))
+
+        self.type = INT_NODE
 
 
 class FloatNode(NumNode):
     def __init__(self, line, v):
-        NumNode.__init__(self, line, v)
+        NumNode.__init__(self, line, float(v))
+
+        self.type = FLOAT_NODE
 
 
 class LiteralNode(LeafNode):
@@ -503,6 +536,7 @@ class LiteralNode(LeafNode):
     def __init__(self, line, lit):
         LeafNode.__init__(self, line)
 
+        self.type = LITERAL_NODE
         self.literal = lit
 
     def __str__(self):
@@ -516,6 +550,7 @@ class OperatorNode(BinaryExpr):
     def __init__(self, line, extra):
         BinaryExpr.__init__(self, line)
 
+        self.type = OPERATOR_NODE
         self.assignment = False
         self.extra_precedence = extra * MULTIPLIER
         # print(self.extra_precedence)
@@ -548,6 +583,7 @@ class NameNode(LeafNode, Limited):
         LeafNode.__init__(self, line)
         Limited.__init__(self, auth)
 
+        self.type = NAME_NODE
         self.name = n
         self.index = None
         # self.nest = None
@@ -567,16 +603,21 @@ class AssignmentNode(BinaryExpr):
     def __init__(self, line):
         BinaryExpr.__init__(self, line)
 
+        self.type = ASSIGNMENT_NODE
+
 
 class AnonymousCall(OperatorNode):
     def __init__(self, line, extra):
         OperatorNode.__init__(self, line, extra)
+
+        self.type = ANONYMOUS_CALL
 
 
 class NegativeExpr(UnaryOperator):
     def __init__(self, line, extra):
         UnaryOperator.__init__(self, line, extra)
 
+        self.type = NEGATIVE_EXPR
         self.operation = "neg"
 
 
@@ -584,6 +625,7 @@ class NotExpr(UnaryOperator):
     def __init__(self, line, extra):
         UnaryOperator.__init__(self, line, extra)
 
+        self.type = NOT_EXPR
         self.operation = "!"
 
 
@@ -591,12 +633,15 @@ class ReturnStmt(UnaryOperator):
     def __init__(self, line):
         UnaryOperator.__init__(self, line, 0)
 
+        self.type = RETURN_STMT
         self.operation = "return"
 
 
 class BreakStmt(LeafNode):
     def __init__(self, line):
         LeafNode.__init__(self, line)
+
+        self.type = BREAK_STMT
 
     def __str__(self):
         return "break"
@@ -609,6 +654,8 @@ class ContinueStmt(LeafNode):
     def __init__(self, line):
         LeafNode.__init__(self, line)
 
+        self.type = CONTINUE_STMT
+
     def __str__(self):
         return "continue"
 
@@ -620,6 +667,7 @@ class BooleanStmt(LeafNode):
     def __init__(self, line, v):
         LeafNode.__init__(self, line)
 
+        self.type = BOOLEAN_STMT
         self.value = v
 
     def __str__(self):
@@ -633,6 +681,8 @@ class NullStmt(LeafNode):
     def __init__(self, line):
         LeafNode.__init__(self, line)
 
+        self.type = NULL_STMT
+
     def __str__(self):
         return "null"
 
@@ -643,6 +693,8 @@ class NullStmt(LeafNode):
 class BlockStmt(Node):
     def __init__(self, line):
         Node.__init__(self, line)
+
+        self.type = BLOCK_STMT
 
         self.lines = []
 
@@ -667,6 +719,7 @@ class IfStmt(CondStmt):
     def __init__(self, line):
         CondStmt.__init__(self, line)
 
+        self.type = IF_STMT
         self.then_block = None
         self.else_block = None
 
@@ -681,6 +734,7 @@ class WhileStmt(CondStmt):
     def __init__(self, line):
         CondStmt.__init__(self, line)
 
+        self.type = WHILE_STMT
         self.body = None
 
     def __str__(self):
@@ -694,6 +748,7 @@ class ForLoopStmt(CondStmt):
     def __init__(self, line):
         CondStmt.__init__(self, line)
 
+        self.type = FOR_LOOP_STMT
         self.body = None
         # self.stop = self.condition
 
@@ -709,6 +764,7 @@ class DefStmt(Node, Limited):
         Node.__init__(self, line)
         Limited.__init__(self, auth)
 
+        self.type = DEF_STMT
         self.name = f_name
         self.params = []
         self.presets = []
@@ -728,6 +784,7 @@ class FuncCall(LeafNode):
     def __init__(self, line, f_name):
         LeafNode.__init__(self, line)
 
+        self.type = FUNCTION_CALL
         self.f_name = f_name
         self.args = None
         self.is_get_set = False
@@ -744,6 +801,7 @@ class ClassStmt(Node):
     def __init__(self, line, name):
         Node.__init__(self, line)
 
+        self.type = CLASS_STMT
         self.class_name = name
         self.superclass_names = []
         self.block = None
@@ -759,6 +817,7 @@ class ClassInit(LeafNode):
     def __init__(self, line, name):
         LeafNode.__init__(self, line)
 
+        self.type = CLASS_INIT
         self.class_name = name
         self.args = None
 
@@ -776,6 +835,7 @@ class Dot(OperatorNode):
     def __init__(self, line, extra):
         OperatorNode.__init__(self, line, extra)
 
+        self.type = DOT
         self.operation = "."
 
     def __str__(self):
@@ -789,6 +849,8 @@ class Abstract(LeafNode):
     def __init__(self, line):
         LeafNode.__init__(self, line)
 
+        self.type = ABSTRACT
+
     def __str__(self):
         return "abstract"
 
@@ -799,6 +861,8 @@ class Abstract(LeafNode):
 class InvalidToken(Node):
     def __init__(self, line):
         Node.__init__(self, line)
+
+        self.type = INVALID_TOKEN
 
     def __str__(self):
         return "invalid"
@@ -811,6 +875,7 @@ class ThrowStmt(Node):
     def __init__(self, line, exc_name):
         Node.__init__(self, line)
 
+        self.type = THROW_STMT
         self.e_name = exc_name
         self.args = None
 

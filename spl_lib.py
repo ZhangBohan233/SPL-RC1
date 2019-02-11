@@ -151,7 +151,7 @@ class NullPointer:
         return isinstance(other, NullPointer)
 
 
-class NativeTypes:
+class NativeType:
     def __init__(self):
         pass
 
@@ -159,9 +159,9 @@ class NativeTypes:
         raise NotImplementedError
 
 
-class String(NativeTypes):
+class String(NativeType):
     def __init__(self, lit):
-        NativeTypes.__init__(self)
+        NativeType.__init__(self)
 
         self.literal: str = lit
 
@@ -193,9 +193,9 @@ class String(NativeTypes):
         return "string"
 
 
-class List(NativeTypes):
+class List(NativeType):
     def __init__(self, *initial):
-        NativeTypes.__init__(self)
+        NativeType.__init__(self)
 
         self.list = [*initial]
 
@@ -239,9 +239,9 @@ class List(NativeTypes):
         return len(self.list)
 
 
-class Pair(NativeTypes):
+class Pair(NativeType):
     def __init__(self):
-        NativeTypes.__init__(self)
+        NativeType.__init__(self)
 
         self.pair = {}
 
@@ -267,9 +267,9 @@ class Pair(NativeTypes):
         return "pair"
 
 
-class Set(NativeTypes):
+class Set(NativeType):
     def __init__(self):
-        NativeTypes.__init__(self)
+        NativeType.__init__(self)
 
         self.set = set()
 
@@ -298,12 +298,12 @@ class Set(NativeTypes):
         return "set"
 
 
-class System(NativeTypes):
+class System(NativeType):
     argv = None
     encoding = None
 
     def __init__(self, argv_: list, enc: str):
-        NativeTypes.__init__(self)
+        NativeType.__init__(self)
 
         type(self).argv = argv_
         setattr(self, "encoding", enc)
@@ -315,12 +315,12 @@ class System(NativeTypes):
         return "system"
 
 
-class File(NativeTypes):
+class File(NativeType):
     """
     :type fp:
     """
     def __init__(self, fp, mode):
-        NativeTypes.__init__(self)
+        NativeType.__init__(self)
 
         self.mode = mode
         self.fp = fp
@@ -395,7 +395,7 @@ def typeof(obj):
         return String(obj.class_name)
     elif isinstance(obj, Primitive):
         return String(obj.type_name())
-    elif isinstance(obj, NativeTypes):
+    elif isinstance(obj, NativeType):
         return String(obj.type_name())
     else:
         t = type(obj)

@@ -260,7 +260,7 @@ class ClassInstance:
 
 def evaluate(node: Node, env: Environment):
     """
-    Evaluates a abstract syntax tree node, with the corresponding worrking environment.
+    Evaluates a abstract syntax tree node, with the corresponding working environment.
 
     :param node: the node in abstract syntax tree to be evaluated
     :param env: the working environment
@@ -274,148 +274,175 @@ def evaluate(node: Node, env: Environment):
         return env.exit_value
     elif env.paused:
         return NULL
-    elif isinstance(node, IntNode):
-        return int(node.value)
-    elif isinstance(node, FloatNode):
-        return float(node.value)
-    elif isinstance(node, LiteralNode):
-        # s = node.literal
-        s = node.literal
-        return String(s)
-    elif isinstance(node, NameNode):
-        value = env.get(node.name, (node.line_num, node.file))
-        return value
-    elif isinstance(node, BooleanStmt):
-        if node.value in {"true", "false"}:
-            return get_boolean(node.value == "true")
-        else:
-            raise InterpretException("Unknown boolean value")
-    elif isinstance(node, NullStmt):
-        return NULL
-    elif isinstance(node, BreakStmt):
-        env.break_loop()
-    elif isinstance(node, ContinueStmt):
-        env.pause_loop()
-    elif isinstance(node, AssignmentNode):
-        key = node.left
-        value = evaluate(node.right, env)
-        if isinstance(key, NameNode):
-            env.assign(key.name, value)
-            if key.auth == lex.PRIVATE:
-                env.add_private(key.name)
+    elif isinstance(node, Node):
+        t = node.type
+        if t == INT_NODE:
+            node: IntNode
+            return node.value
+        elif t == FLOAT_NODE:
+            node: FloatNode
+            return node.value
+        elif t == LITERAL_NODE:
+            node: LiteralNode
+            # s = node.literal
+            s = node.literal
+            return String(s)
+        elif t == NAME_NODE:
+            node: NameNode
+            value = env.get(node.name, (node.line_num, node.file))
             return value
-        elif isinstance(key, Dot):
-            node = key
-            name_lst = []
-            while isinstance(node, Dot):
-                name_lst.append(node.right.name)
-                node = node.left
-            name_lst.append(node.name)
-            name_lst.reverse()
-            # print(name_lst)
-            scope = env
-            for t in name_lst[:-1]:
-                scope = scope.get(t, (node.line_num, node.file)).env
-            scope.assign(name_lst[-1], value)
-            return value
-    elif isinstance(node, Dot):
-        return call_dot(node, env)
-    elif isinstance(node, AnonymousCall):
-        evaluate(node.left, env)
-        right = node.right.args
-        fc = FuncCall((node.line_num, node.file), "=>")
-        fc.args = right
-        return evaluate(fc, env)
-    elif isinstance(node, OperatorNode):
-        left = evaluate(node.left, env)
-        right = evaluate(node.right, env)
-        if node.assignment:
-            symbol = node.operation[:-1]
-            res = arithmetic(left, right, symbol)
-            asg = AssignmentNode((node.line_num, node.file))
-            asg.left = node.left
-            asg.operation = "="
-            asg.right = res
-            return evaluate(asg, env)
+        elif t == BOOLEAN_STMT:
+            node: BooleanStmt
+            if node.value in {"true", "false"}:
+                return get_boolean(node.value == "true")
+            else:
+                raise InterpretException("Unknown boolean value")
+        elif t == NULL_STMT:
+            return NULL
+        elif t == BREAK_STMT:
+            env.break_loop()
+        elif isinstance(node, ContinueStmt):
+            env.pause_loop()
+        elif isinstance(node, AssignmentNode):
+            return assignment(node, env)
+        elif isinstance(node, Dot):
+            return call_dot(node, env)
+        elif isinstance(node, AnonymousCall):
+            evaluate(node.left, env)
+            right = node.right.args
+            fc = FuncCall((node.line_num, node.file), "=>")
+            fc.args = right
+            return evaluate(fc, env)
+        elif t == OPERATOR_NODE:
+            node: OperatorNode
+            return eval_operator(node, env)
+        elif t == NEGATIVE_EXPR:
+            node: NegativeExpr
+            value = evaluate(node.value, env)
+            return -value
+        elif t == NOT_EXPR:
+            node: NotExpr
+            value = evaluate(node.value, env)
+            if value:
+                return FALSE
+            else:
+                return TRUE
+        elif t == RETURN_STMT:
+            node: ReturnStmt
+            value = node.value
+            res = evaluate(value, env)
+            # print(env.variables)
+            env.terminate(res)
+            return res
+        elif t == BLOCK_STMT:
+            node: BlockStmt
+            result = 0
+            for line in node.lines:
+                result = evaluate(line, env)
+            return result
+        elif t == IF_STMT:
+            node: IfStmt
+            cond = evaluate(node.condition, env)
+            if cond:
+                return evaluate(node.then_block, env)
+            else:
+                return evaluate(node.else_block, env)
+        elif t == WHILE_STMT:
+            node: WhileStmt
+            result = 0
+            while not env.broken and evaluate(node.condition, env):
+                result = evaluate(node.body, env)
+                env.paused = False  # reset the environment the the next iteration
+            env.broken = False  # reset the environment for next loop
+            return result
+        elif t == FOR_LOOP_STMT:
+            node: ForLoopStmt
+            con: BlockStmt = node.condition
+            start = con.lines[0]
+            end = con.lines[1]
+            step = con.lines[2]
+            result = evaluate(start, env)
+            while not env.broken and evaluate(end, env):
+                result = evaluate(node.body, env)
+                env.paused = False
+                evaluate(step, env)
+            env.broken = False
+            return result
+        elif t == DEF_STMT:
+            node: DefStmt
+            f = Function(node.params, node.presets, node.body)
+            f.outer_scope = env
+            env.assign(node.name, f)
+            if node.auth == lex.PRIVATE:
+                env.add_private(node.name)
+            return f
+        elif t == FUNCTION_CALL:
+            node: FuncCall
+            return call_function(node, env)
+        elif t == CLASS_STMT:
+            node: ClassStmt
+            cla = Class(node.class_name, node.block)
+            cla.superclass_names = node.superclass_names
+            env.assign(node.class_name, cla)
+            return cla
+        elif t == CLASS_INIT:
+            node: ClassInit
+            return init_class(node, env)
+        elif t == INVALID_TOKEN:
+            raise InterpretException("Non-default argument follows default argument, in {}, at line {}"
+                                     .format(node.file, node.line_num))
+        elif t == ABSTRACT:
+            raise AbstractMethodException("Method is not implemented, in {}, at line {}"
+                                          .format(node.file, node.line_num))
         else:
-            symbol = node.operation
-            return arithmetic(left, right, symbol)
-    elif isinstance(node, NegativeExpr):
-        value = evaluate(node.value, env)
-        return -value
-    elif isinstance(node, NotExpr):
-        value = evaluate(node.value, env)
-        if value:
-            return FALSE
-        else:
-            return TRUE
-    elif isinstance(node, ReturnStmt):
-        value = node.value
-        res = evaluate(value, env)
-        # print(env.variables)
-        env.terminate(res)
-        return res
-    elif isinstance(node, BlockStmt):
-        result = 0
-        for line in node.lines:
-            # print(line)
-            result = evaluate(line, env)
-            # print(line)
-        return result
-    elif isinstance(node, IfStmt):
-        cond = evaluate(node.condition, env)
-        if cond:
-            return evaluate(node.then_block, env)
-        else:
-            return evaluate(node.else_block, env)
-    elif isinstance(node, WhileStmt):
-        result = 0
-        while not env.broken and evaluate(node.condition, env):
-            result = evaluate(node.body, env)
-            env.paused = False  # reset the environment the the next iteration
-        env.broken = False  # reset the environment for next loop
-        return result
-    elif isinstance(node, ForLoopStmt):
-        con: BlockStmt = node.condition
-        start = con.lines[0]
-        end = con.lines[1]
-        step = con.lines[2]
-        result = evaluate(start, env)
-        while not env.broken and evaluate(end, env):
-            result = evaluate(node.body, env)
-            env.paused = False
-            evaluate(step, env)
-        env.broken = False
-        return result
-    elif isinstance(node, DefStmt):
-        f = Function(node.params, node.presets, node.body)
-        f.outer_scope = env
-        env.assign(node.name, f)
-        if node.auth == lex.PRIVATE:
-            env.add_private(node.name)
-        return f
-    elif isinstance(node, FuncCall):
-        return call_function(node, env)
-    elif isinstance(node, ClassStmt):
-        cla = Class(node.class_name, node.block)
-        cla.superclass_names = node.superclass_names
-        env.assign(node.class_name, cla)
-        return cla
-    elif isinstance(node, ClassInit):
-        return init_class(node, env)
-    # elif isinstance(node, SelfCallStmt):
-    #     instance = env.variables
-    #     print(instance)
-    elif isinstance(node, int) or isinstance(node, float) or isinstance(node, Null) or isinstance(node, Boolean) or \
-            isinstance(node, NativeTypes):
+            raise InterpretException("Invalid Syntax Tree in {}, at line {}".format(node.file, node.line_num))
+    elif isinstance(node, int) or isinstance(node, float) or isinstance(node, NativeType):
         return node
-    elif isinstance(node, InvalidToken):
-        raise InterpretException("Non-default argument follows default argument, in {}, at line {}"
-                                 .format(node.file, node.line_num))
-    elif isinstance(node, Abstract):
-        raise AbstractMethodException("Method is not implemented, in {}, at line {}".format(node.file, node.line_num))
     else:
         raise InterpretException("Invalid Syntax Tree in {}, at line {}".format(node.file, node.line_num))
+
+
+def eval_operator(node: OperatorNode, env: Environment):
+    left = evaluate(node.left, env)
+    right = evaluate(node.right, env)
+    if node.assignment:
+        symbol = node.operation[:-1]
+        res = arithmetic(left, right, symbol)
+        asg = AssignmentNode((node.line_num, node.file))
+        asg.left = node.left
+        asg.operation = "="
+        asg.right = res
+        return evaluate(asg, env)
+    else:
+        symbol = node.operation
+        return arithmetic(left, right, symbol)
+
+
+def assignment(node: AssignmentNode, env: Environment):
+    key = node.left
+    value = evaluate(node.right, env)
+    t = key.type
+    if t == NAME_NODE:
+        env.assign(key.name, value)
+        if key.auth == lex.PRIVATE:
+            env.add_private(key.name)
+        return value
+    elif t == DOT:
+        node = key
+        name_lst = []
+        while isinstance(node, Dot):
+            name_lst.append(node.right.name)
+            node = node.left
+        name_lst.append(node.name)
+        name_lst.reverse()
+        # print(name_lst)
+        scope = env
+        for t in name_lst[:-1]:
+            scope = scope.get(t, (node.line_num, node.file)).env
+        scope.assign(name_lst[-1], value)
+        return value
+    else:
+        raise InterpretException("Unknown assignment, in {}, at line {}".format(node.file, node.line_num))
 
 
 def init_class(node: ClassInit, env: Environment):
@@ -486,8 +513,9 @@ def call_function(node: FuncCall, env: Environment):
 def call_dot(node: Dot, env: Environment):
     instance = evaluate(node.left, env)
     obj = node.right
-    if isinstance(obj, NameNode):
-        if isinstance(instance, NativeTypes):
+    t = obj.type
+    if t == NAME_NODE:
+        if isinstance(instance, NativeType):
             return native_types_invoke(instance, obj)
         elif isinstance(instance, ClassInstance):
             if instance.env.is_private(obj.name):
@@ -497,8 +525,8 @@ def call_dot(node: Dot, env: Environment):
                 return attr
         else:
             raise InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
-    elif isinstance(obj, FuncCall):
-        if isinstance(instance, NativeTypes):
+    elif t == FUNCTION_CALL:
+        if isinstance(instance, NativeType):
             try:
                 return native_types_call(instance, obj, env)
             except IndexError as ie:
@@ -710,7 +738,7 @@ def native_types_call(instance, method, env):
     return res
 
 
-def native_types_invoke(instance: NativeTypes, node: NameNode):
+def native_types_invoke(instance: NativeType, node: NameNode):
     """
 
     :param instance:

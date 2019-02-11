@@ -14,7 +14,6 @@ in one line.
 For these purpose, SPL does not support the following features:
 
 * Multiple line expressions
-* Sequential function calls
 
 SPL Key Features:
 
@@ -42,9 +41,12 @@ SPL has several built-in types:
 
 * `int` Integer
 * `float` Floating point number
-* `string` String literal
 * `boolean` Boolean value, `true` or `false`
 * `void` The type name of the `null` pointer
+* `string` String literal
+* `list` List of any objects
+* `pair` Key-value pair
+* `set` Set of different objects
 
 ### Functions:
 
@@ -186,17 +188,49 @@ class Person {
 ```
 
 Class inheritance uses the keyword `extends`. The subclass has all attributes
-of its superclass.
+and methods of its superclass. SPL supports multiple inheritance, 
+separated with comma. But be aware that if there are attributes that has 
+same names, the value from the posterior superclass will be inherited.
 
 ```
-class Student extends Person {
-    grade = 0;
+class Student extends Person, Other {
+    private grade = 0;
     function Student(n, g) {
         Person(n);
+        Other();
         grade = g;
+    }
+    
+    function get() {
+        return this;
     }
 }
 ```
 
 SPL allows override. If you defined a method in the subclass which is already
 defined in the superclass, you will call the nearest one.
+
+An abstract method can be declared using keyword `abstract`. For example,
+```
+function foo() {
+    abstract;
+}
+```
+
+The way of overloading operator is to use the keyword `operator`. All binary
+operators can be overloaded except id comparators `===`, `!==`, and instance
+comparator `instanceof`.
+
+```
+class A {
+    value = 0;
+    operator +(other) {
+        return new A(value + other.value);
+    }
+}
+```
+
+There is a keyword `private` to make a class attribute or method private.
+Attributes with private access are not accessible from outer scope, but are
+accessible from children classes. But declare an attribute to be private
+has no effect on performance.

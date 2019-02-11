@@ -84,4 +84,4 @@ b = new Student("ta", 1);
 print(a == b);
 print(a != b);
 c = b.get();
-print(c === a);
+print(c === b);

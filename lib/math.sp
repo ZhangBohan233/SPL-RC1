@@ -4,7 +4,7 @@
 function random() {
     m = (1 << 15) - 1;
     a = 3;
-    seed = time();
+    seed = system.time();
     for (i = 0; i < 100; i += 1) {
         seed = seed * a % m;
     }
