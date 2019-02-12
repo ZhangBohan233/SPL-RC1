@@ -4,7 +4,7 @@ PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "==": 20, ">": 25, "<": 25, ">=": 25, "<=": 25,
               "!=": 20, "&&": 5, "||": 5, "&": 12, "^": 11, "|": 10,
               "<<": 40, ">>": 40,
-              ".": 500, "!": 200, "neg": 200, "return": 1,
+              ".": 500, "!": 200, "neg": 200, "return": 1, "throw": 1,
               "+=": 2, "-=": 2, "*=": 2, "/=": 2, "%=": 2,
               "&=": 2, "^=": 2, "|=": 2, "<<=": 2, ">>=": 2, "=>": 500,
               "===": 20, "!==": 20, "instanceof": 25}
@@ -38,6 +38,9 @@ CLASS_INIT = 23
 INVALID_TOKEN = 24
 ABSTRACT = 25
 THROW_STMT = 26
+TRY_STMT = 27
+CATCH_STMT = 28
+TYPE_NODE = 29
 
 
 class Parser:
@@ -112,8 +115,16 @@ class Parser:
             name = self.stack.pop()
             ass_node = AssignmentNode(line)
             ass_node.left = name
-            ass_node.operation = "="
             self.stack.append(ass_node)
+
+    def add_type(self, line):
+        if self.inner:
+            self.inner.add_type(line)
+        else:
+            name = self.stack.pop()
+            tp_node = TypeNode(line)
+            tp_node.left = name
+            self.stack.append(tp_node)
 
     def add_if(self, line):
         if self.inner:
@@ -146,13 +157,36 @@ class Parser:
             self.stack.append(fls)
             self.inner = Parser()
 
-    # def add_throw(self, line, exc_name):
-    #     if self.inner:
-    #         self.inner.add_throw(line, exc_name)
-    #     else:
-    #         exc = ThrowStmt(line, exc_name)
-    #         self.stack.append(exc)
-    #         self.inner = Parser()
+    def add_throw(self, line):
+        if self.inner:
+            self.inner.add_throw(line)
+        else:
+            self.in_expr = True
+            thr = ThrowStmt(line)
+            self.stack.append(thr)
+
+    def add_try(self, line):
+        if self.inner:
+            self.inner.add_try(line)
+        else:
+            tb = TryStmt(line)
+            self.stack.append(tb)
+            # self.inner = Parser()
+
+    def add_catch(self, line):
+        if self.inner:
+            self.inner.add_catch(line)
+        else:
+            cat = CatchStmt(line)
+            self.stack.append(cat)
+            self.inner = Parser()
+
+    def add_finally(self, line):
+        if self.inner:
+            self.inner.add_finally(line)
+        else:
+            pass
+            # self.inner = Parser()
 
     def add_function(self, line, f_name, auth):
         if self.inner:
@@ -331,12 +365,6 @@ class Parser:
         else:
             return self.stack[-1]
 
-    # def add_this(self, line):
-    #     if self.inner:
-    #         self.inner.add_this(line)
-    #     else:
-    #         self.stack.append(SelfCallStmt(line))
-
     def add_extends(self, superclass_name: str, target_class):
         if self.inner:
             self.inner.add_extends(superclass_name, target_class)
@@ -414,10 +442,66 @@ class Parser:
         if self.inner:
             self.inner.build_line()
         else:
+            # print(self.stack)
+            self.build_expr()
+            if len(self.stack) > 0:
+                lst = [self.stack.pop()]
+                while len(self.stack) > 0:
+                    node = self.stack.pop()
+                    if isinstance(node, LeafNode):
+                        lst.__setitem__(0, node) if len(lst) > 0 else lst.append(node)
+                        # res = node
+                    elif isinstance(node, BinaryExpr) and len(lst) > 0:
+                        node.right = lst[0]
+                        lst[0] = node
+                    elif isinstance(node, BlockStmt):
+                        if len(lst) > 0:
+                            lst.insert(0, node)
+                        else:
+                            lst.append(node)
+                            # res = node
+                    elif isinstance(node, IfStmt):
+                        node.then_block = lst[0]
+                        if len(lst) > 1:
+                            node.else_block = lst[1]
+                        lst.clear()
+                        lst.append(node)
+                    elif isinstance(node, WhileStmt) or isinstance(node, ForLoopStmt):
+                        node.body = lst[0] if len(lst) > 0 else None
+                        lst.__setitem__(0, node) if len(lst) > 0 else lst.append(node)
+                    elif isinstance(node, DefStmt):
+                        node.body = lst[0] if len(lst) > 0 else None
+                        lst.__setitem__(0, node) if len(lst) > 0 else lst.append(node)
+                    elif isinstance(node, ReturnStmt) or isinstance(node, ThrowStmt):
+                        node.value = lst[0] if len(lst) > 0 else None
+                        lst.__setitem__(0, node) if len(lst) > 0 else lst.append(node)
+                    elif isinstance(node, CatchStmt):
+                        node.then = lst[0] if len(lst) > 0 else None
+                        lst.__setitem__(0, node) if len(lst) > 0 else lst.append(node)
+                    elif isinstance(node, TryStmt):
+                        node.try_block = lst[0]
+                        if isinstance(lst[-1], CatchStmt):
+                            node.catch_blocks = lst[1:]
+                        else:
+                            node.catch_blocks = lst[1:-1]
+                            node.finally_block = lst[-1]
+                        lst.clear()
+                        lst.append(node)
+                    else:
+                        lst.__setitem__(0, node) if len(lst) > 0 else lst.append(node)
+                        # res = node
+                self.elements.append(lst[0])
+
+    def build_line2(self):
+        if self.inner:
+            self.inner.build_line2()
+        else:
+            # print(self.stack)
             self.build_expr()
             if len(self.stack) > 0:
                 res = self.stack.pop()
                 res2 = None
+                res3 = None
                 # print(self.stack)
                 while len(self.stack) > 0:
                     node = self.stack.pop()
@@ -428,23 +512,39 @@ class Parser:
                         res = node
                     elif isinstance(node, BlockStmt):
                         if res:
-                            res2 = res
-                            res = node
+                            if res2:
+                                res3 = res2
+                                res2 = res
+                                res = node
+                            else:
+                                res2 = res
+                                res = node
                         else:
                             res = node
                     elif isinstance(node, IfStmt):
                         node.then_block = res
                         node.else_block = res2
                         res = node
+                        res2 = None
                     elif isinstance(node, WhileStmt) or isinstance(node, ForLoopStmt):
                         node.body = res
                         res = node
                     elif isinstance(node, DefStmt):
                         node.body = res
                         res = node
-                    elif isinstance(node, ReturnStmt):
+                    elif isinstance(node, ReturnStmt) or isinstance(node, ThrowStmt):
                         node.value = res
                         res = node
+                    elif isinstance(node, CatchStmt):
+                        node.then = res
+                        res = node
+                    elif isinstance(node, TryStmt):
+                        node.try_block = res
+                        node.catch_block = res2
+                        node.finally_block = res3
+                        res = node
+                        res2 = None
+                        res3 = None
                     else:
                         res = node
                 self.elements.append(res)
@@ -604,6 +704,15 @@ class AssignmentNode(BinaryExpr):
         BinaryExpr.__init__(self, line)
 
         self.type = ASSIGNMENT_NODE
+        self.operation = "="
+
+
+class TypeNode(BinaryExpr):
+    def __init__(self, line):
+        BinaryExpr.__init__(self, line)
+
+        self.type = TYPE_NODE
+        self.operation = ":"
 
 
 class AnonymousCall(OperatorNode):
@@ -798,7 +907,7 @@ class FuncCall(LeafNode):
 
 
 class ClassStmt(Node):
-    def __init__(self, line, name):
+    def __init__(self, line: tuple, name: str):
         Node.__init__(self, line)
 
         self.type = CLASS_STMT
@@ -871,30 +980,49 @@ class InvalidToken(Node):
         return self.__str__()
 
 
-class ThrowStmt(Node):
-    def __init__(self, line, exc_name):
-        Node.__init__(self, line)
+class ThrowStmt(UnaryOperator):
+    def __init__(self, line):
+        UnaryOperator.__init__(self, line, 0)
 
         self.type = THROW_STMT
-        self.e_name = exc_name
-        self.args = None
+        self.operation = "throw"
 
     def __str__(self):
-        return "Throw({})".format(self.args)
+        return "Throw({})".format(self.value)
 
     def __repr__(self):
         return self.__str__()
 
 
-# class SelfCallStmt(LeafNode):
-#     def __init__(self, line):
-#         LeafNode.__init__(self, line)
-#
-#     def __str__(self):
-#         return "this"
-#
-#     def __repr__(self):
-#         return self.__str__()
+class CatchStmt(CondStmt):
+    def __init__(self, line):
+        CondStmt.__init__(self, line)
+
+        self.type = CATCH_STMT
+        self.then: BlockStmt = None
+
+    def __str__(self):
+        return "catch ({}) {}".format(self.condition, self.then)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class TryStmt(Node):
+    def __init__(self, line):
+        Node.__init__(self, line)
+
+        self.type = TRY_STMT
+        self.try_block: BlockStmt = None
+        self.catch_blocks: [CatchStmt] = []
+        self.finally_block: BlockStmt = None
+
+    def __str__(self):
+        return "try {} {} finally {}"\
+            .format(self.try_block, self.catch_blocks, self.finally_block)
+
+    def __repr__(self):
+        return self.__str__()
 
 
 def parse_expr(lst):

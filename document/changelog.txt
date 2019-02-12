@@ -1,3 +1,12 @@
+===== Build 0023: 2019/02/12 =====
+
+*Added syntax:
+    *try catch finally
+*Changed operator:
+    *instanceof
+*Performance optimization:
+    *Removed system variable wrappers
+
 ===== Build 0022: 2019/02/10 =====
 
 *Performance optimization:

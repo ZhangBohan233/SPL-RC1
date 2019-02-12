@@ -20,27 +20,43 @@ class Interpreter:
     def __init__(self, argv, encoding):
         self.ast = None
         self.argv = argv
-        self.env = Environment(True, HashMap())
-        self.env.heap["system"] = System(argv, encoding)
+        self.env = Environment(True, {})
+        self.env.add_heap("system", System(argv, encoding))
         self.env.scope_name = "Global"
 
-    def set_ast(self, ast):
+    def set_ast(self, ast: BlockStmt):
+        """
+        Sets up the abstract syntax tree to be interpreted.
+
+        :param ast: the root of the abstract syntax tree to be interpreted
+        :return: None
+        """
         self.ast = ast
 
     def interpret(self):
+        """
+        Starts the interpretation.
+
+        :return: the exit value
+        """
         return evaluate(self.ast, self.env)
 
 
 class Environment:
     """
     ===== Attributes =====
+    :type is_global: bool
+    :type heap: dict
+    :type variables: dict
+    :type privates: set
     :type outer: Environment
+    :type temp_vars: list
     """
 
     def __init__(self, is_global, heap):
         self.is_global = is_global
         self.heap = heap  # Heap-allocated variables (global)
-        self.variables = HashMap()  # Stack variables
+        self.variables = {}  # Stack variables
         self.privates = set()
         self.outer = None  # Outer environment, only used for inner functions
         self.temp_vars = []
@@ -55,6 +71,7 @@ class Environment:
 
         if is_global:
             self._add_natives()
+            self._add_base_exception()
 
     def __str__(self):
         if self.scope_name:
@@ -63,17 +80,46 @@ class Environment:
             return str(super)
 
     def _add_natives(self):
-        self.add_heap("print", NativeFunction(print_))
-        self.add_heap("type", NativeFunction(typeof))
-        self.add_heap("pair", NativeFunction(make_pair))
-        self.add_heap("list", NativeFunction(make_list))
-        self.add_heap("set", NativeFunction(make_set))
-        self.add_heap("int", NativeFunction(to_int))
-        self.add_heap("float", NativeFunction(to_float))
-        self.add_heap("string", NativeFunction(to_str))
-        self.add_heap("input", NativeFunction(input_))
-        self.add_heap("f_open", NativeFunction(f_open))
-        self.add_heap("eval", NativeFunction(eval_))
+        self.add_heap("print", NativeFunction(print_, "print"))
+        self.add_heap("type", NativeFunction(typeof, "type"))
+        self.add_heap("pair", NativeFunction(make_pair, "pair"))
+        self.add_heap("list", NativeFunction(make_list, "list"))
+        self.add_heap("set", NativeFunction(make_set, "set"))
+        self.add_heap("int", NativeFunction(to_int, "int"))
+        self.add_heap("float", NativeFunction(to_float, "float"))
+        self.add_heap("string", NativeFunction(to_str, "string"))
+        self.add_heap("input", NativeFunction(input_, "input"))
+        self.add_heap("f_open", NativeFunction(f_open, "f_open"))
+        self.add_heap("eval", NativeFunction(eval_, "eval"))
+
+        self.add_heap("boolean", NativeFunction(to_boolean, "boolean"))
+        self.add_heap("void", NativeFunction(None, "void"))
+
+    def _add_base_exception(self):
+        loc = (0, "interpreter")
+
+        constructor = DefStmt(loc, "Exception", lex.PUBLIC)
+        constructor.params = [NameNode(loc, "msg", lex.PUBLIC)]
+        constructor.presets = [LiteralNode(loc, "")]
+
+        c_body = BlockStmt(loc)
+        asg = AssignmentNode(loc)
+        asg.left = NameNode(loc, "message", lex.PUBLIC)
+        asg.right = NameNode(loc, "msg", lex.PUBLIC)
+        c_body.lines.append(asg)
+
+        constructor.body = c_body
+
+        body = BlockStmt(loc)
+
+        asg2 = AssignmentNode(loc)
+        asg2.left = NameNode(loc, "message", lex.PUBLIC)
+        asg2.right = LiteralNode(loc, "")
+
+        body.lines.append(asg2)
+        body.lines.append(constructor)
+        exception = Class("Exception", body)
+        self.add_heap("Exception", exception)
 
     def add_heap(self, k, v):
         self.heap[k] = v
@@ -144,13 +190,13 @@ class Environment:
         else:
             return False
 
-    def get(self, key: str, line_file):
+    def get(self, key: str, line_file: tuple):
         """
+        Returns the value of that key.
 
         :param key:
         :param line_file:
         :return:
-        :rtype: Variable
         """
         v = self.inner_get(key)
         if v == NULLPTR:
@@ -171,7 +217,8 @@ class Environment:
 
 
 class NativeFunction:
-    def __init__(self, func):
+    def __init__(self, func: callable, name: str):
+        self.name = name
         self.function = func
 
     def __str__(self):
@@ -205,7 +252,7 @@ class Function:
 
 
 class Class:
-    def __init__(self, class_name, body):
+    def __init__(self, class_name: str, body: BlockStmt):
         self.class_name = class_name
         self.body = body
         self.superclass_names = []
@@ -221,9 +268,11 @@ class Class:
 
 
 class ClassInstance:
-    def __init__(self, env, class_name):
+    def __init__(self, env: Environment, class_name: str):
         """
-        :type env: Environment
+        ===== Attributes =====
+        :param class_name: name of this class
+        :param env: instance attributes
         """
         self.class_name = class_name
         self.env = env
@@ -239,12 +288,6 @@ class ClassInstance:
         else:
             return hash(self)
 
-    def __eq__(self, other):
-        pass
-
-    def __ne__(self, other):
-        pass
-
     def __repr__(self):
         return self.__str__()
 
@@ -256,6 +299,13 @@ class ClassInstance:
         else:
             return self.class_name + ": " + str(self.env.variables)
         # return bytes(LST).decode("ascii")
+
+
+class RuntimeException(SplException):
+    def __init__(self, exception: ClassInstance):
+        SplException.__init__(self, "RuntimeException")
+
+        self.exception = exception
 
 
 def evaluate(node: Node, env: Environment):
@@ -394,6 +444,12 @@ def evaluate(node: Node, env: Environment):
         elif t == ABSTRACT:
             raise AbstractMethodException("Method is not implemented, in {}, at line {}"
                                           .format(node.file, node.line_num))
+        elif t == THROW_STMT:
+            node: ThrowStmt
+            raise RuntimeException(evaluate(node.value, env))
+        elif t == TRY_STMT:
+            node: TryStmt
+            return eval_try_catch(node, env)
         else:
             raise InterpretException("Invalid Syntax Tree in {}, at line {}".format(node.file, node.line_num))
     elif isinstance(node, int) or isinstance(node, float) or isinstance(node, NativeType):
@@ -402,12 +458,38 @@ def evaluate(node: Node, env: Environment):
         raise InterpretException("Invalid Syntax Tree in {}, at line {}".format(node.file, node.line_num))
 
 
+def eval_try_catch(node: TryStmt, env: Environment):
+    try:
+        return evaluate(node.try_block, env)
+    except RuntimeException as re:
+        exception: ClassInstance = re.exception
+        exception_class = env.get_class(exception.class_name)
+        catches = node.catch_blocks
+        for cat in catches:
+            for line in cat.condition.lines:
+                catch_name = line.right.name
+                # exception_name = exception.class_name
+                if is_subclass_of(exception_class, catch_name, env):
+                    return evaluate(cat.then, env)
+        raise re
+    finally:
+        if node.finally_block:
+            return evaluate(node.finally_block, env)
+
+
+def is_subclass_of(child_class: Class, class_name: str, env: Environment) -> bool:
+    if child_class.class_name == class_name:
+        return True
+    else:
+        return any([is_subclass_of(env.get_class(ccn), class_name, env) for ccn in child_class.superclass_names])
+
+
 def eval_operator(node: OperatorNode, env: Environment):
     left = evaluate(node.left, env)
     right = evaluate(node.right, env)
     if node.assignment:
         symbol = node.operation[:-1]
-        res = arithmetic(left, right, symbol)
+        res = arithmetic(left, right, symbol, env)
         asg = AssignmentNode((node.line_num, node.file))
         asg.left = node.left
         asg.operation = "="
@@ -415,7 +497,7 @@ def eval_operator(node: OperatorNode, env: Environment):
         return evaluate(asg, env)
     else:
         symbol = node.operation
-        return arithmetic(left, right, symbol)
+        return arithmetic(left, right, symbol, env)
 
 
 def assignment(node: AssignmentNode, env: Environment):
@@ -454,7 +536,7 @@ def init_class(node: ClassInit, env: Environment):
 
     # print(scope.variables)
     instance = ClassInstance(scope, node.class_name)
-    for k in scope.variables.key_set():
+    for k in scope.variables:
         v = scope.variables[k]
         if isinstance(v, Function):
             # v.parent = instance
@@ -468,6 +550,9 @@ def init_class(node: ClassInit, env: Environment):
             scope.temp_vars.append(evaluate(a, env))
         # print(scope.variables)
         evaluate(fc, scope)
+    # if cla.class_name == "Exception":
+    #     return instance.env.get("message", (0, "interpreter"))
+    # else:
     return instance
 
 
@@ -545,7 +630,7 @@ def call_dot(node: Dot, env: Environment):
         raise InterpretException("Unknown Syntax")
 
 
-def arithmetic(left, right, symbol):
+def arithmetic(left, right, symbol, env: Environment):
     if isinstance(left, int) or isinstance(left, float):
         return num_arithmetic(left, right, symbol)
     elif isinstance(left, String):
@@ -553,12 +638,12 @@ def arithmetic(left, right, symbol):
     elif isinstance(left, Primitive):
         return primitive_arithmetic(left, right, symbol)
     elif isinstance(left, ClassInstance):
-        return instance_arithmetic(left, right, symbol)
+        return instance_arithmetic(left, right, symbol, env)
     else:
         return raw_type_comparison(left, right, symbol)
 
 
-def instance_arithmetic(left: ClassInstance, right, symbol):
+def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment):
     if symbol == "===":
         return TRUE if isinstance(right, ClassInstance) and \
                        left.env.variables["id"] == right.env.variables["id"] else FALSE
@@ -566,10 +651,10 @@ def instance_arithmetic(left: ClassInstance, right, symbol):
         return TRUE if not isinstance(right, ClassInstance) or \
                        left.env.variables["id"] != right.env.variables["id"] else FALSE
     elif symbol == "instanceof":
-        if isinstance(right, String):
-            return TRUE if left.class_name == right.literal else FALSE
+        if isinstance(right, Class):
+            return TRUE if is_subclass_of(env.get_class(left.class_name), right.class_name, env) else FALSE
         else:
-            raise TypeException("Class name must be String object")
+            return FALSE
     else:
         fc = FuncCall((0, "interpreter"), "@" + BINARY_OPERATORS[symbol])
         left.env.temp_vars.append(right)
@@ -589,10 +674,10 @@ def string_arithmetic(left, right, symbol):
     elif symbol == "!==":
         result = left != right
     elif symbol == "instanceof":
-        if isinstance(right, String):
-            return TRUE if left.type_name() == right.literal else FALSE
+        if isinstance(right, NativeFunction) and right.name == "string":
+            return TRUE
         else:
-            raise TypeException("Class name must be String object")
+            return FALSE
     else:
         raise TypeException("Unsupported operation between string and " + typeof(right))
 
@@ -612,7 +697,7 @@ def raw_type_comparison(left, right, symbol):
         if isinstance(right, String):
             return TRUE if type(left).__name__ == right.literal else FALSE
         else:
-            raise TypeException("Class name must be String object")
+            return FALSE
     else:
         raise InterpretException("Unsupported operation for raw type " + left.type_name())
 
@@ -633,10 +718,10 @@ def primitive_arithmetic(left: Primitive, right, symbol):
     elif symbol == "!==":
         result = left != right
     elif symbol == "instanceof":
-        if isinstance(right, String):
-            return TRUE if left.type_name() == right.literal else FALSE
+        if isinstance(right, NativeFunction) and right.name == left.type_name():
+            return TRUE
         else:
-            raise TypeException("Class name must be String object")
+            return FALSE
     else:
         raise InterpretException("Unsupported operation for primitive type " + left.type_name())
 
@@ -651,9 +736,6 @@ def num_arithmetic(left, right, symbol):
     elif symbol == "*":
         result = left * right
     elif symbol == "/":
-        # if isinstance(left, int):
-        #     result = left // right
-        # else:
         result = left / right
     elif symbol == "%":
         result = left % right
@@ -688,10 +770,10 @@ def num_arithmetic(left, right, symbol):
     elif symbol == "!==":
         result = left != right
     elif symbol == "instanceof":
-        if isinstance(right, String):
-            return TRUE if type(left).__name__ == right.literal else FALSE
+        if isinstance(right, NativeFunction) and right.name == type(left).__name__:
+            return TRUE
         else:
-            raise TypeException("Class name must be String object")
+            return FALSE
     else:
         raise InterpretException("No such symbol")
 

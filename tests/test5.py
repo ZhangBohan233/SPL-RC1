@@ -33,39 +33,39 @@ class N3(N):
 
 
 if __name__ == "__main__":
-    x = f(2)()
-    print(x)
-
-    # import time
-    # s = time.time() * 1000
-    # # print(fib(25))
-    # x = 0
-    # while x < 1000000:
-    #     x = x + 1
-    # e = time.time() * 1000
-    # print(e - s)
-    # # x = curry(2)
-    # # print(x())
+    # x = f(2)()
+    # print(x)
 
     import time
-    lst = []
-    for i in range(1000000):
-        lst.append(N2())
-        lst.append(N3())
+    s = time.time() * 1000
+    # print(fib(25))
+    x = 0
+    while x < 1000000:
+        x = x + 1
+    e = time.time() * 1000
+    print(e - s)
+    # x = curry(2)
+    # print(x())
 
-    n2c = 0
-    n3c = 0
-    t1 = time.time()
-    for x in lst:
-        if x.type == 1:
-            n2c += 1
-        elif x.type == 2:
-            n3c += 1
-        # if isinstance(x, N2):
-        #     n2c += 1
-        # elif isinstance(x, N3):
-        #     n3c += 1
-    t2 = time.time()
-    print("time: " + str(t2 - t1))
-    print(n2c)
-    print(n3c)
+    # import time
+    # lst = []
+    # for i in range(1000000):
+    #     lst.append(N2())
+    #     lst.append(N3())
+    #
+    # n2c = 0
+    # n3c = 0
+    # t1 = time.time()
+    # for x in lst:
+    #     if x.type == 1:
+    #         n2c += 1
+    #     elif x.type == 2:
+    #         n3c += 1
+    #     # if isinstance(x, N2):
+    #     #     n2c += 1
+    #     # elif isinstance(x, N3):
+    #     #     n3c += 1
+    # t2 = time.time()
+    # print("time: " + str(t2 - t1))
+    # print(n2c)
+    # print(n3c)

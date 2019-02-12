@@ -81,7 +81,5 @@ class Student extends Person, Human, Creature {
 a = new Student("ta", 1);
 print(type(a));
 b = new Student("ta", 1);
-print(a == b);
-print(a != b);
-c = b.get();
-print(c === b);
+print(b instanceof Person);
+print(null instanceof void);
