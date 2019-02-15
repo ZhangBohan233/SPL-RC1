@@ -4,8 +4,7 @@
  */
 function map(ftn, lst) {
     res = list();
-    for (i = 0; i < lst.length(); i += 1) {
-        element = lst[i];
+    for (element; lst) {
         cal = ftn(element);
         res.append(cal);
     }
@@ -19,8 +18,7 @@ function map(ftn, lst) {
  */
 function filter(ftn, lst) {
     res = list();
-    for (i = 0; i < lst.length(); i += 1) {
-        element = lst[i];
+    for (element; lst) {
         bool = ftn(element);
         if (bool) {
             res.append(element);
@@ -34,9 +32,8 @@ function filter(ftn, lst) {
  * Returns true iff every element in <lst> satisfies boolean function <ftn>.
  */
 function all(ftn, lst) {
-    for (i = 0; i < lst.length(); i += 1) {
-        element = lst[i];
-        if (ftn == null) {
+    for (element; lst) {
+        if (ftn === null) {
             res = element;
         } else {
             res = ftn(element);
@@ -53,9 +50,8 @@ function all(ftn, lst) {
  * Returns true iff any element in <lst> satisfies boolean function <ftn>.
  */
 function any(ftn, lst) {
-    for (i = 0; i < lst.length(); i += 1) {
-        element = lst[i];
-        if (ftn == null) {
+    for (element; lst) {
+        if (ftn === null) {
             res = element;
         } else {
             res = ftn(element);
@@ -65,4 +61,28 @@ function any(ftn, lst) {
         }
     }
     return false;
+}
+
+
+/*
+ * Performs the same operation to every element until it went into one.
+ */
+function reduce(ftn, lst) {
+    result = null;
+    for (element; lst) {
+        if (result) {
+            result = ftn(result, element);
+        } else {
+            result = element;
+        }
+    }
+    return result;
+}
+
+
+/*
+ * Returns the sum of a list.
+ */
+function sum(lst) {
+    return reduce(function (x, y) {x + y}, lst);
 }

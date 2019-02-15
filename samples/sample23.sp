@@ -78,8 +78,10 @@ class Student extends Person, Human, Creature {
 }
 
 
+1;
 a = new Student("ta", 1);
 print(type(a));
 b = new Student("ta", 1);
-print(b instanceof Person);
-print(null instanceof void);
+if (a instanceof Student && a.alive) {
+    print(a);
+}

@@ -1,3 +1,33 @@
+********** SPL 1.0.0 **********
+===== Build 0024: 2019/02/15 =====
+
+*Added syntax:
+    *for-each loop
+*Bug fixes:
+    *Fixed bug that catch block cannot catch native errors
+    *Fixed bug that finally block was not executed if return statement in try-catch block
+    *Added argument check for function call
+    *Fixed bug that name ended with digit may cause error
+*Added native function:
+    *dir
+*Added library function:
+    *reduce
+*Library implementation:
+    *Implemented queue.LinkedList
+*Structural change:
+    *Moved "Exception" to library
+*Optimization:
+    *Semicolon at the end of a block can be omitted
+    *Library functions optimization
+    *Used lazy evaluation for operators '&&' and '||'
+    *Added spl optimizer:
+        *level 1: ast leaf reduction
+        *level 2: tail recursion call optimization
+*Function not-implemented:
+    *SPL compiler
+    *SPL tree restorer
+    *SPL decompiler
+
 ===== Build 0023: 2019/02/12 =====
 
 *Added syntax:

@@ -1,4 +1,5 @@
 import "stack"
+import "iterable"
 
 
 /*
@@ -73,13 +74,32 @@ class LLNode {
 }
 
 
-class LinkedList extends Deque {
+class LinkedList extends Deque, Iterable {
 
     private size_ = 0;
     private head = null;
     private tail = null;
 
+    private iter_node = null;
+
     function LinkedList() {
+    }
+
+    @Override
+    function __iter__() {
+        iter_node = head;
+        return this;
+    }
+
+    @Override
+    function __next__() {
+        if (iter_node) {
+            value = iter_node.value;
+            iter_node = iter_node.after;
+            return value;
+        } else {
+            return new StopIteration;
+        }
     }
 
     function __str__() {
@@ -154,6 +174,21 @@ class LinkedList extends Deque {
         }
         size_ -= 1;
         return n.value;
+    }
+
+    @Override
+    function top() {
+        return get_last();
+    }
+
+    @Override
+    function pop() {
+        return remove_last();
+    }
+
+    @Override
+    function push(element) {
+        return add_last(element)
     }
 
     private function create(ele) {

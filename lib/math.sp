@@ -1,3 +1,6 @@
+import "functions"
+
+
 /*
  * Returns a random `float` number between <0> and <1>.
  */
@@ -73,12 +76,18 @@ function round(n) {
  */
 function is_prime(p) {
     lim = ceil(sqrt(p));
-    for (factor = 2; factor < lim; factor += 1) {
-        if (p % factor == 0) {
-            return false;
+    if (p == 2) {
+        return true;
+    } else if (p % 2 == 0) {
+        return false;
+    } else {
+        for (factor = 3; factor < lim; factor += 2) {
+            if (p % factor == 0) {
+                return false;
+            }
         }
+        return true;
     }
-    return true;
 }
 
 
@@ -88,9 +97,15 @@ function is_prime(p) {
 function primes(limit) {
     lst = list();
     for (i = 2; i <= limit; i += 1) {
-        if (is_prime(i)) {
-            lst.append(i);
-        }
+        lst.append(i);
+    }
+    index = 0;
+    tar = lst[0];
+    while (lst[lst.length() - 1] > tar * tar) {
+        tar = lst[index];
+        lst = filter(function (x) {x == tar || x % tar != 0}, lst);
+        lim = tar * tar;
+        index += 1;
     }
     return lst;
 }
@@ -108,8 +123,7 @@ function factorization(n) {
         return res;
     }
     while (x > 1) {
-        for (i = 0; i < ps.length(); i += 1) {
-            p = ps[i];
+        for (p; ps) {
             if (x % p == 0) {
                 x /= p;
                 if (res.contains(p)) {
@@ -122,4 +136,10 @@ function factorization(n) {
         }
     }
     return res;
+}
+
+
+function fib(n) {
+    if (n < 2) return n;
+    else return fib(n - 1) + fib(n - 2);
 }

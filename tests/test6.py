@@ -4,8 +4,7 @@ def tcf():
     except ZeroDivisionError:
         return 1
     finally:
-        if 0 != 0:
-            return
+        return 2
 
 
 if __name__ == "__main__":

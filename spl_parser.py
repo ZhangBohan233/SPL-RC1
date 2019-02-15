@@ -563,7 +563,7 @@ def get_number_node(line, v: str):
 
 
 class Node:
-    def __init__(self, line):
+    def __init__(self, line: tuple):
         self.line_num = line[0]
         self.file = line[1]
         self.type = NODE
@@ -573,7 +573,7 @@ class Limited:
     """
     :type auth: int
     """
-    def __init__(self, auth):
+    def __init__(self, auth: int):
         self.auth = auth
 
 
@@ -685,7 +685,7 @@ class NameNode(LeafNode, Limited):
 
         self.type = NAME_NODE
         self.name = n
-        self.index = None
+        # self.index = None
         # self.nest = None
         # print(str(auth) + " " + self.name)
 
@@ -928,7 +928,7 @@ class ClassInit(LeafNode):
 
         self.type = CLASS_INIT
         self.class_name = name
-        self.args = None
+        self.args: BlockStmt = None
 
     def __str__(self):
         if self.args:
@@ -1020,6 +1020,20 @@ class TryStmt(Node):
     def __str__(self):
         return "try {} {} finally {}"\
             .format(self.try_block, self.catch_blocks, self.finally_block)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class JumpNode(Node):
+    def __init__(self, line, to):
+        Node.__init__(self, line)
+
+        self.to = to
+        self.args = []
+
+    def __str__(self):
+        return "Jump({}: {})".format(self.to, self.args)
 
     def __repr__(self):
         return self.__str__()

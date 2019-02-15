@@ -28,6 +28,10 @@ SPL uses braces `{` `}` as block indentation.
 
 Lines should be terminated by the line terminator `;`.lines with a back brace `}` can have terminator omitted.
 
+SPL uses `//` as one-line comment. In a line, codes after `//` will be ignored by the
+interpreter. The `/*` symbol is the beginning of a multi-line comment, where
+the `*/` marks the end of the multi-line comment.
+
 SPL is a dynamic language. There is ne need for declaring type when declare a variable.
 For example the expression:
 
@@ -234,3 +238,86 @@ There is a keyword `private` to make a class attribute or method private.
 Attributes with private access are not accessible from outer scope, but are
 accessible from children classes. But declare an attribute to be private
 has no effect on performance.
+
+
+### Conditional statements
+
+#### If-else statement:
+
+Syntax:
+```
+if (condition) {
+    // If the condition satisfies
+} else {
+    // Elsewhere, not nessesarily exist
+}
+```
+
+The condition can be a binary expression with a returning value, 
+a `boolean` value, or an object. The following will be interpreted 
+as `true`:
+
+* `int` if the integer is not 0
+* `float` if the number is not 0.0
+* `Object` if the object is not `null`
+
+Note that, nested "if-else" block can be simplified using "else if", 
+for example:
+
+```
+if (ch == "a") {
+    num = 1;
+} else if (ch == "b") {
+    num = 2;
+} else {
+    num = 0;
+}
+```
+
+#### While loop:
+
+Syntax of while loop is
+```
+while (condition) {
+    ...
+}
+```
+While loop will keep looping until the condition failed once. The condition
+block follows the same rule as the if-else statement.
+
+#### For loop:
+
+There are two types of for-loop in SPL. One is the traditional 3-parts
+for-loop, which is
+
+```
+for (beginning; stop-condition; step) {
+    ...
+}
+```
+
+For example,
+```
+for (i = 0; i < 4; i += 1) {
+    print(i);
+}
+```
+which will output
+```
+0
+1
+2
+3
+```
+Note that, `i += 1` is equivalent to `i = i + 1`.
+
+SPL supports another type of for-loop, which is called for-each loop.
+The syntax of for-each loop is:
+```
+for (invariant; iterable) {
+    ...
+}
+```
+Where the invariant is the loop-invariant, and the iterable is the object
+to iterate through. The iterable must either be one of `list`, `set`, 
+`pair`, `string`, or extends the abstract class `Iterable`.

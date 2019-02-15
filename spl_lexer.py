@@ -15,6 +15,7 @@ ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).u
 RESERVED = {"class", "function", "def", "if", "else", "new", "extends", "return", "break", "continue",
             "true", "false", "null", "operator", "while", "for", "import", "throw", "try", "catch", "finally",
             "abstract", "private"}
+LAZY = {"&&", "||"}
 OMITS = {"\n", "\r", "\t", " "}
 
 OP_EQ = {"+", "-", "*", "/", "%", "&", "^", "|", "<<", ">>"}
@@ -264,7 +265,7 @@ class Lexer:
                         parser.new_block()
                     elif sym == "}":
                         brace_count -= 1
-                        # parser.build_line()
+                        parser.build_line()
                         parser.build_block()
                         if brace_count == class_brace:
                             parser.build_class()
@@ -555,11 +556,19 @@ def normalize(string):
                 if (t in self_concatenate and t == last_type) or ((last_type, t) in cross_concatenate):
                     s += char
                 else:
-                    lst.append(s)
+                    put_string(lst, s)
                     s = char
                 last_type = t
-            lst.append(s)
+            put_string(lst, s)
         return lst
+
+
+def put_string(lst: list, s: str):
+    if len(s) > 1 and s[-1] == ".":  # Scenario of a name ended with a number.
+        lst.append(s[:-1])
+        lst.append(s[-1])
+    else:
+        lst.append(s)
 
 
 def char_type(ch):

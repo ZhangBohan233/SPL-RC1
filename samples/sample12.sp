@@ -1,11 +1,6 @@
-function con(a) {
-    return a > 5;
+function con(ftn) {
+    return ftn();
 }
 
-a = 0;
-if (con(5)) {
-    a = 6;
-} else {
-    a = 3;
-}
-a;
+f = con(function () {print(6);});
+print(f);

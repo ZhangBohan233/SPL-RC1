@@ -7,11 +7,11 @@ class Stack {
         abstract;
     }
 
-    function get_top() {
+    function top() {
         abstract;
     }
 
-    function put_top() {
+    function push(element) {
         abstract;
     }
 

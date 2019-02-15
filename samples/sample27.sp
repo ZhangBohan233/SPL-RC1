@@ -1,3 +1,5 @@
+import "exception"
+
 class TestException extends Exception {
     function TestException(msg) {
         Exception(msg);
@@ -10,10 +12,14 @@ class QuizException extends Exception {
     }
 }
 
-try {
-    throw new Exception("233");
-} catch (e1: TestException; e2: QuizException) {
-    print(1);
-} catch (e: Exception) {
-    print(2);
+function t(a, b=null) {
+    try {
+        throw new TestException("asd");
+    } catch (e: TestException) {
+        return 1;
+    } finally {
+        return 3;
+    }
 }
+
+print(t(1, 2));
