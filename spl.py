@@ -5,7 +5,6 @@ import spl_lexer
 # import spl_parser
 import spl_interpreter
 import time
-import spl_virtual_machine as svm
 import spl_optimizer as opt
 
 sys.setrecursionlimit(10000)
