@@ -1,3 +1,11 @@
+********** SPL 1.0.1 **********
+===== Build 0025: 2010/02/16 =====
+
+*Added command line options:
+    *-et for execution times of each nodes
+*Bug fixes:
+    *Some interpretation error caused by wrong type
+
 ********** SPL 1.0.0 **********
 ===== Build 0024: 2019/02/15 =====
 

@@ -26,8 +26,10 @@ Description
 OPTIONS:    
     -ast,    --abstract syntax tree    shows the structure of the abstract syntax tree     
     -debug,  --debugger                enables debugger
+    -et,     --execution               shows the execution times of each node
     -exit,   --exit value              shows the program's exit value
     -o1,     --optimize 1              enable level 1 optimization
+    -o2,     --optimize 2              enable level 2 optimization
     -timer,  --timer                   enables the timer
     -tokens, --tokens                  shows language tokens
     -vars,   --variables               prints out all global variables after execution
@@ -45,7 +47,7 @@ Example
 
 def parse_arg(args):
     d = {"file": None, "dir": None, "debugger": False, "timer": False, "ast": False, "tokens": False,
-         "vars": False, "argv": [], "encoding": None, "exit": False, "optimize": 0}
+         "vars": False, "argv": [], "encoding": None, "exit": False, "optimize": 0, "exec_time": False}
     # for i in range(1, len(args), 1):
     i = 1
     while i < len(args):
@@ -70,6 +72,8 @@ def parse_arg(args):
                 elif flag == "Dfile":
                     i += 1
                     d["encoding"] = args[i]
+                elif flag == "et":
+                    d["exec_time"] = True
                 elif flag == "o1":
                     d["optimize"] = 1
                 elif flag == "o2":
@@ -146,6 +150,9 @@ def interpret():
     if argv["timer"]:
         print("Time used: tokenize: {}s, parse: {}s, execute: {}s.".format
               (parse_start - lex_start, interpret_start - parse_start, end - interpret_start))
+
+    if argv["exec_time"]:
+        print(block)
 
 
 def virtual_machine():

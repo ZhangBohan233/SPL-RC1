@@ -4,6 +4,7 @@ from spl_lexer import BINARY_OPERATORS
 
 LST = [72, 97, 112, 112, 121, 32, 66, 105, 114, 116, 104, 100, 97, 121, 32,
        73, 115, 97, 98, 101, 108, 108, 97, 33, 33, 33]
+PRI = {"int", "float", "Primitive", "NativeType"}
 
 
 class Interpreter:
@@ -95,10 +96,15 @@ def evaluate(node: Node, env: Environment):
         return env.exit_value
     elif env.paused:
         return NULL
-    # elif isinstance(node, int) or isinstance(node, float) or isinstance(node, NativeType):
+    # elif isinstance(node, int) or isinstance(node, float) or isinstance(node, Primitive) or \
+    #         isinstance(node, NativeType):
     #     return node
+    tn = type(node).__name__
+    if tn in PRI:
+        return node
     elif isinstance(node, Node):
         t = node.type
+        node.execution += 1
         if t == INT_NODE:
             node: IntNode
             return node.value
@@ -344,10 +350,7 @@ def eval_operator(node: OperatorNode, env: Environment):
     else:
         left = node.left
     if node.assignment:
-        if isinstance(node.right, Node):
-            right = evaluate(node.right, env)
-        else:
-            right = node.right
+        right = evaluate(node.right, env)
         symbol = node.operation[:-1]
         res = arithmetic(left, right, symbol, env)
         asg = AssignmentNode((node.line_num, node.file))
@@ -364,10 +367,7 @@ def eval_operator(node: OperatorNode, env: Environment):
 def assignment(node: AssignmentNode, env: Environment):
     key = node.left
     v = node.right
-    if isinstance(v, Node):
-        value = evaluate(node.right, env)
-    else:
-        value = v
+    value = evaluate(node.right, env)
     t = key.type
     if t == NAME_NODE:
         env.assign(key.name, value)

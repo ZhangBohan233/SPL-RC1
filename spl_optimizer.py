@@ -1,4 +1,5 @@
 from spl_parser import *
+from spl_lib import *
 
 
 class Optimizer:
@@ -27,6 +28,12 @@ class Optimizer:
             return node
         elif isinstance(node, NumNode):
             return node.value
+        elif isinstance(node, NullStmt):
+            return NULL
+        elif isinstance(node, BooleanStmt):
+            return TRUE if node.value == "true" else FALSE
+        elif isinstance(node, LiteralNode):
+            return String(node.literal)
         elif isinstance(node, BinaryExpr):
             # this reverse is done intentionally
             node.right = self.reduce_leaf(node.right)
@@ -74,7 +81,7 @@ class Optimizer:
             return node
         elif t == CLASS_STMT:
             node: ClassStmt
-            node.body = self.reduce_leaf(node.body)
+            node.block = self.reduce_leaf(node.block)
             return node
         elif t == FUNCTION_CALL:
             node: FuncCall

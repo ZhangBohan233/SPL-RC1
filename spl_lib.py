@@ -89,8 +89,6 @@ class Environment:
         self.paused = True
 
     def assign(self, key, value):
-        if DEBUG:
-            print("assigned {} to {}".format(key, value))
         if self.is_global:
             self.heap[key] = value
         elif key in self.variables:

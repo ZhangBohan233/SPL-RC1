@@ -567,6 +567,7 @@ class Node:
         self.line_num = line[0]
         self.file = line[1]
         self.type = NODE
+        self.execution = 0
 
 
 class Limited:
@@ -780,7 +781,7 @@ class BooleanStmt(LeafNode):
         self.value = v
 
     def __str__(self):
-        return self.value
+        return "Bool:" + self.value
 
     def __repr__(self):
         return self.__str__()
@@ -811,7 +812,10 @@ class BlockStmt(Node):
         s = "Block{\n"
         for line in self.lines:
             s += (str(line) + ";\n")
-        return s + "}"
+        if self.execution == 0:
+            return s + "}"
+        else:
+            return s + "}: " + str(self.execution)
 
     def __repr__(self):
         return self.__str__()
