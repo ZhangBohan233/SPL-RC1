@@ -3,7 +3,7 @@ import spl_lexer as lex
 PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "==": 20, ">": 25, "<": 25, ">=": 25, "<=": 25,
               "!=": 20, "&&": 5, "||": 5, "&": 12, "^": 11, "|": 10,
-              "<<": 40, ">>": 40,
+              "<<": 40, ">>": 40, "unpack": 200,
               ".": 500, "!": 200, "neg": 200, "return": 1, "throw": 1,
               "+=": 2, "-=": 2, "*=": 2, "/=": 2, "%=": 2,
               "&=": 2, "^=": 2, "|=": 2, "<<=": 2, ">>=": 2, "=>": 500,
@@ -11,7 +11,7 @@ PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
 
 MULTIPLIER = 1000
 
-NODE = 0
+# NODE = 0
 INT_NODE = 1
 FLOAT_NODE = 2
 LITERAL_NODE = 3
@@ -41,6 +41,8 @@ THROW_STMT = 26
 TRY_STMT = 27
 CATCH_STMT = 28
 TYPE_NODE = 29
+# UNPACK_OPERATOR = 30
+JUMP_NODE = 30
 
 
 class Parser:
@@ -105,6 +107,14 @@ class Parser:
             self.in_expr = True
             node = NotExpr(line, extra_precedence)
             self.stack.append(node)
+
+    # def add_unpack(self, line, extra_precedence):
+    #     if self.inner:
+    #         self.inner.add_unpack(line, extra_precedence)
+    #     else:
+    #         self.in_expr = True
+    #         node = UnpackOperator(line, extra_precedence)
+    #         self.stack.append(node)
 
     def add_assignment(self, line):
         if self.inner:
@@ -202,6 +212,11 @@ class Parser:
             func = self.stack.pop()
             loc = (func.line_num, func.file)
             lst = [NameNode(loc, x, lex.PUBLIC) for x in params]
+            # for x in params:
+            #     if x == "*":
+            #         lst.append(UnpackOperator(loc))
+            #     else:
+            #         lst.append(NameNode(loc, x, lex.PUBLIC))
             pst = []
             for a in presets:
                 if isinstance(a, lex.IdToken):
@@ -566,7 +581,7 @@ class Node:
     def __init__(self, line: tuple):
         self.line_num = line[0]
         self.file = line[1]
-        self.type = NODE
+        self.type = 0
         self.execution = 0
 
 
@@ -737,6 +752,13 @@ class NotExpr(UnaryOperator):
 
         self.type = NOT_EXPR
         self.operation = "!"
+
+
+# class UnpackOperator(LeafNode):
+#     def __init__(self, line):
+#         LeafNode.__init__(self, line)
+#
+#         self.type = UNPACK_OPERATOR
 
 
 class ReturnStmt(UnaryOperator):
@@ -1033,6 +1055,7 @@ class JumpNode(Node):
     def __init__(self, line, to):
         Node.__init__(self, line)
 
+        self.type = JUMP_NODE
         self.to = to
         self.args = []
 

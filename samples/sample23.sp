@@ -79,9 +79,10 @@ class Student extends Person, Human, Creature {
 
 
 1;
-a = new Student("ta", 1);
+a = new Student("True", 1);
 print(type(a));
 b = new Student("ta", 1);
-if (a instanceof Student && a.alive) {
-    print(a);
-}
+print(a);
+print(1 instanceof int);
+print("True");
+

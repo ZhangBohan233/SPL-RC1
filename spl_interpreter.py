@@ -4,7 +4,6 @@ from spl_lexer import BINARY_OPERATORS
 
 LST = [72, 97, 112, 112, 121, 32, 66, 105, 114, 116, 104, 100, 97, 121, 32,
        73, 115, 97, 98, 101, 108, 108, 97, 33, 33, 33]
-PRI = {"int", "float", "Primitive", "NativeType"}
 
 
 class Interpreter:
@@ -80,166 +79,6 @@ class RuntimeException(SplException):
         self.exception = exception
 
 
-def evaluate(node: Node, env: Environment):
-    """
-    Evaluates a abstract syntax tree node, with the corresponding working environment.
-
-    :param node: the node in abstract syntax tree to be evaluated
-    :param env: the working environment
-    :return: the evaluation result
-    """
-    if node is None:
-        return NULL
-    elif node == NULL:
-        return NULL
-    elif env.terminated:
-        return env.exit_value
-    elif env.paused:
-        return NULL
-    # elif isinstance(node, int) or isinstance(node, float) or isinstance(node, Primitive) or \
-    #         isinstance(node, NativeType):
-    #     return node
-    tn = type(node).__name__
-    if tn in PRI:
-        return node
-    elif isinstance(node, Node):
-        t = node.type
-        node.execution += 1
-        if t == INT_NODE:
-            node: IntNode
-            return node.value
-        elif t == FLOAT_NODE:
-            node: FloatNode
-            return node.value
-        elif t == LITERAL_NODE:
-            node: LiteralNode
-            # s = node.literal
-            s = node.literal
-            return String(s)
-        elif t == NAME_NODE:
-            node: NameNode
-            value = env.get(node.name, (node.line_num, node.file))
-            return value
-        elif t == BOOLEAN_STMT:
-            node: BooleanStmt
-            if node.value in {"true", "false"}:
-                return get_boolean(node.value == "true")
-            else:
-                raise InterpretException("Unknown boolean value")
-        elif t == NULL_STMT:
-            return NULL
-        elif t == BREAK_STMT:
-            env.break_loop()
-        elif isinstance(node, ContinueStmt):
-            env.pause_loop()
-        elif isinstance(node, AssignmentNode):
-            return assignment(node, env)
-        elif isinstance(node, Dot):
-            return call_dot(node, env)
-        elif isinstance(node, AnonymousCall):
-            evaluate(node.left, env)
-            right = node.right.args
-            fc = FuncCall((node.line_num, node.file), "=>")
-            fc.args = right
-            return evaluate(fc, env)
-        elif t == OPERATOR_NODE:
-            node: OperatorNode
-            return eval_operator(node, env)
-        elif t == NEGATIVE_EXPR:
-            node: NegativeExpr
-            value = evaluate(node.value, env)
-            return -value
-        elif t == NOT_EXPR:
-            node: NotExpr
-            value = evaluate(node.value, env)
-            if value:
-                return FALSE
-            else:
-                return TRUE
-        elif t == RETURN_STMT:
-            node: ReturnStmt
-            value = node.value
-            if isinstance(value, Node):
-                res = evaluate(value, env)
-            else:
-                res = value
-            # print(env.variables)
-            env.terminate(res)
-            return res
-        elif t == BLOCK_STMT:
-            node: BlockStmt
-            result = 0
-            for line in node.lines:
-                result = evaluate(line, env)
-            return result
-        elif t == IF_STMT:
-            node: IfStmt
-            cond = evaluate(node.condition, env)
-            if cond:
-                return evaluate(node.then_block, env)
-            else:
-                return evaluate(node.else_block, env)
-        elif t == WHILE_STMT:
-            node: WhileStmt
-            result = 0
-            while not env.broken and evaluate(node.condition, env):
-                result = evaluate(node.body, env)
-                env.paused = False  # reset the environment the the next iteration
-            env.broken = False  # reset the environment for next loop
-            return result
-        elif t == FOR_LOOP_STMT:
-            node: ForLoopStmt
-            arg_num = len(node.condition.lines)
-            if arg_num == 3:
-                return eval_for_loop(node, env)
-            elif arg_num == 2:
-                return eval_for_each_loop(node, env)
-            else:
-                raise InterpretException("Wrong argument number for 'for' loop, in {}, at line {}"
-                                         .format(node.file, node.line_num))
-        elif t == DEF_STMT:
-            node: DefStmt
-            f = Function(node.params, node.presets, node.body)
-            f.outer_scope = env
-            env.assign(node.name, f)
-            if node.auth == lex.PRIVATE:
-                env.add_private(node.name)
-            return f
-        elif t == FUNCTION_CALL:
-            node: FuncCall
-            return call_function(node, env)
-        elif t == CLASS_STMT:
-            node: ClassStmt
-            cla = Class(node.class_name, node.block)
-            cla.superclass_names = node.superclass_names
-            env.assign(node.class_name, cla)
-            return cla
-        elif t == CLASS_INIT:
-            node: ClassInit
-            return init_class(node, env)
-        elif t == INVALID_TOKEN:
-            raise InterpretException("Argument error, in {}, at line {}"
-                                     .format(node.file, node.line_num))
-        elif t == ABSTRACT:
-            raise AbstractMethodException("Method is not implemented, in {}, at line {}"
-                                          .format(node.file, node.line_num))
-        elif t == THROW_STMT:
-            node: ThrowStmt
-            raise RuntimeException(evaluate(node.value, env))
-        elif t == TRY_STMT:
-            node: TryStmt
-            return eval_try_catch(node, env)
-        elif isinstance(node, JumpNode):
-            func: Function = env.get(node.to, (0, "f"))
-            for i in range(len(node.args.lines)):
-                env.assign(func.params[i].name, evaluate(node.args.lines[i], env))
-            return evaluate(func.body, env)
-        else:
-            raise InterpretException("Invalid Syntax Tree in {}, at line {}".format(node.file, node.line_num))
-    else:
-        raise InterpretException("Invalid Syntax Tree in {}, at line {}".format(node.file, node.line_num))
-
-
 def eval_for_loop(node: ForLoopStmt, env: Environment):
     con: BlockStmt = node.condition
     start = con.lines[0]
@@ -276,10 +115,10 @@ def eval_for_each_loop(node: ForLoopStmt, env: Environment):
         result = None
         while not env.broken:
             nex = FuncCall(lf, "__next__")
-            r = evaluate(nex, iterator.env)
-            if isinstance(r, ClassInstance) and is_subclass_of(env.get_class(r.class_name), "StopIteration", env):
+            res = evaluate(nex, iterator.env)
+            if isinstance(res, ClassInstance) and is_subclass_of(env.get_class(res.class_name), "StopIteration", env):
                 break
-            env.assign(invariant, r)
+            env.assign(invariant, res)
             result = evaluate(node.body, env)
             env.paused = False
         env.broken = False
@@ -319,10 +158,6 @@ def eval_try_catch(node: TryStmt, env: Environment):
                     result = evaluate(cat.then, env)
                     env.terminated = False
                     return result
-                    # if node.finally_block is None:
-                    #     return result
-                    # else:
-                    #     env.terminated = False
         raise e
     finally:
         if node.finally_block:
@@ -345,10 +180,7 @@ def is_subclass_of(child_class: Class, class_name: str, env: Environment) -> boo
 
 
 def eval_operator(node: OperatorNode, env: Environment):
-    if isinstance(node.left, Node):
-        left = evaluate(node.left, env)
-    else:
-        left = node.left
+    left = evaluate(node.left, env)
     if node.assignment:
         right = evaluate(node.right, env)
         symbol = node.operation[:-1]
@@ -366,7 +198,6 @@ def eval_operator(node: OperatorNode, env: Environment):
 
 def assignment(node: AssignmentNode, env: Environment):
     key = node.left
-    v = node.right
     value = evaluate(node.right, env)
     t = key.type
     if t == NAME_NODE:
@@ -437,6 +268,7 @@ def call_function(node: FuncCall, env: Environment):
                     arg = node.args.lines[i]
                 else:
                     arg = func.presets[i]
+
                 e = evaluate(arg, env)
                 scope.assign(func.params[i].name, e)
         result = evaluate(func.body, scope)
@@ -450,8 +282,8 @@ def call_function(node: FuncCall, env: Environment):
         result = func.call(args)
         if isinstance(result, BlockStmt):
             # Special case for "eval"
-            r = evaluate(result, env)
-            return r
+            res = evaluate(result, env)
+            return res
         else:
             return result
     else:
@@ -460,7 +292,7 @@ def call_function(node: FuncCall, env: Environment):
 
 def check_args_len(function: Function, call: FuncCall):
     if call.args and not list(filter(lambda k: not isinstance(k, InvalidToken), function.presets)).count(True) \
-           <= len(call.args.lines) <= len(function.params):
+                         <= len(call.args.lines) <= len(function.params):
         raise SplException("Too few or too many arguments for function '{}', in '{}', at line {}"
                            .format(call.f_name, call.file, call.line_num))
 
@@ -502,23 +334,20 @@ def call_dot(node: Dot, env: Environment):
 
 def arithmetic(left, right_node: Node, symbol, env: Environment):
     if symbol in lex.LAZY:
-        if isinstance(left, int) or isinstance(left, float):
-            return num_and_or(left, right_node, symbol, env)
-        elif isinstance(left, Primitive):
+        if left is None or isinstance(left, bool):
             return primitive_and_or(left, right_node, symbol, env)
+        elif isinstance(left, int) or isinstance(left, float):
+            return num_and_or(left, right_node, symbol, env)
         else:
             raise InterpretException("Operator '||' '&&' do not support type.")
     else:
-        if isinstance(right_node, Node):
-            right = evaluate(right_node, env)
-        else:
-            right = right_node
-        if isinstance(left, int) or isinstance(left, float):
+        right = evaluate(right_node, env)
+        if left is None or isinstance(left, bool):
+            return primitive_arithmetic(left, right, symbol)
+        elif isinstance(left, int) or isinstance(left, float):
             return num_arithmetic(left, right, symbol)
         elif isinstance(left, String):
             return string_arithmetic(left, right, symbol)
-        elif isinstance(left, Primitive):
-            return primitive_arithmetic(left, right, symbol)
         elif isinstance(left, ClassInstance):
             return instance_arithmetic(left, right, symbol, env)
         else:
@@ -527,16 +356,14 @@ def arithmetic(left, right_node: Node, symbol, env: Environment):
 
 def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment):
     if symbol == "===":
-        return TRUE if isinstance(right, ClassInstance) and \
-                       left.env.variables["id"] == right.env.variables["id"] else FALSE
+        return isinstance(right, ClassInstance) and left.env.variables["id"] == right.env.variables["id"]
     elif symbol == "!==":
-        return TRUE if not isinstance(right, ClassInstance) or \
-                       left.env.variables["id"] != right.env.variables["id"] else FALSE
+        return not isinstance(right, ClassInstance) or left.env.variables["id"] != right.env.variables["id"]
     elif symbol == "instanceof":
         if isinstance(right, Class):
-            return TRUE if is_subclass_of(env.get_class(left.class_name), right.class_name, env) else FALSE
+            return is_subclass_of(env.get_class(left.class_name), right.class_name, env)
         else:
-            return FALSE
+            return False
     else:
         fc = FuncCall((0, "interpreter"), "@" + BINARY_OPERATORS[symbol])
         left.env.temp_vars.append(right)
@@ -556,10 +383,7 @@ def string_arithmetic(left, right, symbol):
     elif symbol == "!==":
         result = left != right
     elif symbol == "instanceof":
-        if isinstance(right, NativeFunction) and right.name == "string":
-            return TRUE
-        else:
-            return FALSE
+        return isinstance(right, NativeFunction) and right.name == "string"
     else:
         raise TypeException("Unsupported operation between string and " + typeof(right))
 
@@ -577,29 +401,35 @@ def raw_type_comparison(left, right, symbol):
         result = left != right
     elif symbol == "instanceof":
         if isinstance(right, String):
-            return TRUE if type(left).__name__ == right.literal else FALSE
+            return type(left).__name__ == right.literal
         else:
-            return FALSE
+            return False
     else:
         raise InterpretException("Unsupported operation for raw type " + left.type_name())
 
-    return get_boolean(result)
+    return result
 
 
-def primitive_and_or(left: Primitive, right_node: Node, symbol, env: Environment):
+def primitive_and_or(left, right_node: Node, symbol, env: Environment):
     if left:
         if symbol == "&&":
             right = evaluate(right_node, env)
-            return get_boolean(right)
+            return right
         elif symbol == "||":
-            return TRUE
+            return True
         else:
-            raise InterpretException("Unsupported operation for primitive type " + left.type_name())
+            raise InterpretException("Unsupported operation for primitive type")
     else:
-        return FALSE
+        if symbol == "&&":
+            return False
+        elif symbol == "||":
+            right = evaluate(right_node, env)
+            return right
+        else:
+            raise InterpretException("Unsupported operation for primitive type")
 
 
-def primitive_arithmetic(left: Primitive, right, symbol):
+def primitive_arithmetic(left, right, symbol):
     if symbol == "==":
         result = left == right
     elif symbol == "!=":
@@ -609,78 +439,57 @@ def primitive_arithmetic(left: Primitive, right, symbol):
     elif symbol == "!==":
         result = left != right
     elif symbol == "instanceof":
-        if isinstance(right, NativeFunction) and right.name == left.type_name():
-            return TRUE
-        else:
-            return FALSE
+        return isinstance(right, NativeFunction) and PRIMITIVE_FUNC_TABLE[right.name] == type(left).__name__
     else:
-        raise InterpretException("Unsupported operation for primitive type " + left.type_name())
+        raise InterpretException("Unsupported operation for primitive type")
 
-    return get_boolean(result)
+    return result
 
 
 def num_and_or(left, right_node: Node, symbol, env: Environment):
     if left:
         if symbol == "||":
-            return TRUE
+            return True
         elif symbol == "&&":
             right = evaluate(right_node, env)
-            return get_boolean(right)
+            return right
         else:
             raise InterpretException("No such symbol")
     else:
-        return FALSE
+        if symbol == "&&":
+            return False
+        elif symbol == "||":
+            right = evaluate(right_node, env)
+            return right
+        else:
+            raise InterpretException("No such symbol")
+
+
+ARITHMETIC_TABLE = {
+    "+": lambda left, right: left + right,
+    "-": lambda left, right: left - right,
+    "*": lambda left, right: left * right,
+    "/": lambda left, right: left / right,
+    "%": lambda left, right: left % right,
+    "==": lambda left, right: left == right,
+    "!=": lambda left, right: left != right,
+    ">": lambda left, right: left > right,
+    "<": lambda left, right: left < right,
+    ">=": lambda left, right: left >= right,
+    "<=": lambda left, right: left <= right,
+    "<<": lambda left, right: left << right,
+    ">>": lambda left, right: left >> right,
+    "&": lambda left, right: left & right,
+    "^": lambda left, right: left ^ right,
+    "|": lambda left, right: left | right,
+    "===": lambda left, right: left == right,
+    "!==": lambda left, right: left != right,
+    "instanceof": lambda left, right: isinstance(right, NativeFunction) and right.name == type(left).__name__
+}
 
 
 def num_arithmetic(left, right, symbol):
-    if symbol == "+":
-        result = left + right
-    elif symbol == "-":
-        result = left - right
-    elif symbol == "*":
-        result = left * right
-    elif symbol == "/":
-        result = left / right
-    elif symbol == "%":
-        result = left % right
-    elif symbol == "==":
-        result = left == right
-    elif symbol == "!=":
-        result = left != right
-    elif symbol == ">":
-        result = left > right
-    elif symbol == "<":
-        result = left < right
-    elif symbol == ">=":
-        result = left >= right
-    elif symbol == "<=":
-        result = left <= right
-    elif symbol == "<<":
-        result = left << right
-    elif symbol == ">>":
-        result = left >> right
-    elif symbol == "&":
-        result = left & right
-    elif symbol == "^":
-        result = left ^ right
-    elif symbol == "|":
-        result = left | right
-    elif symbol == "===":
-        result = left == right
-    elif symbol == "!==":
-        result = left != right
-    elif symbol == "instanceof":
-        if isinstance(right, NativeFunction) and right.name == type(left).__name__:
-            return TRUE
-        else:
-            return FALSE
-    else:
-        raise InterpretException("No such symbol")
-
-    if isinstance(result, bool):
-        return get_boolean(result)
-    else:
-        return result
+    return ARITHMETIC_TABLE[symbol](left, right)
 
 
 def class_inheritance(cla, env, scope):
@@ -733,8 +542,149 @@ def native_types_invoke(instance: NativeType, node: NameNode):
     return res
 
 
-def get_boolean(expr):
-    if expr:
-        return TRUE
+def self_return(node):
+    return node
+
+
+def eval_boolean_stmt(node: BooleanStmt, env):
+    if node.value in {"true", "false"}:
+        return node.value == "true"
     else:
-        return FALSE
+        raise InterpretException("Unknown boolean value")
+
+
+def eval_anonymous_call(node: AnonymousCall, env: Environment):
+    evaluate(node.left, env)
+    right = node.right.args
+    fc = FuncCall((node.line_num, node.file), "=>")
+    fc.args = right
+    return evaluate(fc, env)
+
+
+def eval_return(node: ReturnStmt, env: Environment):
+    value = node.value
+    res = evaluate(value, env)
+    # print(env.variables)
+    env.terminate(res)
+    return res
+
+
+def eval_block(node: BlockStmt, env: Environment):
+    result = 0
+    for line in node.lines:
+        result = evaluate(line, env)
+    return result
+
+
+def eval_if_stmt(node: IfStmt, env: Environment):
+    cond = evaluate(node.condition, env)
+    if cond:
+        return evaluate(node.then_block, env)
+    else:
+        return evaluate(node.else_block, env)
+
+
+def eval_while(node: WhileStmt, env: Environment):
+    result = 0
+    while not env.broken and evaluate(node.condition, env):
+        result = evaluate(node.body, env)
+        env.paused = False  # reset the environment the the next iteration
+    env.broken = False  # reset the environment for next loop
+    return result
+
+
+def eval_for_loop_stmt(node: ForLoopStmt, env: Environment):
+    arg_num = len(node.condition.lines)
+    if arg_num == 3:
+        return eval_for_loop(node, env)
+    elif arg_num == 2:
+        return eval_for_each_loop(node, env)
+    else:
+        raise InterpretException("Wrong argument number for 'for' loop, in {}, at line {}"
+                                 .format(node.file, node.line_num))
+
+
+def eval_def(node, env):
+    f = Function(node.params, node.presets, node.body)
+    f.outer_scope = env
+    env.assign(node.name, f)
+    if node.auth == lex.PRIVATE:
+        env.add_private(node.name)
+    return f
+
+
+def eval_class_stmt(node, env):
+    cla = Class(node.class_name, node.block)
+    cla.superclass_names = node.superclass_names
+    env.assign(node.class_name, cla)
+    return cla
+
+
+def eval_jump(node, env):
+    func: Function = env.get(node.to, (0, "f"))
+    for i in range(len(node.args.lines)):
+        env.assign(func.params[i].name, evaluate(node.args.lines[i], env))
+    return evaluate(func.body, env)
+
+
+def raise_exception(e: Exception):
+    raise e
+
+
+# SELF_RETURN_TABLE = {"int", "float", "bool", "NoneType", "String", "List", "Set", "Pair", "System", "File"}
+SELF_RETURN_TABLE_2 = {int, float, bool, String, List, Set, Pair, System, File}
+
+NODE_TABLE = {
+    INT_NODE: lambda n, env: n.value,
+    FLOAT_NODE: lambda n, env: n.value,
+    LITERAL_NODE: lambda n, env: String(n.literal),
+    NAME_NODE: lambda n, env: env.get(n.name, (n.line_num, n.file)),
+    BOOLEAN_STMT: eval_boolean_stmt,
+    NULL_STMT: lambda n, env: None,
+    BREAK_STMT: lambda n, env: env.break_loop(),
+    CONTINUE_STMT: lambda n, env: env.pause_loop(),
+    ASSIGNMENT_NODE: assignment,
+    DOT: call_dot,
+    ANONYMOUS_CALL: eval_anonymous_call,
+    OPERATOR_NODE: eval_operator,
+    NEGATIVE_EXPR: lambda n, env: -evaluate(n.value, env),
+    NOT_EXPR: lambda n, env: bool(evaluate(n.value, env)),
+    RETURN_STMT: eval_return,
+    BLOCK_STMT: eval_block,
+    IF_STMT: eval_if_stmt,
+    WHILE_STMT: eval_while,
+    FOR_LOOP_STMT: eval_for_loop_stmt,
+    DEF_STMT: eval_def,
+    FUNCTION_CALL: call_function,
+    CLASS_STMT: eval_class_stmt,
+    CLASS_INIT: init_class,
+    INVALID_TOKEN: lambda n, env: raise_exception(InterpretException("Argument error, in {}, at line {}"
+                                                                     .format(n.file, n.line_num))),
+    ABSTRACT: lambda n, env: raise_exception(AbstractMethodException("Method is not implemented, in {}, at line {}"
+                                                                     .format(n.file, n.line_num))),
+    THROW_STMT: lambda n, env: raise_exception(RuntimeException(evaluate(n.value, env))),
+    TRY_STMT: eval_try_catch,
+    JUMP_NODE: eval_jump
+}
+
+
+def evaluate(node: Node, env: Environment):
+    """
+    Evaluates a abstract syntax tree node, with the corresponding working environment.
+
+    :param node: the node in abstract syntax tree to be evaluated
+    :param env: the working environment
+    :return: the evaluation result
+    """
+    if env.terminated:
+        return env.exit_value
+    if env.paused or node is None:
+        return None
+    if type(node) in SELF_RETURN_TABLE_2:
+        return node
+    t = node.type
+    node.execution += 1
+    tn = NODE_TABLE[t]
+    return tn(node, env)
+    # else:
+    #     raise InterpretException("Invalid Syntax Tree in {}, at line {}".format(node.file, node.line_num))

@@ -29,13 +29,13 @@ class Optimizer:
         elif isinstance(node, NumNode):
             return node.value
         elif isinstance(node, NullStmt):
-            return NULL
+            return None
         elif isinstance(node, BooleanStmt):
-            return TRUE if node.value == "true" else FALSE
+            return node.value == "true"
         elif isinstance(node, LiteralNode):
             return String(node.literal)
         elif isinstance(node, BinaryExpr):
-            # this reverse is done intentionally
+            # this reversal is done intentionally
             node.right = self.reduce_leaf(node.right)
             node.left = self.reduce_leaf(node.left)
             return node

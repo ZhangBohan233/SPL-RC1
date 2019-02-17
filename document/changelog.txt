@@ -1,7 +1,13 @@
-**********
+********** SPL 1.0.2 **********
+===== Build 0026: 2019/02/17 =====
+
+*Performance optimization:
+    *Interpreter:
+        *Replace if-else with case-lookup
+        *Removed wrapped boolean and null
 
 ********** SPL 1.0.1 **********
-===== Build 0025: 2010/02/16 =====
+===== Build 0025: 2019/02/16 =====
 
 *Added command line options:
     *-et for execution times of each nodes

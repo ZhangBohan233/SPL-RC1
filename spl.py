@@ -6,6 +6,7 @@ import spl_lexer
 import spl_interpreter
 import time
 import spl_optimizer as opt
+import spl_lib
 
 sys.setrecursionlimit(10000)
 
@@ -140,7 +141,7 @@ def interpret():
     end = time.time()
 
     if argv["exit"]:
-        print("Process finished with exit value " + str(result))
+        print("Process finished with exit value " + spl_lib.replace_bool_none(str(result)))
 
     if argv["vars"]:
         print(itr.env.variables)
@@ -154,25 +155,25 @@ def interpret():
         print(block)
 
 
-def virtual_machine():
-    vm = svm.VirtualMachine(argv["argv"])
-    vm.set_file(f)
-    ast = vm.restore_tree()
-    # print(ast)
-
-    interpret_start = time.time()
-
-    itr = spl_interpreter.Interpreter(argv["argv"], "utf-8")
-    itr.set_ast(ast)
-    result = itr.interpret()
-
-    end = time.time()
-
-    if argv["exit"]:
-        print("Process finished with exit value " + str(result))
-
-    if argv["timer"]:
-        print("Time used: execute: {}s.".format(end - interpret_start))
+# def virtual_machine():
+#     vm = svm.VirtualMachine(argv["argv"])
+#     vm.set_file(f)
+#     ast = vm.restore_tree()
+#     # print(ast)
+#
+#     interpret_start = time.time()
+#
+#     itr = spl_interpreter.Interpreter(argv["argv"], "utf-8")
+#     itr.set_ast(ast)
+#     result = itr.interpret()
+#
+#     end = time.time()
+#
+#     if argv["exit"]:
+#         print("Process finished with exit value " + str(result))
+#
+#     if argv["timer"]:
+#         print("Time used: execute: {}s.".format(end - interpret_start))
 
 
 if __name__ == "__main__":
@@ -195,11 +196,11 @@ if __name__ == "__main__":
                 raise e
             finally:
                 f.close()
-        elif file_name[-4:] == ".spe":
-            f = open(file_name, "rb")
-            try:
-                virtual_machine()
-            except Exception as e:
-                raise e
-            finally:
-                f.close()
+        # elif file_name[-4:] == ".spe":
+        #     f = open(file_name, "rb")
+        #     try:
+        #         virtual_machine()
+        #     except Exception as e:
+        #         raise e
+        #     finally:
+        #         f.close()

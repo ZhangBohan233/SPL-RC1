@@ -15,6 +15,44 @@ class Counter:
         return self.count
 
 
+def replace_bool_none(string):
+    in_single = False
+    in_double = False
+    lst = []
+    i = 0
+    while i < len(string):
+        ch = string[i]
+        if in_single:
+            if ch == "'":
+                in_single = False
+        elif in_double:
+            if ch == '"':
+                in_double = False
+        else:
+            if ch == "'":
+                in_single = True
+            elif ch == '"':
+                in_double = True
+        if not in_single and not in_double:
+            if i <= len(string) - 4:
+                if string[i:i + 4] == "True":
+                    lst.append("true")
+                    i += 4
+                    continue
+                elif string[i:i + 4] == "None":
+                    lst.append("null")
+                    i += 4
+                    continue
+            if i <= len(string) - 5:
+                if string[i:i + 5] == "False":
+                    lst.append("false")
+                    i += 5
+                    continue
+        lst.append(ch)
+        i += 1
+    return "".join(lst)
+
+
 DEBUG = False
 
 ID_COUNTER = Counter()
@@ -222,56 +260,56 @@ class Class:
         return self.__str__()
 
 
-class Primitive:
-    def __init__(self):
-        pass
-
-    def type_name(self):
-        raise NotImplementedError
-
-
-class Null(Primitive):
-    def __init__(self):
-        Primitive.__init__(self)
-
-    def __eq__(self, other):
-        return isinstance(other, Null)
-
-    def __bool__(self):
-        return False
-
-    def __str__(self):
-        return "null"
-
-    def __repr__(self):
-        return self.__str__()
-
-    def type_name(self):
-        return "void"
-
-
-class Boolean(Primitive):
-    def __init__(self, value: bool):
-        Primitive.__init__(self)
-        self.value = value
-
-    def __eq__(self, other):
-        return isinstance(other, Boolean) and self.value == other.value
-
-    def __neg__(self):
-        return FALSE if self.value else TRUE
-
-    def __bool__(self):
-        return self.value
-
-    def __str__(self):
-        return "true" if self.value else "false"
-
-    def __repr__(self):
-        return self.__str__()
-
-    def type_name(self):
-        return "boolean"
+# class Primitive:
+#     def __init__(self):
+#         pass
+#
+#     def type_name(self):
+#         raise NotImplementedError
+#
+#
+# class Null(Primitive):
+#     def __init__(self):
+#         Primitive.__init__(self)
+#
+#     def __eq__(self, other):
+#         return isinstance(other, Null)
+#
+#     def __bool__(self):
+#         return False
+#
+#     def __str__(self):
+#         return "null"
+#
+#     def __repr__(self):
+#         return self.__str__()
+#
+#     def type_name(self):
+#         return "void"
+#
+#
+# class Boolean(Primitive):
+#     def __init__(self, value: bool):
+#         Primitive.__init__(self)
+#         self.value = value
+#
+#     def __eq__(self, other):
+#         return isinstance(other, Boolean) and self.value == other.value
+#
+#     def __neg__(self):
+#         return FALSE if self.value else TRUE
+#
+#     def __bool__(self):
+#         return self.value
+#
+#     def __str__(self):
+#         return "true" if self.value else "false"
+#
+#     def __repr__(self):
+#         return self.__str__()
+#
+#     def type_name(self):
+#         return "boolean"
 
 
 class NullPointer:
@@ -308,13 +346,13 @@ class String(NativeType, Iterable):
         return (c for c in self.literal)
 
     def __str__(self):
-        return self.literal
+        return "'" + self.literal + "'"
 
     def __repr__(self):
         return self.__str__()
 
     def __eq__(self, other):
-        return TRUE if isinstance(other, String) and self.literal == other.literal else FALSE
+        return isinstance(other, String) and self.literal == other.literal
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -329,7 +367,7 @@ class String(NativeType, Iterable):
         return self.literal[index]
 
     def contains(self, char):
-        return TRUE if char in self.literal else FALSE
+        return char in self.literal
 
     def type_name(self):
         return "string"
@@ -369,7 +407,7 @@ class List(NativeType, Iterable):
         self.list.append(value)
 
     def contains(self, item):
-        return TRUE if item in self.list else FALSE
+        return item in self.list
 
     def insert(self, index, item):
         self.list.insert(index, item)
@@ -412,7 +450,7 @@ class Pair(NativeType, Iterable):
         self.pair[key] = value
 
     def contains(self, item):
-        return TRUE if item in self.pair else FALSE
+        return item in self.pair
 
     def size(self):
         return len(self.pair)
@@ -455,7 +493,7 @@ class Set(NativeType, Iterable):
         self.set.update(s)
 
     def contains(self, item):
-        return TRUE if item in self.set else FALSE
+        return item in self.set
 
     def type_name(self):
         return "set"
@@ -499,7 +537,7 @@ class File(NativeType):
             else:
                 raise IOException("Wrong mode")
         else:
-            return NULL
+            return None
 
     def read(self):
         if self.mode == "r":
@@ -515,7 +553,7 @@ class File(NativeType):
             if s:
                 return String(s)
             else:
-                return NULL
+                return None
         else:
             raise IOException("Wrong mode")
 
@@ -525,20 +563,20 @@ class File(NativeType):
                 self.fp.write(bytes(s))
             else:
                 self.fp.write(str(s))
-            return NULL
+            return None
         else:
             raise IOException("Wrong mode")
 
     def flush(self):
         if "w" in self.mode:
             self.fp.flush()
-            return NULL
+            return None
         else:
             raise IOException("Wrong mode")
 
     def close(self):
         self.fp.close()
-        return NULL
+        return None
 
     def type_name(self):
         return "file"
@@ -547,8 +585,12 @@ class File(NativeType):
 # Native functions
 
 def print_(*args):
-    print(*args)
-    return NULL
+    # print(type(args[0]))
+    a0 = args[0]
+    s = replace_bool_none(str(a0))
+    print(s, *args[1:])
+    # print(*args)
+    return None
 
 
 def input_(*prompt):
@@ -557,10 +599,12 @@ def input_(*prompt):
 
 
 def typeof(obj):
-    if isinstance(obj, inter.ClassInstance):
+    if obj is None:
+        return "void"
+    elif isinstance(obj, inter.ClassInstance):
         return String(obj.class_name)
-    elif isinstance(obj, Primitive):
-        return String(obj.type_name())
+    elif isinstance(obj, bool):
+        return String("boolean")
     elif isinstance(obj, NativeType):
         return String(obj.type_name())
     else:
@@ -596,7 +640,7 @@ def to_str(v):
 
 
 def to_boolean(v):
-    return TRUE if v else FALSE
+    return True if v else False
 
 
 def f_open(file, mode=String("r"), encoding=String("utf-8")):
@@ -675,7 +719,12 @@ class UnauthorizedException(SplException):
         SplException.__init__(self, msg)
 
 
-NULL = Null()
-TRUE = Boolean(True)
-FALSE = Boolean(False)
+# NULL = Null()
+# TRUE = Boolean(True)
+# FALSE = Boolean(False)
 NULLPTR = NullPointer()
+
+PRIMITIVE_FUNC_TABLE = {
+    "boolean": "bool",
+    "void": "NoneType"
+}

@@ -1,13 +1,13 @@
 def printing(func) {
-    return def () {
+    return def (a, b) {
         print("running");
-        func();
+        func(a, b);
     }
 }
 
-def foo() {
-    return 123;
+def foo(x, y) {
+    return x + y;
 }
 
 foo = printing(foo);
-print(foo());
+print(foo(4, 5));

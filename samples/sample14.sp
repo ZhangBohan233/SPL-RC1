@@ -4,12 +4,13 @@ import "algorithm";
 
 lst = list();
 
-lst = rand_list(1000, -32768, 32767);
-//print(lst);
+print(random());
+lst = rand_list(100, -32768, 32767);
+print(lst);
 
-st = time();
+st = system.time();
 merge_sort(lst);
-end = time();
+end = system.time();
 
 //print(lst);
 print(end - st);

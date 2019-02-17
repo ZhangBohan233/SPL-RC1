@@ -377,8 +377,10 @@ class Lexer:
                     elif sym == "finally":
                         parser.add_finally(line)
                     elif sym in BINARY_OPERATORS:
-                        if sym == "-" and (i == 0 or is_neg(self.tokens[i - 1])):
+                        if sym == "-" and (i == 0 or is_unary(self.tokens[i - 1])):
                             parser.add_neg(line, extra_precedence)
+                        # elif sym == "*" and (i == 0 or is_unary(self.tokens[i - 1])):
+                        #     parser.add_unpack(line, extra_precedence)
                         else:
                             parser.add_operator(line, sym, extra_precedence)
                     elif sym in UNARY_OPERATORS:
@@ -498,9 +500,9 @@ def parse_def(f_name, tokens, i, func_count, parser, auth):
     return i, func_count
 
 
-def is_neg(last_token):
+def is_unary(last_token):
     """
-    Returns True iff this should be a negation unary operator.
+    Returns True iff this should be an unary operator.
     False if it should be a minus operator.
 
     :param last_token:
