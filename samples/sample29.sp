@@ -6,4 +6,4 @@ def fact(n) {
     }
 }
 
-fact(100);
+print(fact(10));

@@ -1,3 +1,5 @@
+import _io
+
 import spl_parser as psr
 import os
 
@@ -14,7 +16,7 @@ OTHERS = {"=", "@", ":"}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
 RESERVED = {"class", "function", "def", "if", "else", "new", "extends", "return", "break", "continue",
             "true", "false", "null", "operator", "while", "for", "import", "throw", "try", "catch", "finally",
-            "abstract", "private"}
+            "abstract", "private", "const"}
 LAZY = {"&&", "||"}
 OMITS = {"\n", "\r", "\t", " "}
 
@@ -40,16 +42,37 @@ class Lexer:
         self.script_dir = ""
         self.file_name = ""
 
+    def setup(self, file_name: str, script_dir: str):
+        """
+        Sets up the parameters of this lexer.
+
+        The <file_name> will be recorded in tokens and ast nodes, which is used for properly displaying
+        the error message, if any error occurs. This parameter does not contribute to the actual interpreting.
+
+        The <script_dir> is used to find the importing files, which is important to run the script correctly.
+
+        :param file_name: the name of the main script
+        :param script_dir: the directory of the main script
+        :return:
+        """
+        self.file_name = file_name
+        self.script_dir = script_dir
+
     def tokenize(self, source):
+        """
+        Tokenize the source spl source code into a list of tokens, stored in the memory of this Lexer.
+
+        :param source: the source code, whether an opened file or a list of lines.
+        :return: None
+        """
         self.tokens.clear()
         if isinstance(source, list):
             self.tokenize_text(source)
         else:
             self.tokenize_file(source)
 
-    def tokenize_file(self, file):
+    def tokenize_file(self, file: _io.TextIOWrapper):
         """
-        :type file: _io.TextIOWrapper
         :param file:
         :return:
         """
@@ -209,14 +232,16 @@ class Lexer:
 
     def parse(self):
         """
-        :rtype: psr.Parser
+        Parses the list of tokens stored in this Lexer, and returns the root node of the parsed abstract syntax
+        tree.
+
         :return: the parsed block
-        :rtype: psr.BlockStmt
         """
         parser = psr.Parser()
         i = 0
         func_count = 0
         in_cond = False
+        is_const = False
         auth = PUBLIC
         call_nest = 0
         brace_count = 0
@@ -258,6 +283,8 @@ class Lexer:
                         parser.add_bool(line, sym)
                     elif sym == "null":
                         parser.add_null(line)
+                    elif sym == "const":
+                        is_const = True
                     elif sym == "@":
                         i += 1
                     elif sym == "{":
@@ -303,7 +330,8 @@ class Lexer:
                             call_nest -= 1
                     elif sym == "=":
                         parser.build_expr()
-                        parser.add_assignment(line)
+                        parser.add_assignment(line, is_const)
+                        is_const = False
                     elif sym == ":":
                         parser.build_expr()
                         parser.add_type(line)
@@ -321,15 +349,16 @@ class Lexer:
                         i += 1
                         f_token: IdToken = self.tokens[i]
                         f_name = f_token.symbol
-                        res = parse_def(f_name, self.tokens, i, func_count, parser, auth)
+                        res = parse_def(f_name, self.tokens, i, func_count, parser, auth, is_const, brace_count == 0)
                         i = res[0]
                         func_count = res[1]
                         auth = PUBLIC
+                        is_const = False
                     elif sym == "operator":
                         i += 1
                         op_token: IdToken = self.tokens[i]
                         op_name = "@" + BINARY_OPERATORS[op_token.symbol]
-                        res = parse_def(op_name, self.tokens, i, func_count, parser, PUBLIC)
+                        res = parse_def(op_name, self.tokens, i, func_count, parser, PUBLIC, False, False)
                         i = res[0]
                         func_count = res[1]
                     elif sym == "class":
@@ -448,7 +477,7 @@ def unexpected_token(token):
                                                                            token.line_number()))
 
 
-def parse_def(f_name, tokens, i, func_count, parser, auth):
+def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth, is_const, is_global):
     """
     Parses a function declaration into abstract syntax tree.
 
@@ -458,14 +487,17 @@ def parse_def(f_name, tokens, i, func_count, parser, auth):
     :param func_count: the count the anonymous functions
     :param parser: the Parser object
     :param auth: the authority of this function
+    :param is_const: whether this defines a constant function
+    :param is_global: whether this function is a global function
     :return: tuple(new index, new anonymous function count)
     """
     tup = (tokens[i].line_number(), tokens[i].file_name())
     if f_name == "(":
-        parser.add_function(tup, "af-{}".format(func_count), auth)  # "af" stands for anonymous function
+        parser.add_function(tup, "af-{}".format(func_count), auth, is_const, is_global)
+        # "af" stands for anonymous function
         func_count += 1
     else:
-        parser.add_function(tup, f_name, auth)
+        parser.add_function(tup, f_name, auth, is_const, is_global)
         i += 1
     front_par = tokens[i]
     if isinstance(front_par, IdToken) and front_par.symbol == "(":

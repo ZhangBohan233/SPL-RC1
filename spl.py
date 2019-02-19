@@ -2,11 +2,11 @@
 
 import sys
 import spl_lexer
-# import spl_parser
 import spl_interpreter
 import time
+import os
 import spl_optimizer as opt
-import spl_lib
+import spl_coder as cdr
 
 sys.setrecursionlimit(10000)
 
@@ -20,7 +20,7 @@ HELP = """Name
     {}  -  Slowest Programming Language command line interface.
 
 Usage
-    {} [OPTIONS]... FILE [ARGV]...
+    {} [OPTIONS]... [FLAGS]... FILE [ARGV]...
     
 Description
 OPTIONS:    
@@ -30,6 +30,7 @@ OPTIONS:
     -exit,   --exit value              shows the program's exit value
     -o1,     --optimize 1              enable level 1 optimization
     -o2,     --optimize 2              enable level 2 optimization
+    -script, --script mode             interpret as spl source code
     -timer,  --timer                   enables the timer
     -tokens, --tokens                  shows language tokens
     -vars,   --variables               prints out all global variables after execution
@@ -47,11 +48,12 @@ Example
 
 def parse_arg(args):
     d = {"file": None, "dir": None, "debugger": False, "timer": False, "ast": False, "tokens": False,
-         "vars": False, "argv": [], "encoding": None, "exit": False, "optimize": 0, "exec_time": False}
+         "vars": False, "argv": [], "encoding": None, "exit": False, "optimize": 0, "exec_time": False,
+         "spe": False, "script": False}
     # for i in range(1, len(args), 1):
     i = 1
     while i < len(args):
-        arg = args[i]
+        arg: str = args[i]
         if d["file"] is not None:
             d["argv"].append(arg)
         else:
@@ -78,9 +80,13 @@ def parse_arg(args):
                     d["optimize"] = 1
                 elif flag == "o2":
                     d["optimize"] = 2
+                # elif flag == "spe":
+                #     d["spe"] = True
+                elif flag == "script":
+                    d["script"] = True
                 else:
                     print("unknown flag: -" + flag)
-            elif arg == "help":
+            elif arg.lower() == "help":
                 print_help()
                 return None
             else:
@@ -107,8 +113,7 @@ def interpret():
     lex_start = time.time()
 
     lexer = spl_lexer.Lexer()
-    lexer.script_dir = argv["dir"]
-    lexer.file_name = file_name
+    lexer.setup(file_name, argv["dir"])
     lexer.tokenize(f)
 
     if argv["tokens"]:
@@ -141,11 +146,10 @@ def interpret():
     end = time.time()
 
     if argv["exit"]:
-        print("Process finished with exit value " + spl_lib.replace_bool_none(str(result)))
+        print("Process finished with exit value " + spl_interpreter.replace_bool_none(str(result)))
 
     if argv["vars"]:
-        print(itr.env.variables)
-        print("Heap: " + str(itr.env.heap))
+        print(itr.env)
 
     if argv["timer"]:
         print("Time used: tokenize: {}s, parse: {}s, execute: {}s.".format
@@ -155,25 +159,37 @@ def interpret():
         print(block)
 
 
-# def virtual_machine():
-#     vm = svm.VirtualMachine(argv["argv"])
-#     vm.set_file(f)
-#     ast = vm.restore_tree()
-#     # print(ast)
-#
-#     interpret_start = time.time()
-#
-#     itr = spl_interpreter.Interpreter(argv["argv"], "utf-8")
-#     itr.set_ast(ast)
-#     result = itr.interpret()
-#
-#     end = time.time()
-#
-#     if argv["exit"]:
-#         print("Process finished with exit value " + str(result))
-#
-#     if argv["timer"]:
-#         print("Time used: execute: {}s.".format(end - interpret_start))
+def compiled_exe():
+    decoder = cdr.Decoder(f)
+    ast = decoder.decode()
+
+    if argv["ast"]:
+        print("===== Abstract Syntax Tree =====")
+        print(ast)
+        print("===== End of AST =====")
+    if argv["debugger"]:
+        spl_interpreter.DEBUG = True
+
+    interpret_start = time.time()
+
+    itr = spl_interpreter.Interpreter(argv["argv"], "utf-8")
+    itr.set_ast(ast)
+    result = itr.interpret()
+
+    end = time.time()
+
+    if argv["exit"]:
+        print("Process finished with exit value " + spl_interpreter.replace_bool_none(str(result)))
+
+    if argv["vars"]:
+        print(itr.env.variables)
+        print("Heap: " + str(itr.env.heap))
+
+    if argv["timer"]:
+        print("Time used: execute: {}s.".format(end - interpret_start))
+
+    if argv["exec_time"]:
+        print(ast)
 
 
 if __name__ == "__main__":
@@ -181,7 +197,11 @@ if __name__ == "__main__":
     if argv:
         file_name = argv["file"]
 
-        if file_name[-3:] == ".sp":
+        if not os.path.exists(file_name):
+            print("File Not Found!")
+            exit(1)
+
+        if argv["script"] or file_name[-3:] == ".sp":
             encoding = argv["encoding"]
             if encoding is not None:
                 assert isinstance(encoding, str)
@@ -191,16 +211,16 @@ if __name__ == "__main__":
 
             try:
                 interpret()
-
             except Exception as e:
                 raise e
             finally:
                 f.close()
-        # elif file_name[-4:] == ".spe":
-        #     f = open(file_name, "rb")
-        #     try:
-        #         virtual_machine()
-        #     except Exception as e:
-        #         raise e
-        #     finally:
-        #         f.close()
+        else:
+            # elif file_name[-4:] == ".spe":
+            f = open(file_name, "rb")
+            try:
+                compiled_exe()
+            except Exception as e:
+                raise e
+            finally:
+                f.close()

@@ -1,3 +1,19 @@
+********** SPL 1.1.0 **********
+===== Build 0027: 2019/02/19 =====
+
+*New features:
+    *Added spc to produce the spl bytecode
+    *SPL bytecode interpreter
+    *Constant values, using keyword 'const'. Also supports for constant method of class
+*New experimental feature:
+    *SPL Decompiler: 'spd'
+*Bug fixes:
+    *Fixed that 'instanceof' not working properly when used inside class
+    *Fixed that unary operator '!' not properly implemented
+    *Fixed that function 'eval' returns the string itself
+    *Merged spl_interpreter and spl_lib to avoid cyclic import
+    *Fixed that using keyword 'this' cannot access to private attributes
+
 ********** SPL 1.0.2 **********
 ===== Build 0026: 2019/02/17 =====
 
