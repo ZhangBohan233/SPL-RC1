@@ -1,9 +1,10 @@
-def tc(x, y) {
-    if (x < 1) {
-        return false;
-    } else {
-        return tc(x - 1, y + 1);
+class S28 {
+    c = 0;
+    function S28(a) {
+        c = a;
     }
 }
 
-tc(600, 2750);
+gg = 44;
+
+v = new S28(6);

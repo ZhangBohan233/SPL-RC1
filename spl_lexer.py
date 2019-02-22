@@ -10,7 +10,8 @@ MIDDLE = {"(", ")", "[", "]"}
 BINARY_OPERATORS = {"+": "add", "-": "sub", "*": "mul", "/": "div", "%": "mod",
                     "<": "lt", ">": "gt", "==": "eq", ">=": "ge", "<=": "le", "!=": "neq",
                     "&&": "and", "||": "or", "&": "band", "^": "xor", "|": "bor",
-                    "<<": "lshift", ">>": "rshift", "===": "", "!==": "", "instanceof": ""}
+                    "<<": "lshift", ">>": "rshift", "===": "", "!==": "", "instanceof": "",
+                    "::": ""}
 UNARY_OPERATORS = {"!": "not"}
 OTHERS = {"=", "@", ":"}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
@@ -70,6 +71,7 @@ class Lexer:
             self.tokenize_text(source)
         else:
             self.tokenize_file(source)
+        self.pre_process()
 
     def tokenize_file(self, file: _io.TextIOWrapper):
         """
@@ -256,12 +258,35 @@ class Lexer:
         # print(lexer.tokens)
         self.tokens.append(IdToken(line_file, "import"))
         self.tokens.append(IdToken(line_file, import_name))
-        self.tokens.append(IdToken(line_file, "{"))
+        # self.tokens.append(IdToken(line_file, "begin-import"))
         self.tokens += lexer.tokens
         self.tokens.pop()  # remove the EOF token
-        self.tokens.append(IdToken(line_file, "}"))
+        self.tokens.append(IdToken(line_file, "end-import"))
         self.tokens.append(IdToken(line_file, EOL))
         file.close()
+
+    def pre_process(self):
+        """
+        Makes the tokens list easier to parse.
+
+        :return: None
+        """
+        lst = []
+        i = 0
+        while i < len(self.tokens):
+            token = self.tokens[i]
+            if token.is_identifier():
+                token: IdToken
+                if token.symbol == "::":
+                    prev: IdToken = lst.pop()
+                    next_: IdToken = self.tokens[i + 1]
+                    new_token = IdToken((prev.line, prev.file), prev.symbol + "::" + next_.symbol)
+                    lst.append(new_token)
+                    i += 2
+                    continue
+            lst.append(token)
+            i += 1
+        self.tokens = lst
 
     def parse(self):
         """
@@ -278,8 +303,8 @@ class Lexer:
         auth = PUBLIC
         call_nest = 0
         brace_count = 0
-        class_braces: [(int, bool)] = []  # records the brace count when class stmt starts, True if is class, False
-        # if is import
+        class_braces: [int] = []  # records the brace count when class stmt starts
+        imports: [str] = []
         extra_precedence = 0
 
         while True:
@@ -328,11 +353,8 @@ class Lexer:
                         brace_count -= 1
                         parser.build_line()
                         parser.build_block()
-                        if len(class_braces) > 0 and brace_count == class_braces[-1][0]:
-                            if class_braces[-1][1]:
-                                parser.build_class()
-                            else:
-                                parser.build_import()
+                        if len(class_braces) > 0 and brace_count == class_braces[-1]:
+                            parser.build_class()
                             class_braces.pop()
                         next_token = self.tokens[i + 1]
                         if not (isinstance(next_token, IdToken) and next_token.symbol in NO_BUILD_LINE):
@@ -386,7 +408,7 @@ class Lexer:
                         i += 1
                         f_token: IdToken = self.tokens[i]
                         f_name = f_token.symbol
-                        res = parse_def(f_name, self.tokens, i, func_count, parser, auth, is_const)
+                        res = parse_def(f_name, self.tokens, i, func_count, parser, auth, is_const, imports)
                         i = res[0]
                         func_count = res[1]
                         auth = PUBLIC
@@ -395,21 +417,27 @@ class Lexer:
                         i += 1
                         op_token: IdToken = self.tokens[i]
                         op_name = "@" + BINARY_OPERATORS[op_token.symbol]
-                        res = parse_def(op_name, self.tokens, i, func_count, parser, PUBLIC, False)
+                        res = parse_def(op_name, self.tokens, i, func_count, parser, PUBLIC, False, imports)
                         i = res[0]
                         func_count = res[1]
                     elif sym == "import":
                         i += 1
                         next_token: IdToken = self.tokens[i]
                         import_name = next_token.symbol
-                        parser.add_import(line, import_name)
-                        class_braces.append((brace_count, False))
+                        imports.append(import_name)
+                        # parser.add_import(line, import_name)
+                        # class_braces.append((brace_count, False))
+                    # elif sym == "begin-import":
+                    #     pass
+                    elif sym == "end-import":
+                        imports.pop()
                     elif sym == "class":
                         i += 1
                         c_token: IdToken = self.tokens[i]
                         class_name = c_token.symbol
-                        parser.add_class((c_token.line_number(), c_token.file_name()), class_name)
-                        class_braces.append((brace_count, True))
+                        full_name = concat_imports(imports, class_name)
+                        parser.add_class((c_token.line_number(), c_token.file_name()), full_name)
+                        class_braces.append(brace_count)
                     elif sym == "extends":
                         i += 1
                         cla = parser.get_current_class()
@@ -430,13 +458,14 @@ class Lexer:
                         i += 1
                         c_token = self.tokens[i]
                         class_name = c_token.symbol
-                        parser.add_class_new((c_token.line_number(), c_token.file_name()), class_name)
+                        full_name = concat_imports(imports, class_name)
+                        parser.add_class_new((c_token.line_number(), c_token.file_name()), full_name)
                         next_token = self.tokens[i + 1]
                         if i + 1 < len(self.tokens) and isinstance(next_token, IdToken) and \
                                 next_token.symbol == "(":
                             i += 1
                             call_nest += 1
-                            parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
+                            parser.add_call((c_token.line_number(), c_token.file_name()), full_name)
                             # in_call = True
                     elif sym == "throw":
                         parser.add_throw(line)
@@ -471,22 +500,23 @@ class Lexer:
                         parser.build_line()
                     else:
                         next_token = self.tokens[i + 1]
+                        name = concat_imports(imports, sym)
                         if isinstance(next_token, IdToken):
                             if next_token.symbol == "(":
                                 # function call
-                                parser.add_call(line, sym)
+                                parser.add_call(line, name)
                                 call_nest += 1
                                 i += 1
                             elif next_token.symbol == "[":
-                                parser.add_name(line, sym, auth)
+                                parser.add_name(line, name, auth)
                                 parser.add_dot(line, extra_precedence)
                                 parser.add_get_set(line)
                                 call_nest += 1
                                 i += 1
                             else:
-                                parser.add_name(line, sym, auth)
+                                parser.add_name(line, name, auth)
                         else:
-                            parser.add_name(line, sym, auth)
+                            parser.add_name(line, name, auth)
                         auth = PUBLIC
 
                 elif isinstance(token, NumToken):
@@ -510,6 +540,12 @@ class Lexer:
         return parser.get_as_block()
 
 
+def concat_imports(imports: list, name: str):
+    rl = imports.copy()
+    rl.append(name)
+    return "::".join(rl)
+
+
 def unexpected_token(token):
     if isinstance(token, IdToken):
         raise ParseException("Unexpected token: '{}', in {}, at line {}".format(token.symbol,
@@ -520,7 +556,7 @@ def unexpected_token(token):
                                                                            token.line_number()))
 
 
-def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth, is_const):
+def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth, is_const, imports: list):
     """
     Parses a function declaration into abstract syntax tree.
 
@@ -531,6 +567,7 @@ def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth, is_const)
     :param parser: the Parser object
     :param auth: the authority of this function
     :param is_const: whether this defines a constant function
+    :param imports: the list of imported namespaces
     :return: tuple(new index, new anonymous function count)
     """
     tup = (tokens[i].line_number(), tokens[i].file_name())
@@ -566,7 +603,8 @@ def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth, is_const)
                 elif sbl == "=":
                     ps = True
                 else:
-                    params.append(sbl)
+                    full = concat_imports(imports, sbl)
+                    params.append(full)
             i += 1
         presets = [psr.InvalidToken(tup) for _ in range(len(params) - len(presets))] + presets
         # print(presets)
@@ -623,7 +661,7 @@ def normalize(string):
         if len(string) > 0:
             s = string[0]
             last_type = char_type(s)
-            self_concatenate = {0, 1, 8, 9, 10, 11, 14}
+            self_concatenate = {0, 1, 8, 9, 10, 11, 14, 19}
             cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0), (15, 9), (17, 9), (16, 9), (10, 9), (11, 9),
                                  (9, 8)}
             for i in range(1, len(string), 1):
@@ -691,6 +729,8 @@ def char_type(ch):
         return 17
     elif ch == "@":
         return 18
+    elif ch == ":":
+        return 19
 
 
 def is_float(num_str):

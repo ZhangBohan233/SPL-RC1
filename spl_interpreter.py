@@ -755,10 +755,10 @@ class Interpreter:
         return evaluate(self.ast, self.env)
 
 
-class Module:
-    def __init__(self, mod_name: str, env: Environment):
-        self.module_name = mod_name
-        self.env = env
+# class Module:
+#     def __init__(self, mod_name: str, env: Environment):
+#         self.module_name = mod_name
+#         self.env = env
 
 
 class ClassInstance:
@@ -984,6 +984,11 @@ def init_class(node: psr.ClassInit, env: Environment):
 
 def call_function(node: psr.FuncCall, env: Environment):
     func = env.get(node.f_name, (node.line_num, node.file))
+
+    if isinstance(func, Class):
+        init_name = func.class_name.split("::")[-1]
+        func = env.get(init_name, (node.line_num, node.file))
+
     if isinstance(func, Function):
         scope = Environment(False, env.heap)
         scope.scope_name = "Function scope<{}>".format(node.f_name)
@@ -1040,7 +1045,7 @@ def call_dot(node: psr.Dot, env: Environment):
             raise UnauthorizedException("Access 'this' from outside")
         if isinstance(instance, NativeType):
             return native_types_invoke(instance, obj)
-        elif isinstance(instance, ClassInstance) or isinstance(instance, Module):
+        elif isinstance(instance, ClassInstance):
             if (not isinstance(node.left, psr.NameNode) or node.left.name != "this") and \
                     instance.env.is_private(obj.name):
                 raise UnauthorizedException("Class attribute '{}' has private access".format(obj.name))
@@ -1059,7 +1064,7 @@ def call_dot(node: psr.Dot, env: Environment):
             except IndexError as ie:
                 raise IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
                                                .format(node.file, node.line_num))
-        elif isinstance(instance, ClassInstance) or isinstance(instance, Module):
+        elif isinstance(instance, ClassInstance):
             if (not isinstance(node.left, psr.NameNode) or node.left.name != "this") and \
                     instance.env.is_private(obj.f_name):
                 raise UnauthorizedException("Class attribute '{}' has private access".format(obj.f_name))
@@ -1369,13 +1374,13 @@ def eval_class_stmt(node, env: Environment):
     return cla
 
 
-def eval_import_stmt(node: psr.ImportStmt, env: Environment):
-    scope = Environment(False, env.heap)
-    evaluate(node.block, scope)
-    imp = Module(node.class_name, scope)
-    env.add_heap(node.class_name, imp)
-    # print(node.class_name)
-    return imp
+# def eval_import_stmt(node: psr.ImportStmt, env: Environment):
+#     scope = Environment(False, env.heap)
+#     evaluate(node.block, scope)
+#     imp = Module(node.class_name, scope)
+#     env.add_heap(node.class_name, imp)
+#     # print(node.class_name)
+#     return imp
 
 
 def eval_jump(node, env):
@@ -1424,7 +1429,7 @@ NODE_TABLE = {
     psr.THROW_STMT: lambda n, env: raise_exception(RuntimeException(evaluate(n.value, env))),
     psr.TRY_STMT: eval_try_catch,
     psr.JUMP_NODE: eval_jump,
-    psr.IMPORT_STMT: eval_import_stmt
+    # psr.IMPORT_STMT: eval_import_stmt
 }
 
 

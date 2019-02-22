@@ -84,12 +84,12 @@ class Parser:
             node = LiteralNode(line, lit)
             self.stack.append(node)
 
-    def add_import(self, line, import_name):
-        if self.inner:
-            self.inner.add_import(line, import_name)
-        else:
-            stmt = ImportStmt(line, import_name)
-            self.stack.append(stmt)
+    # def add_import(self, line, import_name):
+    #     if self.inner:
+    #         self.inner.add_import(line, import_name)
+    #     else:
+    #         stmt = ImportStmt(line, import_name)
+    #         self.stack.append(stmt)
 
     def add_operator(self, line, op, extra_precedence, assignment=False):
         if self.inner:
@@ -404,14 +404,14 @@ class Parser:
         else:
             self.stack.append(Abstract(line))
 
-    def build_import(self):
-        if self.inner:
-            self.inner.build_import()
-        else:
-            node = self.stack.pop()
-            import_node: ImportStmt = self.stack.pop()
-            import_node.block = node
-            self.stack.append(import_node)
+    # def build_import(self):
+    #     if self.inner:
+    #         self.inner.build_import()
+    #     else:
+    #         node = self.stack.pop()
+    #         import_node: ImportStmt = self.stack.pop()
+    #         import_node.block = node
+    #         self.stack.append(import_node)
 
     def build_class(self):
         if self.inner:
@@ -1008,11 +1008,11 @@ class ModuleStmt(Node):
         self.class_name = name
 
 
-class ImportStmt(ModuleStmt):
-    def __init__(self, line: tuple, name: str):
-        ModuleStmt.__init__(self, line, name)
-
-        self.node_type = IMPORT_STMT
+# class ImportStmt(ModuleStmt):
+#     def __init__(self, line: tuple, name: str):
+#         ModuleStmt.__init__(self, line, name)
+#
+#         self.node_type = IMPORT_STMT
 
 
 class ClassStmt(ModuleStmt):

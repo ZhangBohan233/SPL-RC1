@@ -1,7 +1,7 @@
-import "algorithm" as alg
+import "sample28.sp" as s
 
 
-b = 1000;
-a = alg.rand_list(10, 0, 10);
+b = s::gg;
 print(b);
-print(a);
+a = new s::S28(8);
+print(a.c);
