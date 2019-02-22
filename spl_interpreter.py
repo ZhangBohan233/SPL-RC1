@@ -1,11 +1,11 @@
-import spl_parser as psr
-import spl_lexer as lex
-import time as time_lib
+from spl_parser import *
+from spl_lib import *
 from spl_lexer import BINARY_OPERATORS
 
 LST = [72, 97, 112, 112, 121, 32, 66, 105, 114, 116, 104, 100, 97, 121, 32,
        73, 115, 97, 98, 101, 108, 108, 97, 33, 33, 33]
 
+<<<<<<< HEAD
 
 class Counter:
     def __init__(self):
@@ -722,6 +722,8 @@ PRIMITIVE_FUNC_TABLE = {
     "void": "NoneType"
 }
 
+=======
+>>>>>>> parent of 344cb36... Updated to spl 1.1.0
 
 class Interpreter:
     """
@@ -737,7 +739,7 @@ class Interpreter:
         self.env.add_heap("system", System(argv, encoding))
         self.env.scope_name = "Global"
 
-    def set_ast(self, ast: psr.BlockStmt):
+    def set_ast(self, ast: BlockStmt):
         """
         Sets up the abstract syntax tree to be interpreted.
 
@@ -771,15 +773,15 @@ class ClassInstance:
     def __init__(self, env: Environment, class_name: str):
         self.class_name = class_name
         self.env = env
-        self.env.constants["id"] = ID_COUNTER.get()
+        self.env.variables["id"] = ID_COUNTER.get()
         ID_COUNTER.increment()
-        self.env.constants["this"] = self
+        self.env.variables["this"] = self
 
     def __hash__(self):
         if self.env.contains_key("__hash__"):
             call = psr.FuncCall((0, "interpreter"), "__hash__")
             call.args = []
-            return evaluate(call, self.env)
+            return inter.evaluate(call, self.env)
         else:
             return hash(self)
 
@@ -792,20 +794,19 @@ class ClassInstance:
             call.args = []
             return str(evaluate(call, self.env))
         else:
-            attr = self.env.attributes()
-            attr.pop("this")
-            return self.class_name + ": " + str(attr)
+            return self.class_name + ": " + str(self.env.variables)
+        # return bytes(LST).decode("ascii")
 
 
-class RuntimeException(Exception):
+class RuntimeException(SplException):
     def __init__(self, exception: ClassInstance):
-        Exception.__init__(self, "RuntimeException")
+        SplException.__init__(self, "RuntimeException")
 
         self.exception = exception
 
 
-def eval_for_loop(node: psr.ForLoopStmt, env: Environment):
-    con: psr.BlockStmt = node.condition
+def eval_for_loop(node: ForLoopStmt, env: Environment):
+    con: BlockStmt = node.condition
     start = con.lines[0]
     end = con.lines[1]
     step = con.lines[2]
@@ -818,8 +819,8 @@ def eval_for_loop(node: psr.ForLoopStmt, env: Environment):
     return result
 
 
-def eval_for_each_loop(node: psr.ForLoopStmt, env: Environment):
-    con: psr.BlockStmt = node.condition
+def eval_for_each_loop(node: ForLoopStmt, env: Environment):
+    con: BlockStmt = node.condition
     invariant = con.lines[0].name
     target = con.lines[1]
     iterable = evaluate(target, env)
@@ -833,17 +834,15 @@ def eval_for_each_loop(node: psr.ForLoopStmt, env: Environment):
                 break
         env.broken = False
         return result
-    elif isinstance(iterable, ClassInstance) and is_subclass_of(env.get_heap(iterable.class_name), "Iterable",
-                                                                env):
+    elif isinstance(iterable, ClassInstance) and is_subclass_of(env.get_class(iterable.class_name), "Iterable", env):
         lf = (0, "interpreter")
-        ite = psr.FuncCall(lf, "__iter__")
+        ite = FuncCall(lf, "__iter__")
         iterator: ClassInstance = evaluate(ite, iterable.env)
         result = None
         while not env.broken:
-            nex = psr.FuncCall(lf, "__next__")
+            nex = FuncCall(lf, "__next__")
             res = evaluate(nex, iterator.env)
-            if isinstance(res, ClassInstance) and is_subclass_of(env.get_heap(res.class_name), "StopIteration",
-                                                                 env):
+            if isinstance(res, ClassInstance) and is_subclass_of(env.get_class(res.class_name), "StopIteration", env):
                 break
             env.assign(invariant, res)
             result = evaluate(node.body, env)
@@ -851,18 +850,17 @@ def eval_for_each_loop(node: psr.ForLoopStmt, env: Environment):
         env.broken = False
         return result
     else:
-        raise SplException(
-            "For-each loop on non-iterable objects, in {}, at line {}".format(node.file, node.line_num))
+        raise SplException("For-each loop on non-iterable objects, in {}, at line {}".format(node.file, node.line_num))
 
 
-def eval_try_catch(node: psr.TryStmt, env: Environment):
+def eval_try_catch(node: TryStmt, env: Environment):
     try:
         result = evaluate(node.try_block, env)
         env.terminated = False
         return result
     except RuntimeException as re:  # catches the exceptions thrown by SPL program
         exception: ClassInstance = re.exception
-        exception_class = env.get_heap(exception.class_name)
+        exception_class = env.get_class(exception.class_name)
         catches = node.catch_blocks
         for cat in catches:
             for line in cat.condition.lines:
@@ -904,16 +902,16 @@ def is_subclass_of(child_class: Class, class_name: str, env: Environment) -> boo
     if child_class.class_name == class_name:
         return True
     else:
-        return any([is_subclass_of(env.get_heap(ccn), class_name, env) for ccn in child_class.superclass_names])
+        return any([is_subclass_of(env.get_class(ccn), class_name, env) for ccn in child_class.superclass_names])
 
 
-def eval_operator(node: psr.OperatorNode, env: Environment):
+def eval_operator(node: OperatorNode, env: Environment):
     left = evaluate(node.left, env)
     if node.assignment:
         right = evaluate(node.right, env)
         symbol = node.operation[:-1]
         res = arithmetic(left, right, symbol, env)
-        asg = psr.AssignmentNode((node.line_num, node.file), False)
+        asg = AssignmentNode((node.line_num, node.file))
         asg.left = node.left
         asg.operation = "="
         asg.right = res
@@ -924,24 +922,19 @@ def eval_operator(node: psr.OperatorNode, env: Environment):
         return arithmetic(left, right_node, symbol, env)
 
 
-def assignment(node: psr.AssignmentNode, env: Environment):
+def assignment(node: AssignmentNode, env: Environment):
     key = node.left
     value = evaluate(node.right, env)
-    t = key.node_type
-    if t == psr.NAME_NODE:
-        if node.const:
-            env.assign_const(key.name, value)
-        else:
-            env.assign(key.name, value)
+    t = key.type
+    if t == NAME_NODE:
+        env.assign(key.name, value)
         if key.auth == lex.PRIVATE:
             env.add_private(key.name)
         return value
-    elif t == psr.DOT:
-        if node.const:
-            raise SplException("Unsolved syntax: assigning a constant to an instance")
+    elif t == DOT:
         node = key
         name_lst = []
-        while isinstance(node, psr.Dot):
+        while isinstance(node, Dot):
             name_lst.append(node.right.name)
             node = node.left
         name_lst.append(node.name)
@@ -956,8 +949,8 @@ def assignment(node: psr.AssignmentNode, env: Environment):
         raise InterpretException("Unknown assignment, in {}, at line {}".format(node.file, node.line_num))
 
 
-def init_class(node: psr.ClassInit, env: Environment):
-    cla: Class = env.get_heap(node.class_name)
+def init_class(node: ClassInit, env: Environment):
+    cla: Class = env.get_class(node.class_name)
 
     scope = Environment(False, env.heap)
     scope.scope_name = "Class scope<{}>".format(cla.class_name)
@@ -973,7 +966,7 @@ def init_class(node: psr.ClassInit, env: Environment):
 
     if node.args:
         # constructor: Function = scope.variables[node.class_name]
-        fc = psr.FuncCall((node.line_num, node.file), node.class_name)
+        fc = FuncCall((node.line_num, node.file), node.class_name)
         fc.args = node.args
         for a in fc.args.lines:
             scope.temp_vars.append(evaluate(a, env))
@@ -982,7 +975,7 @@ def init_class(node: psr.ClassInit, env: Environment):
     return instance
 
 
-def call_function(node: psr.FuncCall, env: Environment):
+def call_function(node: FuncCall, env: Environment):
     func = env.get(node.f_name, (node.line_num, node.file))
     if isinstance(func, Function):
         scope = Environment(False, env.heap)
@@ -1013,7 +1006,7 @@ def call_function(node: psr.FuncCall, env: Environment):
             # args.append(evaluate(node.args[i], env))
             args.append(evaluate(node.args.lines[i], env))
         result = func.call(args)
-        if isinstance(result, psr.BlockStmt):
+        if isinstance(result, BlockStmt):
             # Special case for "eval"
             res = evaluate(result, env)
             return res
@@ -1023,46 +1016,59 @@ def call_function(node: psr.FuncCall, env: Environment):
         raise InterpretException("Not a function call")
 
 
-def check_args_len(function: Function, call: psr.FuncCall):
-    if call.args and not list(filter(lambda k: not isinstance(k, psr.InvalidToken), function.presets)).count(True) \
+def check_args_len(function: Function, call: FuncCall):
+    if call.args and not list(filter(lambda k: not isinstance(k, InvalidToken), function.presets)).count(True) \
                          <= len(call.args.lines) <= len(function.params):
         raise SplException("Too few or too many arguments for function '{}', in '{}', at line {}"
                            .format(call.f_name, call.file, call.line_num))
 
 
-def call_dot(node: psr.Dot, env: Environment):
+def call_dot(node: Dot, env: Environment):
     instance = evaluate(node.left, env)
     obj = node.right
-    t = obj.node_type
-    if t == psr.NAME_NODE:
-        obj: psr.NameNode
-        if obj.name == "this":
-            raise UnauthorizedException("Access 'this' from outside")
+    t = obj.type
+    if t == NAME_NODE:
         if isinstance(instance, NativeType):
             return native_types_invoke(instance, obj)
+<<<<<<< HEAD
         elif isinstance(instance, ClassInstance) or isinstance(instance, Module):
             if (not isinstance(node.left, psr.NameNode) or node.left.name != "this") and \
                     instance.env.is_private(obj.name):
                 raise UnauthorizedException("Class attribute '{}' has private access".format(obj.name))
+=======
+        elif isinstance(instance, ClassInstance):
+            if instance.env.is_private(obj.name):
+                raise UnauthorizedException("Class attribute {} has private access".format(obj.name))
+>>>>>>> parent of 344cb36... Updated to spl 1.1.0
             else:
-                # attr = instance.env.variables[obj.name]
-                attr = instance.env.direct_get(obj.name)
+                attr = instance.env.variables[obj.name]
                 return attr
         else:
+<<<<<<< HEAD
             raise InterpretException("Neither a class instance nor a module, "
                                      "in {}, at line {}".format(node.file, node.line_num))
     elif t == psr.FUNCTION_CALL:
         obj: psr.FuncCall
+=======
+            raise InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
+    elif t == FUNCTION_CALL:
+>>>>>>> parent of 344cb36... Updated to spl 1.1.0
         if isinstance(instance, NativeType):
             try:
                 return native_types_call(instance, obj, env)
             except IndexError as ie:
                 raise IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
                                                .format(node.file, node.line_num))
+<<<<<<< HEAD
         elif isinstance(instance, ClassInstance) or isinstance(instance, Module):
             if (not isinstance(node.left, psr.NameNode) or node.left.name != "this") and \
                     instance.env.is_private(obj.f_name):
                 raise UnauthorizedException("Class attribute '{}' has private access".format(obj.f_name))
+=======
+        elif isinstance(instance, ClassInstance):
+            if instance.env.is_private(obj.f_name):
+                raise UnauthorizedException("Class attribute {} has private access".format(obj.f_name))
+>>>>>>> parent of 344cb36... Updated to spl 1.1.0
             else:
                 result = evaluate(obj, instance.env)
                 env.assign("=>", result)
@@ -1074,7 +1080,7 @@ def call_dot(node: psr.Dot, env: Environment):
         raise InterpretException("Unknown Syntax")
 
 
-def arithmetic(left, right_node: psr.Node, symbol, env: Environment):
+def arithmetic(left, right_node: Node, symbol, env: Environment):
     if symbol in lex.LAZY:
         if left is None or isinstance(left, bool):
             return primitive_and_or(left, right_node, symbol, env)
@@ -1091,26 +1097,23 @@ def arithmetic(left, right_node: psr.Node, symbol, env: Environment):
         elif isinstance(left, String):
             return string_arithmetic(left, right, symbol)
         elif isinstance(left, ClassInstance):
-            return instance_arithmetic(left, right, symbol, env, right_node)
+            return instance_arithmetic(left, right, symbol, env)
         else:
             return raw_type_comparison(left, right, symbol)
 
 
-def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment, right_node):
+def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment):
     if symbol == "===":
-        return isinstance(right, ClassInstance) and left.env.constants["id"] == right.env.constants["id"]
+        return isinstance(right, ClassInstance) and left.env.variables["id"] == right.env.variables["id"]
     elif symbol == "!==":
-        return not isinstance(right, ClassInstance) or left.env.constants["id"] != right.env.constants["id"]
+        return not isinstance(right, ClassInstance) or left.env.variables["id"] != right.env.variables["id"]
     elif symbol == "instanceof":
         if isinstance(right, Class):
-            return is_subclass_of(env.get_heap(left.class_name), right.class_name, env)
-        elif isinstance(right_node, psr.NameNode) and isinstance(right, Function):
-            right_extra = env.get_heap(right_node.name)
-            return is_subclass_of(env.get_heap(left.class_name), right_extra.class_name, env)
+            return is_subclass_of(env.get_class(left.class_name), right.class_name, env)
         else:
             return False
     else:
-        fc = psr.FuncCall((0, "interpreter"), "@" + BINARY_OPERATORS[symbol])
+        fc = FuncCall((0, "interpreter"), "@" + BINARY_OPERATORS[symbol])
         left.env.temp_vars.append(right)
         res = evaluate(fc, left.env)
         return res
@@ -1155,7 +1158,7 @@ def raw_type_comparison(left, right, symbol):
     return result
 
 
-def primitive_and_or(left, right_node: psr.Node, symbol, env: Environment):
+def primitive_and_or(left, right_node: Node, symbol, env: Environment):
     if left:
         if symbol == "&&":
             right = evaluate(right_node, env)
@@ -1191,7 +1194,7 @@ def primitive_arithmetic(left, right, symbol):
     return result
 
 
-def num_and_or(left, right_node: psr.Node, symbol, env: Environment):
+def num_and_or(left, right_node: Node, symbol, env: Environment):
     if left:
         if symbol == "||":
             return True
@@ -1249,17 +1252,19 @@ def class_inheritance(cla, env, scope):
     :return:
     """
     for sc in cla.superclass_names:
-        class_inheritance(env.get_heap(sc), env, scope)
+        class_inheritance(env.get_class(sc), env, scope)
 
     evaluate(cla.body, scope)  # this step just fills the scope
 
 
-def native_types_call(instance: NativeType, method: psr.FuncCall, env: Environment):
+def native_types_call(instance, method, env):
     """
 
     :param instance:
+    :type instance: NativeType
     :param method:
-    :param env:
+    :type method: FuncCall
+    :type env: Environment
     :return:
     """
     args = []
@@ -1272,7 +1277,7 @@ def native_types_call(instance: NativeType, method: psr.FuncCall, env: Environme
     return res
 
 
-def native_types_invoke(instance: NativeType, node: psr.NameNode):
+def native_types_invoke(instance: NativeType, node: NameNode):
     """
 
     :param instance:
@@ -1289,24 +1294,22 @@ def self_return(node):
     return node
 
 
-def eval_boolean_stmt(node: psr.BooleanStmt, env):
-    if node.value == "true":
-        return True
-    elif node.value == "false":
-        return False
+def eval_boolean_stmt(node: BooleanStmt, env):
+    if node.value in {"true", "false"}:
+        return node.value == "true"
     else:
         raise InterpretException("Unknown boolean value")
 
 
-def eval_anonymous_call(node: psr.AnonymousCall, env: Environment):
+def eval_anonymous_call(node: AnonymousCall, env: Environment):
     evaluate(node.left, env)
     right = node.right.args
-    fc = psr.FuncCall((node.line_num, node.file), "=>")
+    fc = FuncCall((node.line_num, node.file), "=>")
     fc.args = right
     return evaluate(fc, env)
 
 
-def eval_return(node: psr.ReturnStmt, env: Environment):
+def eval_return(node: ReturnStmt, env: Environment):
     value = node.value
     res = evaluate(value, env)
     # print(env.variables)
@@ -1314,14 +1317,14 @@ def eval_return(node: psr.ReturnStmt, env: Environment):
     return res
 
 
-def eval_block(node: psr.BlockStmt, env: Environment):
+def eval_block(node: BlockStmt, env: Environment):
     result = 0
     for line in node.lines:
         result = evaluate(line, env)
     return result
 
 
-def eval_if_stmt(node: psr.IfStmt, env: Environment):
+def eval_if_stmt(node: IfStmt, env: Environment):
     cond = evaluate(node.condition, env)
     if cond:
         return evaluate(node.then_block, env)
@@ -1329,7 +1332,7 @@ def eval_if_stmt(node: psr.IfStmt, env: Environment):
         return evaluate(node.else_block, env)
 
 
-def eval_while(node: psr.WhileStmt, env: Environment):
+def eval_while(node: WhileStmt, env: Environment):
     result = 0
     while not env.broken and evaluate(node.condition, env):
         result = evaluate(node.body, env)
@@ -1338,7 +1341,7 @@ def eval_while(node: psr.WhileStmt, env: Environment):
     return result
 
 
-def eval_for_loop_stmt(node: psr.ForLoopStmt, env: Environment):
+def eval_for_loop_stmt(node: ForLoopStmt, env: Environment):
     arg_num = len(node.condition.lines)
     if arg_num == 3:
         return eval_for_loop(node, env)
@@ -1349,6 +1352,7 @@ def eval_for_loop_stmt(node: psr.ForLoopStmt, env: Environment):
                                  .format(node.file, node.line_num))
 
 
+<<<<<<< HEAD
 def eval_def(node: psr.DefStmt, env: Environment):
     f = Function(node.params, node.presets, node.body)
     f.outer_scope = env
@@ -1357,15 +1361,21 @@ def eval_def(node: psr.DefStmt, env: Environment):
         env.assign_const(node.name, f)
     else:
         env.assign(node.name, f)
+=======
+def eval_def(node, env):
+    f = Function(node.params, node.presets, node.body)
+    f.outer_scope = env
+    env.assign(node.name, f)
+>>>>>>> parent of 344cb36... Updated to spl 1.1.0
     if node.auth == lex.PRIVATE:
         env.add_private(node.name)
     return f
 
 
-def eval_class_stmt(node, env: Environment):
+def eval_class_stmt(node, env):
     cla = Class(node.class_name, node.block)
     cla.superclass_names = node.superclass_names
-    env.add_heap(node.class_name, cla)
+    env.assign(node.class_name, cla)
     return cla
 
 
@@ -1393,6 +1403,7 @@ def raise_exception(e: Exception):
 SELF_RETURN_TABLE_2 = {int, float, bool, String, List, Set, Pair, System, File}
 
 NODE_TABLE = {
+<<<<<<< HEAD
     psr.INT_NODE: lambda n, env: n.value,
     psr.FLOAT_NODE: lambda n, env: n.value,
     psr.LITERAL_NODE: lambda n, env: String(n.literal),
@@ -1425,10 +1436,42 @@ NODE_TABLE = {
     psr.TRY_STMT: eval_try_catch,
     psr.JUMP_NODE: eval_jump,
     psr.IMPORT_STMT: eval_import_stmt
+=======
+    INT_NODE: lambda n, env: n.value,
+    FLOAT_NODE: lambda n, env: n.value,
+    LITERAL_NODE: lambda n, env: String(n.literal),
+    NAME_NODE: lambda n, env: env.get(n.name, (n.line_num, n.file)),
+    BOOLEAN_STMT: eval_boolean_stmt,
+    NULL_STMT: lambda n, env: None,
+    BREAK_STMT: lambda n, env: env.break_loop(),
+    CONTINUE_STMT: lambda n, env: env.pause_loop(),
+    ASSIGNMENT_NODE: assignment,
+    DOT: call_dot,
+    ANONYMOUS_CALL: eval_anonymous_call,
+    OPERATOR_NODE: eval_operator,
+    NEGATIVE_EXPR: lambda n, env: -evaluate(n.value, env),
+    NOT_EXPR: lambda n, env: bool(evaluate(n.value, env)),
+    RETURN_STMT: eval_return,
+    BLOCK_STMT: eval_block,
+    IF_STMT: eval_if_stmt,
+    WHILE_STMT: eval_while,
+    FOR_LOOP_STMT: eval_for_loop_stmt,
+    DEF_STMT: eval_def,
+    FUNCTION_CALL: call_function,
+    CLASS_STMT: eval_class_stmt,
+    CLASS_INIT: init_class,
+    INVALID_TOKEN: lambda n, env: raise_exception(InterpretException("Argument error, in {}, at line {}"
+                                                                     .format(n.file, n.line_num))),
+    ABSTRACT: lambda n, env: raise_exception(AbstractMethodException("Method is not implemented, in {}, at line {}"
+                                                                     .format(n.file, n.line_num))),
+    THROW_STMT: lambda n, env: raise_exception(RuntimeException(evaluate(n.value, env))),
+    TRY_STMT: eval_try_catch,
+    JUMP_NODE: eval_jump
+>>>>>>> parent of 344cb36... Updated to spl 1.1.0
 }
 
 
-def evaluate(node: psr.Node, env: Environment):
+def evaluate(node: Node, env: Environment):
     """
     Evaluates a abstract syntax tree node, with the corresponding working environment.
 
@@ -1442,7 +1485,7 @@ def evaluate(node: psr.Node, env: Environment):
         return None
     if type(node) in SELF_RETURN_TABLE_2:
         return node
-    t = node.node_type
+    t = node.type
     node.execution += 1
     tn = NODE_TABLE[t]
     return tn(node, env)

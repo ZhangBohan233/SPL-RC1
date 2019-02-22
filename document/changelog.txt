@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ===== Build 0028: 2019/02/21 =====
 ### Alpha Version ###
 
@@ -19,6 +20,8 @@
     *Merged spl_interpreter and spl_lib to avoid cyclic import
     *Fixed that using keyword 'this' cannot access to private attributes
 
+=======
+>>>>>>> parent of 344cb36... Updated to spl 1.1.0
 ********** SPL 1.0.2 **********
 ===== Build 0026: 2019/02/17 =====
 
