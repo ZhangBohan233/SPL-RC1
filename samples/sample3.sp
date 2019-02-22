@@ -1,9 +1,9 @@
-function f(a, b) {
+function f(a) {
     if (a < 1) {
         a;
     } else {
-        f(a-1, b);
+        f(a-1);
     };
 };
 
-f(5, 4);
+f(5);

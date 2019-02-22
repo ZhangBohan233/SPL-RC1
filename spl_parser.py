@@ -43,6 +43,8 @@ CATCH_STMT = 28
 TYPE_NODE = 29
 # UNPACK_OPERATOR = 30
 JUMP_NODE = 30
+# MODULE_STMT = 31
+IMPORT_STMT = 32
 
 
 class Parser:
@@ -81,6 +83,13 @@ class Parser:
             node = LiteralNode(line, lit)
             self.stack.append(node)
 
+    def add_import(self, line, import_name):
+        if self.inner:
+            self.inner.add_import(line, import_name)
+        else:
+            stmt = ImportStmt(line, import_name)
+            self.stack.append(stmt)
+
     def add_operator(self, line, op, extra_precedence, assignment=False):
         if self.inner:
             self.inner.add_operator(line, op, extra_precedence, assignment)
@@ -115,14 +124,14 @@ class Parser:
     #         node = UnpackOperator(line, extra_precedence)
     #         self.stack.append(node)
 
-    def add_assignment(self, line, const: bool):
+    def add_assignment(self, line):
         if self.inner:
-            self.inner.add_assignment(line, const)
+            self.inner.add_assignment(line)
         else:
             # print(len(self.stack))
 
             name = self.stack.pop()
-            ass_node = AssignmentNode(line, const)
+            ass_node = AssignmentNode(line)
             ass_node.left = name
             self.stack.append(ass_node)
 
@@ -197,11 +206,19 @@ class Parser:
             pass
             # self.inner = Parser()
 
-    def add_function(self, line, f_name, auth, is_const, is_global):
+<<<<<<< HEAD
+    def add_function(self, line, f_name, auth, is_const):
         if self.inner:
-            self.inner.add_function(line, f_name, auth, is_const, is_global)
+            self.inner.add_function(line, f_name, auth, is_const)
         else:
-            func = DefStmt(line, f_name, auth, is_const, is_global)
+            func = DefStmt(line, f_name, auth, is_const)
+=======
+    def add_function(self, line, f_name, auth):
+        if self.inner:
+            self.inner.add_function(line, f_name, auth)
+        else:
+            func = DefStmt(line, f_name, auth)
+>>>>>>> parent of 344cb36... Updated to spl 1.1.0
             self.stack.append(func)
 
     def build_func_params(self, params: list, presets: list):
@@ -394,6 +411,15 @@ class Parser:
         else:
             self.stack.append(Abstract(line))
 
+    def build_import(self):
+        if self.inner:
+            self.inner.build_import()
+        else:
+            node = self.stack.pop()
+            import_node: ImportStmt = self.stack.pop()
+            import_node.block = node
+            self.stack.append(import_node)
+
     def build_class(self):
         if self.inner:
             self.inner.build_class()
@@ -577,15 +603,10 @@ def get_number_node(line, v: str):
 
 
 class Node:
-    line_num = 0
-    file = None
-    node_type = 0
-    execution = 0
-
     def __init__(self, line: tuple):
         self.line_num = line[0]
         self.file = line[1]
-        self.node_type = 0
+        self.type = 0
         self.execution = 0
 
 
@@ -593,8 +614,6 @@ class Limited:
     """
     :type auth: int
     """
-    auth = 0
-
     def __init__(self, auth: int):
         self.auth = auth
 
@@ -609,16 +628,13 @@ class BinaryExpr(Node):
     :type operation: str
     :type left:
     """
-    left = None
-    right = None
-    operation = None
 
     def __init__(self, line):
         Node.__init__(self, line)
 
-        # self.left = None
-        # self.right = None
-        # self.operation = None
+        self.left = None
+        self.right = None
+        self.operation = None
 
     def __str__(self):
         return "BE({} {} {})".format(self.left, self.operation, self.right)
@@ -628,8 +644,6 @@ class BinaryExpr(Node):
 
 
 class NumNode(LeafNode):
-    value = 0
-
     def __init__(self, line, v):
         LeafNode.__init__(self, line)
 
@@ -646,26 +660,24 @@ class IntNode(NumNode):
     def __init__(self, line, v):
         NumNode.__init__(self, line, int(v))
 
-        self.node_type = INT_NODE
+        self.type = INT_NODE
 
 
 class FloatNode(NumNode):
     def __init__(self, line, v):
         NumNode.__init__(self, line, float(v))
 
-        self.node_type = FLOAT_NODE
+        self.type = FLOAT_NODE
 
 
 class LiteralNode(LeafNode):
     """
     :type literal: str
     """
-    literal = None
-
     def __init__(self, line, lit):
         LeafNode.__init__(self, line)
 
-        self.node_type = LITERAL_NODE
+        self.type = LITERAL_NODE
         self.literal = lit
 
     def __str__(self):
@@ -676,14 +688,11 @@ class LiteralNode(LeafNode):
 
 
 class OperatorNode(BinaryExpr):
-    assignment = False
-    extra_precedence = 0
-
     def __init__(self, line, extra):
         BinaryExpr.__init__(self, line)
 
-        self.node_type = OPERATOR_NODE
-        # self.assignment = False
+        self.type = OPERATOR_NODE
+        self.assignment = False
         self.extra_precedence = extra * MULTIPLIER
         # print(self.extra_precedence)
 
@@ -692,15 +701,12 @@ class OperatorNode(BinaryExpr):
 
 
 class UnaryOperator(Node):
-    value = None
-    operation = None
-    extra_precedence = 0
 
     def __init__(self, line, extra):
         Node.__init__(self, line)
 
-        # self.value = None
-        # self.operation = None
+        self.value = None
+        self.operation = None
         self.extra_precedence = extra * MULTIPLIER
 
     def precedence(self):
@@ -714,13 +720,11 @@ class UnaryOperator(Node):
 
 
 class NameNode(LeafNode, Limited):
-    name = None
-
     def __init__(self, line, n, auth):
         LeafNode.__init__(self, line)
         Limited.__init__(self, auth)
 
-        self.node_type = NAME_NODE
+        self.type = NAME_NODE
         self.name = n
         # self.index = None
         # self.nest = None
@@ -737,21 +741,18 @@ class NameNode(LeafNode, Limited):
 
 
 class AssignmentNode(BinaryExpr):
-    const = False
-
-    def __init__(self, line, is_const):
+    def __init__(self, line):
         BinaryExpr.__init__(self, line)
 
-        self.node_type = ASSIGNMENT_NODE
+        self.type = ASSIGNMENT_NODE
         self.operation = "="
-        self.const = is_const
 
 
 class TypeNode(BinaryExpr):
     def __init__(self, line):
         BinaryExpr.__init__(self, line)
 
-        self.node_type = TYPE_NODE
+        self.type = TYPE_NODE
         self.operation = ":"
 
 
@@ -759,14 +760,14 @@ class AnonymousCall(OperatorNode):
     def __init__(self, line, extra):
         OperatorNode.__init__(self, line, extra)
 
-        self.node_type = ANONYMOUS_CALL
+        self.type = ANONYMOUS_CALL
 
 
 class NegativeExpr(UnaryOperator):
     def __init__(self, line, extra):
         UnaryOperator.__init__(self, line, extra)
 
-        self.node_type = NEGATIVE_EXPR
+        self.type = NEGATIVE_EXPR
         self.operation = "neg"
 
 
@@ -774,7 +775,7 @@ class NotExpr(UnaryOperator):
     def __init__(self, line, extra):
         UnaryOperator.__init__(self, line, extra)
 
-        self.node_type = NOT_EXPR
+        self.type = NOT_EXPR
         self.operation = "!"
 
 
@@ -782,14 +783,14 @@ class NotExpr(UnaryOperator):
 #     def __init__(self, line):
 #         LeafNode.__init__(self, line)
 #
-#         node_type = UNPACK_OPERATOR
+#         self.type = UNPACK_OPERATOR
 
 
 class ReturnStmt(UnaryOperator):
     def __init__(self, line):
         UnaryOperator.__init__(self, line, 0)
 
-        self.node_type = RETURN_STMT
+        self.type = RETURN_STMT
         self.operation = "return"
 
 
@@ -797,7 +798,7 @@ class BreakStmt(LeafNode):
     def __init__(self, line):
         LeafNode.__init__(self, line)
 
-        self.node_type = BREAK_STMT
+        self.type = BREAK_STMT
 
     def __str__(self):
         return "break"
@@ -810,7 +811,7 @@ class ContinueStmt(LeafNode):
     def __init__(self, line):
         LeafNode.__init__(self, line)
 
-        self.node_type = CONTINUE_STMT
+        self.type = CONTINUE_STMT
 
     def __str__(self):
         return "continue"
@@ -820,12 +821,10 @@ class ContinueStmt(LeafNode):
 
 
 class BooleanStmt(LeafNode):
-    value = None
-
     def __init__(self, line, v):
         LeafNode.__init__(self, line)
 
-        self.node_type = BOOLEAN_STMT
+        self.type = BOOLEAN_STMT
         self.value = v
 
     def __str__(self):
@@ -839,7 +838,7 @@ class NullStmt(LeafNode):
     def __init__(self, line):
         LeafNode.__init__(self, line)
 
-        self.node_type = NULL_STMT
+        self.type = NULL_STMT
 
     def __str__(self):
         return "null"
@@ -849,12 +848,10 @@ class NullStmt(LeafNode):
 
 
 class BlockStmt(Node):
-    lines = None
-
     def __init__(self, line):
         Node.__init__(self, line)
 
-        self.node_type = BLOCK_STMT
+        self.type = BLOCK_STMT
 
         self.lines = []
 
@@ -872,24 +869,19 @@ class BlockStmt(Node):
 
 
 class CondStmt(Node):
-    condition = None
-
     def __init__(self, line):
         Node.__init__(self, line)
 
-        # self.condition = None
+        self.condition = None
 
 
 class IfStmt(CondStmt):
-    then_block = None
-    else_block = None
-
     def __init__(self, line):
         CondStmt.__init__(self, line)
 
-        self.node_type = IF_STMT
-        # self.then_block = None
-        # self.else_block = None
+        self.type = IF_STMT
+        self.then_block = None
+        self.else_block = None
 
     def __str__(self):
         return "if({} then {} else {})".format(self.condition, self.then_block, self.else_block)
@@ -899,13 +891,11 @@ class IfStmt(CondStmt):
 
 
 class WhileStmt(CondStmt):
-    body = None
-
     def __init__(self, line):
         CondStmt.__init__(self, line)
 
-        self.node_type = WHILE_STMT
-        # self.body = None
+        self.type = WHILE_STMT
+        self.body = None
 
     def __str__(self):
         return "while({} do {})".format(self.condition, self.body)
@@ -915,13 +905,12 @@ class WhileStmt(CondStmt):
 
 
 class ForLoopStmt(CondStmt):
-    body = None
-
     def __init__(self, line):
         CondStmt.__init__(self, line)
 
-        self.node_type = FOR_LOOP_STMT
-        # self.body = None
+        self.type = FOR_LOOP_STMT
+        self.body = None
+        # self.stop = self.condition
 
     def __str__(self):
         return "for ({}) do {}".format(self.condition, self.body)
@@ -931,24 +920,30 @@ class ForLoopStmt(CondStmt):
 
 
 class DefStmt(Node, Limited):
+<<<<<<< HEAD
     name = None
     params = None
     presets = None
     body = None
     const = False
-    is_global = True
 
-    def __init__(self, line, f_name, auth, is_const, is_global):
+    def __init__(self, line, f_name, auth, is_const):
+=======
+    def __init__(self, line, f_name, auth):
+>>>>>>> parent of 344cb36... Updated to spl 1.1.0
         Node.__init__(self, line)
         Limited.__init__(self, auth)
 
-        self.node_type = DEF_STMT
+        self.type = DEF_STMT
         self.name = f_name
         self.params = []
         self.presets = []
+<<<<<<< HEAD
         self.const = is_const
-        self.is_global = is_global
         # self.body = None
+=======
+        self.body = None
+>>>>>>> parent of 344cb36... Updated to spl 1.1.0
 
     def __str__(self):
         return "func({}({} :{}) -> {})".format(self.name, self.params, self.presets, self.body)
@@ -961,17 +956,14 @@ class FuncCall(LeafNode):
     """
     :type args: BlockStmt
     """
-    f_name = None
-    args = None
-    is_get_set = False
-
     def __init__(self, line, f_name):
         LeafNode.__init__(self, line)
 
-        self.node_type = FUNCTION_CALL
+        self.type = FUNCTION_CALL
         self.f_name = f_name
-        # self.args = None
-        # self.is_get_set = False
+        self.args = None
+        self.is_get_set = False
+        # self.header_block = None
 
     def __str__(self):
         return "{}({})".format(self.f_name, self.args)
@@ -980,18 +972,41 @@ class FuncCall(LeafNode):
         return self.__str__()
 
 
-class ClassStmt(Node):
+<<<<<<< HEAD
+class ModuleStmt(Node):
     class_name = None
-    superclass_names = None
     block = None
 
     def __init__(self, line: tuple, name: str):
         Node.__init__(self, line)
 
-        self.node_type = CLASS_STMT
+        # self.node_type = MODULE_STMT
+=======
+class ClassStmt(Node):
+    def __init__(self, line: tuple, name: str):
+        Node.__init__(self, line)
+
+        self.type = CLASS_STMT
+>>>>>>> parent of 344cb36... Updated to spl 1.1.0
         self.class_name = name
+
+
+class ImportStmt(ModuleStmt):
+    def __init__(self, line: tuple, name: str):
+        ModuleStmt.__init__(self, line, name)
+
+        self.node_type = IMPORT_STMT
+
+
+class ClassStmt(ModuleStmt):
+    superclass_names = None
+
+    def __init__(self, line: tuple, name: str):
+        ModuleStmt.__init__(self, line, name)
+
+        self.node_type = CLASS_STMT
         self.superclass_names = []
-        # self.block = None
+        self.block = None
 
     def __str__(self):
         return "Class {}: {}".format(self.class_name, self.block)
@@ -1001,15 +1016,12 @@ class ClassStmt(Node):
 
 
 class ClassInit(LeafNode):
-    class_name = None
-    args: BlockStmt = None
-
     def __init__(self, line, name):
         LeafNode.__init__(self, line)
 
-        self.node_type = CLASS_INIT
+        self.type = CLASS_INIT
         self.class_name = name
-        # self.args: BlockStmt = None
+        self.args: BlockStmt = None
 
     def __str__(self):
         if self.args:
@@ -1025,7 +1037,7 @@ class Dot(OperatorNode):
     def __init__(self, line, extra):
         OperatorNode.__init__(self, line, extra)
 
-        self.node_type = DOT
+        self.type = DOT
         self.operation = "."
 
     def __str__(self):
@@ -1039,7 +1051,7 @@ class Abstract(LeafNode):
     def __init__(self, line):
         LeafNode.__init__(self, line)
 
-        self.node_type = ABSTRACT
+        self.type = ABSTRACT
 
     def __str__(self):
         return "abstract"
@@ -1052,7 +1064,7 @@ class InvalidToken(Node):
     def __init__(self, line):
         Node.__init__(self, line)
 
-        self.node_type = INVALID_TOKEN
+        self.type = INVALID_TOKEN
 
     def __str__(self):
         return "invalid"
@@ -1065,7 +1077,7 @@ class ThrowStmt(UnaryOperator):
     def __init__(self, line):
         UnaryOperator.__init__(self, line, 0)
 
-        self.node_type = THROW_STMT
+        self.type = THROW_STMT
         self.operation = "throw"
 
     def __str__(self):
@@ -1076,13 +1088,11 @@ class ThrowStmt(UnaryOperator):
 
 
 class CatchStmt(CondStmt):
-    then: BlockStmt = None
-
     def __init__(self, line):
         CondStmt.__init__(self, line)
 
-        self.node_type = CATCH_STMT
-        # self.then: BlockStmt = None
+        self.type = CATCH_STMT
+        self.then: BlockStmt = None
 
     def __str__(self):
         return "catch ({}) {}".format(self.condition, self.then)
@@ -1092,20 +1102,16 @@ class CatchStmt(CondStmt):
 
 
 class TryStmt(Node):
-    try_block: BlockStmt = None
-    catch_blocks = None
-    finally_block: BlockStmt = None
-
     def __init__(self, line):
         Node.__init__(self, line)
 
-        self.node_type = TRY_STMT
-        # self.try_block: BlockStmt = None
+        self.type = TRY_STMT
+        self.try_block: BlockStmt = None
         self.catch_blocks: [CatchStmt] = []
-        # self.finally_block: BlockStmt = None
+        self.finally_block: BlockStmt = None
 
     def __str__(self):
-        return "try {} {} finally {}" \
+        return "try {} {} finally {}"\
             .format(self.try_block, self.catch_blocks, self.finally_block)
 
     def __repr__(self):
@@ -1113,13 +1119,10 @@ class TryStmt(Node):
 
 
 class JumpNode(Node):
-    to = None
-    args = None
-
     def __init__(self, line, to):
         Node.__init__(self, line)
 
-        self.node_type = JUMP_NODE
+        self.type = JUMP_NODE
         self.to = to
         self.args = []
 

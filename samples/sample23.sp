@@ -32,10 +32,6 @@ class Creature {
 
 class Student extends Person, Human, Creature {
     private grade = 0;
-    const v = "STUDENT";
-    private const g2 = "sb";
-    father = new Human;
-
     function Student(n, g) {
         Person(n);
         age = g + 18;
@@ -51,10 +47,6 @@ class Student extends Person, Human, Creature {
         print("xxx");
     }
 
-    const def access() {
-        test();
-    }
-
     def set_grade(g) {
         grade = g;
     }
@@ -64,11 +56,16 @@ class Student extends Person, Human, Creature {
     }
 
     operator ==(other) {
-        return other instanceof Student && other.name == name;
+        if (other instanceof 'Student') {
+            if (name == other.name) {
+                return true;
+            }
+        }
+        return false;
     }
 
     operator !=(other) {
-        return !(this == other);
+        return this == other;
     }
 
     function get() {
@@ -81,13 +78,11 @@ class Student extends Person, Human, Creature {
 }
 
 
+1;
 a = new Student("True", 1);
 print(type(a));
-b = new Student("True", 1);
-print(a == b);
-b.test = function () {print("yyy")};
-b.set_grade(2);
-print(b.get_grade())
-print(dir(Student));
-//print(b);
+b = new Student("ta", 1);
+print(a);
+print(1 instanceof int);
+print("True");
 

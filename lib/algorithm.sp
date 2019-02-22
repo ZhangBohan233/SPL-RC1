@@ -62,7 +62,7 @@ function rand_list(length, min, max) {
     x = 0;
     r = max - min;
     for (i = 0; i < length; i += 1) {
-        x = random() * r + min;
+        x = math.random() * r + min;
         xi = int(x);
         lst.append(xi);
     }
