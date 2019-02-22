@@ -6,8 +6,6 @@ from spl_lexer import BINARY_OPERATORS
 LST = [72, 97, 112, 112, 121, 32, 66, 105, 114, 116, 104, 100, 97, 121, 32,
        73, 115, 97, 98, 101, 108, 108, 97, 33, 33, 33]
 
-global_env = None
-
 
 class Counter:
     def __init__(self):
@@ -149,9 +147,9 @@ class Environment:
         self.paused = True
 
     def assign(self, key, value):
-        if self.is_global:
-            self.heap[key] = value
-        elif key in self.constants:
+        # if self.is_global:
+        #     self.heap[key] = value
+        if key in self.constants:
             raise SplException("Re-assignment to constant values.")
         elif key in self.variables:
             self.variables[key] = value
@@ -273,13 +271,12 @@ class Function:
     :type outer_scope: Environment
     """
 
-    def __init__(self, params, presets, body, is_global):
+    def __init__(self, params, presets, body):
         # self.name = f_name
         self.params: list = params
         self.presets: list = presets
         self.body = body
         self.outer_scope = None
-        self.is_global = is_global
 
     def __str__(self):
         return "Function<{}>".format(id(self))
@@ -739,8 +736,6 @@ class Interpreter:
         self.env = Environment(True, {})
         self.env.add_heap("system", System(argv, encoding))
         self.env.scope_name = "Global"
-        global global_env
-        global_env = self.env
 
     def set_ast(self, ast: psr.BlockStmt):
         """
@@ -760,13 +755,20 @@ class Interpreter:
         return evaluate(self.ast, self.env)
 
 
+class Module:
+    def __init__(self, mod_name: str, env: Environment):
+        self.module_name = mod_name
+        self.env = env
+
+
 class ClassInstance:
+    """
+    ===== Attributes =====
+    :param class_name: name of this class
+    :param env: instance attributes
+    """
+
     def __init__(self, env: Environment, class_name: str):
-        """
-        ===== Attributes =====
-        :param class_name: name of this class
-        :param env: instance attributes
-        """
         self.class_name = class_name
         self.env = env
         self.env.constants["id"] = ID_COUNTER.get()
@@ -1038,7 +1040,7 @@ def call_dot(node: psr.Dot, env: Environment):
             raise UnauthorizedException("Access 'this' from outside")
         if isinstance(instance, NativeType):
             return native_types_invoke(instance, obj)
-        elif isinstance(instance, ClassInstance):
+        elif isinstance(instance, ClassInstance) or isinstance(instance, Module):
             if (not isinstance(node.left, psr.NameNode) or node.left.name != "this") and \
                     instance.env.is_private(obj.name):
                 raise UnauthorizedException("Class attribute '{}' has private access".format(obj.name))
@@ -1047,7 +1049,8 @@ def call_dot(node: psr.Dot, env: Environment):
                 attr = instance.env.direct_get(obj.name)
                 return attr
         else:
-            raise InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
+            raise InterpretException("Neither a class instance nor a module, "
+                                     "in {}, at line {}".format(node.file, node.line_num))
     elif t == psr.FUNCTION_CALL:
         obj: psr.FuncCall
         if isinstance(instance, NativeType):
@@ -1056,7 +1059,7 @@ def call_dot(node: psr.Dot, env: Environment):
             except IndexError as ie:
                 raise IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
                                                .format(node.file, node.line_num))
-        elif isinstance(instance, ClassInstance):
+        elif isinstance(instance, ClassInstance) or isinstance(instance, Module):
             if (not isinstance(node.left, psr.NameNode) or node.left.name != "this") and \
                     instance.env.is_private(obj.f_name):
                 raise UnauthorizedException("Class attribute '{}' has private access".format(obj.f_name))
@@ -1065,7 +1068,8 @@ def call_dot(node: psr.Dot, env: Environment):
                 env.assign("=>", result)
                 return result
         else:
-            raise InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
+            raise InterpretException("Neither a class instance nor a module, "
+                                     "in {}, at line {}".format(node.file, node.line_num))
     else:
         raise InterpretException("Unknown Syntax")
 
@@ -1346,11 +1350,9 @@ def eval_for_loop_stmt(node: psr.ForLoopStmt, env: Environment):
 
 
 def eval_def(node: psr.DefStmt, env: Environment):
-    f = Function(node.params, node.presets, node.body, node.is_global)
-    if not f.is_global:
-        f.outer_scope = env
-    else:
-        f.outer_scope = global_env
+    f = Function(node.params, node.presets, node.body)
+    f.outer_scope = env
+
     if node.const:
         env.assign_const(node.name, f)
     else:
@@ -1365,6 +1367,15 @@ def eval_class_stmt(node, env: Environment):
     cla.superclass_names = node.superclass_names
     env.add_heap(node.class_name, cla)
     return cla
+
+
+def eval_import_stmt(node: psr.ImportStmt, env: Environment):
+    scope = Environment(False, env.heap)
+    evaluate(node.block, scope)
+    imp = Module(node.class_name, scope)
+    env.add_heap(node.class_name, imp)
+    # print(node.class_name)
+    return imp
 
 
 def eval_jump(node, env):
@@ -1412,7 +1423,8 @@ NODE_TABLE = {
                                 .format(n.file, n.line_num))),
     psr.THROW_STMT: lambda n, env: raise_exception(RuntimeException(evaluate(n.value, env))),
     psr.TRY_STMT: eval_try_catch,
-    psr.JUMP_NODE: eval_jump
+    psr.JUMP_NODE: eval_jump,
+    psr.IMPORT_STMT: eval_import_stmt
 }
 
 

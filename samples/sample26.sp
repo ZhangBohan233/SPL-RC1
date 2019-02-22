@@ -1,6 +1,6 @@
 import "queue"
 
-a = new LinkedList();
+a = new queue.LinkedList();
 
 t1 = system.time();
 for (i = 0; i < 1000; i+=1) {

@@ -16,7 +16,7 @@ OTHERS = {"=", "@", ":"}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
 RESERVED = {"class", "function", "def", "if", "else", "new", "extends", "return", "break", "continue",
             "true", "false", "null", "operator", "while", "for", "import", "throw", "try", "catch", "finally",
-            "abstract", "private", "const"}
+            "abstract", "private", "const", "as"}
 LAZY = {"&&", "||"}
 OMITS = {"\n", "\r", "\t", " "}
 
@@ -84,7 +84,7 @@ class Lexer:
             last_index = len(self.tokens)
             in_doc = self.proceed_line(line, tup, in_doc)
             # print(self.tokens[last_index:])
-            self.find_import(last_index, len(self.tokens))
+            self.find_import(tup, last_index, len(self.tokens))
             line = file.readline()
             line_num += 1
 
@@ -171,7 +171,7 @@ class Lexer:
         Tokenize a line, with string literals removed.
 
         :param non_literal: text to be tokenize, no string literal
-        :param line_num: the line number
+        :param line_num: the line number and the name of source file
         :return: None
         """
         lst = normalize(non_literal)
@@ -200,34 +200,67 @@ class Lexer:
             else:
                 raise ParseException("Unknown symbol: '{}', at line {}".format(part, line_num))
 
-    def find_import(self, from_, to):
+    def find_import(self, line_file, from_, to):
+        """
+        Finds import statement from tokenized list.
+
+        :param line_file: the line number and source file name
+        :param from_: the beginning index of finding
+        :param to: the end index of finding
+        :return: None
+        """
         for i in range(from_, to, 1):
             token = self.tokens[i]
             if isinstance(token, IdToken) and token.symbol == "import":
                 next_token: LiteralToken = self.tokens[i + 1]
                 name = next_token.text
+                import_name = None
+                if i + 3 < to:
+                    as_token = self.tokens[i + 2]
+                    if isinstance(as_token, IdToken) and as_token.symbol == "as":
+                        name_token: IdToken = self.tokens[i + 3]
+                        import_name = name_token.symbol
+                        self.tokens.pop(i)
+                        self.tokens.pop(i)
                 self.tokens.pop(i)
                 self.tokens.pop(i)
                 if name[-3:] == ".sp":
                     # user lib
                     file_name = "{}{}{}".format(self.script_dir, os.sep, name)
+                    no_sp_name = name[:-3]
                 else:
                     # system lib
                     file_name = "{}{}lib{}{}.sp".format(SPL_PATH, os.sep, os.sep, name)
+                    no_sp_name = name
 
-                self.import_file(file_name)
+                if import_name is None:
+                    import_name = no_sp_name.replace("/", "\\")
+                self.import_file(line_file, file_name, import_name)
                 # print(self.tokens)
                 break
 
-    def import_file(self, full_path):
+    def import_file(self, line_file, full_path, import_name):
+        """
+        Imports a full script file into the tokens list.
+
+        :param line_file: the line number and the source file name
+        :param full_path: the full path of the imported file.
+        :param import_name: the name of the module
+        :return: None
+        """
         file = open(full_path, "r")
         lexer = Lexer()
         lexer.file_name = full_path
         lexer.script_dir = get_dir(full_path)
         lexer.tokenize(file)
         # print(lexer.tokens)
+        self.tokens.append(IdToken(line_file, "import"))
+        self.tokens.append(IdToken(line_file, import_name))
+        self.tokens.append(IdToken(line_file, "{"))
         self.tokens += lexer.tokens
         self.tokens.pop()  # remove the EOF token
+        self.tokens.append(IdToken(line_file, "}"))
+        self.tokens.append(IdToken(line_file, EOL))
         file.close()
 
     def parse(self):
@@ -245,7 +278,8 @@ class Lexer:
         auth = PUBLIC
         call_nest = 0
         brace_count = 0
-        class_brace = -1
+        class_braces: [(int, bool)] = []  # records the brace count when class stmt starts, True if is class, False
+        # if is import
         extra_precedence = 0
 
         while True:
@@ -294,9 +328,12 @@ class Lexer:
                         brace_count -= 1
                         parser.build_line()
                         parser.build_block()
-                        if brace_count == class_brace:
-                            parser.build_class()
-                            class_brace = -1
+                        if len(class_braces) > 0 and brace_count == class_braces[-1][0]:
+                            if class_braces[-1][1]:
+                                parser.build_class()
+                            else:
+                                parser.build_import()
+                            class_braces.pop()
                         next_token = self.tokens[i + 1]
                         if not (isinstance(next_token, IdToken) and next_token.symbol in NO_BUILD_LINE):
                             parser.build_expr()
@@ -349,7 +386,7 @@ class Lexer:
                         i += 1
                         f_token: IdToken = self.tokens[i]
                         f_name = f_token.symbol
-                        res = parse_def(f_name, self.tokens, i, func_count, parser, auth, is_const, brace_count == 0)
+                        res = parse_def(f_name, self.tokens, i, func_count, parser, auth, is_const)
                         i = res[0]
                         func_count = res[1]
                         auth = PUBLIC
@@ -358,15 +395,21 @@ class Lexer:
                         i += 1
                         op_token: IdToken = self.tokens[i]
                         op_name = "@" + BINARY_OPERATORS[op_token.symbol]
-                        res = parse_def(op_name, self.tokens, i, func_count, parser, PUBLIC, False, False)
+                        res = parse_def(op_name, self.tokens, i, func_count, parser, PUBLIC, False)
                         i = res[0]
                         func_count = res[1]
+                    elif sym == "import":
+                        i += 1
+                        next_token: IdToken = self.tokens[i]
+                        import_name = next_token.symbol
+                        parser.add_import(line, import_name)
+                        class_braces.append((brace_count, False))
                     elif sym == "class":
                         i += 1
                         c_token: IdToken = self.tokens[i]
                         class_name = c_token.symbol
                         parser.add_class((c_token.line_number(), c_token.file_name()), class_name)
-                        class_brace = brace_count
+                        class_braces.append((brace_count, True))
                     elif sym == "extends":
                         i += 1
                         cla = parser.get_current_class()
@@ -477,7 +520,7 @@ def unexpected_token(token):
                                                                            token.line_number()))
 
 
-def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth, is_const, is_global):
+def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth, is_const):
     """
     Parses a function declaration into abstract syntax tree.
 
@@ -488,16 +531,15 @@ def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth, is_const,
     :param parser: the Parser object
     :param auth: the authority of this function
     :param is_const: whether this defines a constant function
-    :param is_global: whether this function is a global function
     :return: tuple(new index, new anonymous function count)
     """
     tup = (tokens[i].line_number(), tokens[i].file_name())
     if f_name == "(":
-        parser.add_function(tup, "af-{}".format(func_count), auth, is_const, is_global)
+        parser.add_function(tup, "af-{}".format(func_count), auth, is_const)
         # "af" stands for anonymous function
         func_count += 1
     else:
-        parser.add_function(tup, f_name, auth, is_const, is_global)
+        parser.add_function(tup, f_name, auth, is_const)
         i += 1
     front_par = tokens[i]
     if isinstance(front_par, IdToken) and front_par.symbol == "(":

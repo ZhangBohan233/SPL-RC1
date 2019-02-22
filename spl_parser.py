@@ -43,6 +43,8 @@ CATCH_STMT = 28
 TYPE_NODE = 29
 # UNPACK_OPERATOR = 30
 JUMP_NODE = 30
+# MODULE_STMT = 31
+IMPORT_STMT = 32
 
 
 class Parser:
@@ -81,6 +83,13 @@ class Parser:
         else:
             node = LiteralNode(line, lit)
             self.stack.append(node)
+
+    def add_import(self, line, import_name):
+        if self.inner:
+            self.inner.add_import(line, import_name)
+        else:
+            stmt = ImportStmt(line, import_name)
+            self.stack.append(stmt)
 
     def add_operator(self, line, op, extra_precedence, assignment=False):
         if self.inner:
@@ -198,11 +207,11 @@ class Parser:
             pass
             # self.inner = Parser()
 
-    def add_function(self, line, f_name, auth, is_const, is_global):
+    def add_function(self, line, f_name, auth, is_const):
         if self.inner:
-            self.inner.add_function(line, f_name, auth, is_const, is_global)
+            self.inner.add_function(line, f_name, auth, is_const)
         else:
-            func = DefStmt(line, f_name, auth, is_const, is_global)
+            func = DefStmt(line, f_name, auth, is_const)
             self.stack.append(func)
 
     def build_func_params(self, params: list, presets: list):
@@ -394,6 +403,15 @@ class Parser:
             self.inner.add_abstract(line)
         else:
             self.stack.append(Abstract(line))
+
+    def build_import(self):
+        if self.inner:
+            self.inner.build_import()
+        else:
+            node = self.stack.pop()
+            import_node: ImportStmt = self.stack.pop()
+            import_node.block = node
+            self.stack.append(import_node)
 
     def build_class(self):
         if self.inner:
@@ -937,9 +955,8 @@ class DefStmt(Node, Limited):
     presets = None
     body = None
     const = False
-    is_global = True
 
-    def __init__(self, line, f_name, auth, is_const, is_global):
+    def __init__(self, line, f_name, auth, is_const):
         Node.__init__(self, line)
         Limited.__init__(self, auth)
 
@@ -948,7 +965,6 @@ class DefStmt(Node, Limited):
         self.params = []
         self.presets = []
         self.const = is_const
-        self.is_global = is_global
         # self.body = None
 
     def __str__(self):
@@ -981,16 +997,31 @@ class FuncCall(LeafNode):
         return self.__str__()
 
 
-class ClassStmt(Node):
+class ModuleStmt(Node):
     class_name = None
-    superclass_names = None
     block = None
 
     def __init__(self, line: tuple, name: str):
         Node.__init__(self, line)
 
-        self.node_type = CLASS_STMT
+        # self.node_type = MODULE_STMT
         self.class_name = name
+
+
+class ImportStmt(ModuleStmt):
+    def __init__(self, line: tuple, name: str):
+        ModuleStmt.__init__(self, line, name)
+
+        self.node_type = IMPORT_STMT
+
+
+class ClassStmt(ModuleStmt):
+    superclass_names = None
+
+    def __init__(self, line: tuple, name: str):
+        ModuleStmt.__init__(self, line, name)
+
+        self.node_type = CLASS_STMT
         self.superclass_names = []
         # self.block = None
 
