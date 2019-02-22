@@ -1,9 +1,14 @@
-def tc(x, y) {
-    if (x < 1) {
-        return false;
-    } else {
-        return tc(x - 1, y + 1);
+import "iterable"
+
+
+class S28 extends iterable.Iterable {
+    function S28() {
+
     }
 }
 
-tc(600, 2750);
+b = 2;
+
+function fuck(a) {
+    print(a + 1);
+}

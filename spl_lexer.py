@@ -413,15 +413,33 @@ class Lexer:
                     elif sym == "extends":
                         i += 1
                         cla = parser.get_current_class()
-                        while True:
-                            c_token = self.tokens[i]
-                            superclass_name = c_token.symbol
-                            parser.add_extends(superclass_name, cla)
-                            next_token = self.tokens[i + 1]
-                            if isinstance(next_token, IdToken) and next_token.symbol == ",":
-                                i += 2
+                        # while True:
+                        #
+                        little_parser = psr.Parser()
+                        c_token = self.tokens[i]
+                        while c_token.is_identifier() and c_token.symbol != "{":
+                            if c_token.symbol == ",":
+                                little_parser.build_line()
+                                parser.add_extends(little_parser.get_as_block().lines[0], cla)
+                                little_parser = psr.Parser()
+                            elif c_token.symbol == ".":
+                                little_parser.add_dot(line, 0)
                             else:
-                                break
+                                little_parser.add_name(line, c_token.symbol, PUBLIC)
+                            i += 1
+                            c_token = self.tokens[i]
+                        i -= 1  # since the last proceed symbol is '{' which should be returned to the tokens
+
+                        # superclass_name = c_token.symbol
+
+                        little_parser.build_line()
+                        parser.add_extends(little_parser.get_as_block().lines[0], cla)
+                        # parser.add_extends(superclass_name, cla)
+                        # next_token = self.tokens[i + 1]
+                        # if isinstance(next_token, IdToken) and next_token.symbol == ",":
+                        #     i += 2
+                        # else:
+                        #     break
                     elif sym == "abstract":
                         parser.add_abstract(line)
                     elif sym == "private":
@@ -429,15 +447,34 @@ class Lexer:
                     elif sym == "new":
                         i += 1
                         c_token = self.tokens[i]
-                        class_name = c_token.symbol
-                        parser.add_class_new((c_token.line_number(), c_token.file_name()), class_name)
-                        next_token = self.tokens[i + 1]
-                        if i + 1 < len(self.tokens) and isinstance(next_token, IdToken) and \
-                                next_token.symbol == "(":
+                        first_name = c_token.symbol
+                        little_parser = psr.Parser()
+                        little_parser.add_name(line, first_name, PUBLIC)
+                        # parser.add_class_new((c_token.line_number(), c_token.file_name()), class_name)
+                        i += 1
+                        next_token = self.tokens[i]
+                        while next_token.is_identifier():
+                            if next_token.symbol == "(":
+                                # i += 1
+                                call_nest += 1
+                                # parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
+                                break
+                            elif next_token.symbol == ".":
+                                little_parser.add_dot(line, 0)
+                            else:
+                                little_parser.add_name(line, next_token.symbol, PUBLIC)
                             i += 1
-                            call_nest += 1
-                            parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
-                            # in_call = True
+                            next_token = self.tokens[i]
+                        little_parser.build_line()
+                        block = little_parser.get_as_block()
+                        # print(block.lines[0])
+                        parser.add_class_new(line, block.lines[0])
+                        parser.add_call((next_token.line_number(), next_token.file_name()), block.lines[0])
+                        # if i + 1 < len(self.tokens) and isinstance(next_token, IdToken) and \
+                        #         next_token.symbol == "(":
+                        #     i += 1
+                        #     call_nest += 1
+                        #     parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
                     elif sym == "throw":
                         parser.add_throw(line)
                     elif sym == "try":

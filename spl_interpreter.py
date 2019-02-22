@@ -208,7 +208,7 @@ class Environment:
         else:
             return False
 
-    def get(self, key: str, line_file: tuple):
+    def get(self, key: str, line_file):
         """
         Returns the value of that key.
 
@@ -760,6 +760,9 @@ class Module:
         self.module_name = mod_name
         self.env = env
 
+    def __str__(self):
+        return "Module '{}': {}".format(self.module_name, self.env.attributes())
+
 
 class ClassInstance:
     """
@@ -794,7 +797,7 @@ class ClassInstance:
         else:
             attr = self.env.attributes()
             attr.pop("this")
-            return self.class_name + ": " + str(attr)
+            return str(self.class_name) + ": " + str(attr)
 
 
 class RuntimeException(Exception):
@@ -956,8 +959,19 @@ def assignment(node: psr.AssignmentNode, env: Environment):
         raise InterpretException("Unknown assignment, in {}, at line {}".format(node.file, node.line_num))
 
 
+def get_imported_class(dot: psr.Dot, env: Environment):
+    return evaluate(dot, env)
+
+
 def init_class(node: psr.ClassInit, env: Environment):
-    cla: Class = env.get_heap(node.class_name)
+    if isinstance(node.class_name, str):
+        print("This should not be happened")
+        cla: Class = env.get_heap(node.class_name)
+    elif node.class_name.node_type == psr.NAME_NODE:
+        cla: Class = env.get_heap(node.class_name.name)
+    else:
+
+        cla: Class = get_imported_class(node.class_name, env)
 
     scope = Environment(False, env.heap)
     scope.scope_name = "Class scope<{}>".format(cla.class_name)
@@ -977,13 +991,32 @@ def init_class(node: psr.ClassInit, env: Environment):
         fc.args = node.args
         for a in fc.args.lines:
             scope.temp_vars.append(evaluate(a, env))
-        # print(scope.variables)
+        # print(fc)
         evaluate(fc, scope)
     return instance
 
 
+def get_local_function(node: psr.FuncCall, env):
+    return env.get(node.f_name, (node.line_num, node.file))
+
+
+def get_imported_function(node: psr.FuncCall, env: Environment):
+    dot: psr.Dot = node.f_name
+    res = evaluate(dot, env)
+    if isinstance(res, Class):
+        f = env.direct_get(res.class_name)
+        return f
+    else:
+        return res
+
+
 def call_function(node: psr.FuncCall, env: Environment):
-    func = env.get(node.f_name, (node.line_num, node.file))
+    # print(node.f_name)
+    if isinstance(node.f_name, str):
+        func = get_local_function(node, env)
+    else:
+        func = get_imported_function(node, env)
+
     if isinstance(func, Function):
         scope = Environment(False, env.heap)
         scope.scope_name = "Function scope<{}>".format(node.f_name)
@@ -1040,13 +1073,19 @@ def call_dot(node: psr.Dot, env: Environment):
             raise UnauthorizedException("Access 'this' from outside")
         if isinstance(instance, NativeType):
             return native_types_invoke(instance, obj)
-        elif isinstance(instance, ClassInstance) or isinstance(instance, Module):
+        elif isinstance(instance, ClassInstance):
             if (not isinstance(node.left, psr.NameNode) or node.left.name != "this") and \
                     instance.env.is_private(obj.name):
                 raise UnauthorizedException("Class attribute '{}' has private access".format(obj.name))
             else:
                 # attr = instance.env.variables[obj.name]
                 attr = instance.env.direct_get(obj.name)
+                return attr
+        elif isinstance(instance, Module):
+            if instance.env.is_private(obj.name):
+                raise UnauthorizedException("Class attribute '{}' has private access".format(obj.name))
+            else:
+                attr = instance.env.get(obj.name, (node.line_num, node.file))
                 return attr
         else:
             raise InterpretException("Neither a class instance nor a module, "
@@ -1249,7 +1288,10 @@ def class_inheritance(cla, env, scope):
     :return:
     """
     for sc in cla.superclass_names:
-        class_inheritance(env.get_heap(sc), env, scope)
+        # print(sc)
+        sc_ins = evaluate(sc, env)
+        class_inheritance(sc_ins, env, scope)
+        # class_inheritance(env.get_heap(sc), env, scope)
 
     evaluate(cla.body, scope)  # this step just fills the scope
 
@@ -1370,10 +1412,14 @@ def eval_class_stmt(node, env: Environment):
 
 
 def eval_import_stmt(node: psr.ImportStmt, env: Environment):
-    scope = Environment(False, env.heap)
+    scope = Environment(True, {})
+    scope.scope_name = "Module " + node.class_name
     evaluate(node.block, scope)
+    # print(scope)
     imp = Module(node.class_name, scope)
     env.add_heap(node.class_name, imp)
+    # print(node.class_name)
+    # print(env)
     # print(node.class_name)
     return imp
 

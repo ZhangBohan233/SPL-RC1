@@ -389,7 +389,7 @@ class Parser:
         else:
             return self.stack[-1]
 
-    def add_extends(self, superclass_name: str, target_class):
+    def add_extends(self, superclass_name, target_class):
         if self.inner:
             self.inner.add_extends(superclass_name, target_class)
         else:
@@ -525,62 +525,62 @@ class Parser:
                         # res = node
                 self.elements.append(lst[0])
 
-    def build_line2(self):
-        if self.inner:
-            self.inner.build_line2()
-        else:
-            # print(self.stack)
-            self.build_expr()
-            if len(self.stack) > 0:
-                res = self.stack.pop()
-                res2 = None
-                res3 = None
-                # print(self.stack)
-                while len(self.stack) > 0:
-                    node = self.stack.pop()
-                    if isinstance(node, LeafNode):
-                        res = node
-                    elif isinstance(node, BinaryExpr) and res:
-                        node.right = res
-                        res = node
-                    elif isinstance(node, BlockStmt):
-                        if res:
-                            if res2:
-                                res3 = res2
-                                res2 = res
-                                res = node
-                            else:
-                                res2 = res
-                                res = node
-                        else:
-                            res = node
-                    elif isinstance(node, IfStmt):
-                        node.then_block = res
-                        node.else_block = res2
-                        res = node
-                        res2 = None
-                    elif isinstance(node, WhileStmt) or isinstance(node, ForLoopStmt):
-                        node.body = res
-                        res = node
-                    elif isinstance(node, DefStmt):
-                        node.body = res
-                        res = node
-                    elif isinstance(node, ReturnStmt) or isinstance(node, ThrowStmt):
-                        node.value = res
-                        res = node
-                    elif isinstance(node, CatchStmt):
-                        node.then = res
-                        res = node
-                    elif isinstance(node, TryStmt):
-                        node.try_block = res
-                        node.catch_block = res2
-                        node.finally_block = res3
-                        res = node
-                        res2 = None
-                        res3 = None
-                    else:
-                        res = node
-                self.elements.append(res)
+    # def build_line2(self):
+    #     if self.inner:
+    #         self.inner.build_line2()
+    #     else:
+    #         # print(self.stack)
+    #         self.build_expr()
+    #         if len(self.stack) > 0:
+    #             res = self.stack.pop()
+    #             res2 = None
+    #             res3 = None
+    #             # print(self.stack)
+    #             while len(self.stack) > 0:
+    #                 node = self.stack.pop()
+    #                 if isinstance(node, LeafNode):
+    #                     res = node
+    #                 elif isinstance(node, BinaryExpr) and res:
+    #                     node.right = res
+    #                     res = node
+    #                 elif isinstance(node, BlockStmt):
+    #                     if res:
+    #                         if res2:
+    #                             res3 = res2
+    #                             res2 = res
+    #                             res = node
+    #                         else:
+    #                             res2 = res
+    #                             res = node
+    #                     else:
+    #                         res = node
+    #                 elif isinstance(node, IfStmt):
+    #                     node.then_block = res
+    #                     node.else_block = res2
+    #                     res = node
+    #                     res2 = None
+    #                 elif isinstance(node, WhileStmt) or isinstance(node, ForLoopStmt):
+    #                     node.body = res
+    #                     res = node
+    #                 elif isinstance(node, DefStmt):
+    #                     node.body = res
+    #                     res = node
+    #                 elif isinstance(node, ReturnStmt) or isinstance(node, ThrowStmt):
+    #                     node.value = res
+    #                     res = node
+    #                 elif isinstance(node, CatchStmt):
+    #                     node.then = res
+    #                     res = node
+    #                 elif isinstance(node, TryStmt):
+    #                     node.try_block = res
+    #                     node.catch_block = res2
+    #                     node.finally_block = res3
+    #                     res = node
+    #                     res2 = None
+    #                     res3 = None
+    #                 else:
+    #                     res = node
+    #             self.elements.append(res)
 
     def get_as_block(self):
         block = BlockStmt((0, "block"))
