@@ -47,13 +47,12 @@ JUMP_NODE = 30
 
 class Parser:
     """
-    :type inner: Parser
     """
 
     def __init__(self):
         self.elements = []
         self.stack = []
-        self.inner = None
+        self.inner: Parser = None
         self.in_expr = False
         self.in_get = False
         # self.condition = None
