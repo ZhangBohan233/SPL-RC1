@@ -1,23 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="aa552da4-f5d0-41ef-8bb1-73f5bb98524d" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/spl_token_lib.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/document/changelog.txt" beforeDir="false" afterPath="$PROJECT_DIR$/document/changelog.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/document/test-results/performance.txt" beforeDir="false" afterPath="$PROJECT_DIR$/document/test-results/performance.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/algorithm.sp" beforeDir="false" afterPath="$PROJECT_DIR$/lib/algorithm.sp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/math.sp" beforeDir="false" afterPath="$PROJECT_DIR$/lib/math.sp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/samples/performance.sp" beforeDir="false" afterPath="$PROJECT_DIR$/samples/performance.sp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/samples/performance.spe" beforeDir="false" afterPath="$PROJECT_DIR$/samples/performance.spe" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/samples/sample30.sp" beforeDir="false" afterPath="$PROJECT_DIR$/samples/sample30.sp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/spc.py" beforeDir="false" afterPath="$PROJECT_DIR$/spc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/spl_coder.py" beforeDir="false" afterPath="$PROJECT_DIR$/spl_coder.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/spl_decompiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/spl_decompiler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/spl_interpreter.py" beforeDir="false" afterPath="$PROJECT_DIR$/spl_interpreter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/spl_lexer.py" beforeDir="false" afterPath="$PROJECT_DIR$/spl_lexer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/spl_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/spl_parser.py" afterDir="false" />
-    </list>
+    <list default="true" id="aa552da4-f5d0-41ef-8bb1-73f5bb98524d" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -91,15 +75,6 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/samples/performance.sp">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="342">
-              <caret line="18" column="29" selection-start-line="18" selection-start-column="29" selection-end-line="18" selection-end-column="29" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/spl_parser.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="297">
@@ -118,6 +93,18 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/spl_interpreter.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="177">
+              <caret line="1415" column="32" lean-forward="true" selection-start-line="1415" selection-start-column="32" selection-end-line="1415" selection-end-column="32" />
+              <folding>
+                <element signature="e#0#24#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/spl_token_lib.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="253">
@@ -129,8 +116,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/document/changelog.txt">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="209">
-              <caret line="11" selection-start-line="11" selection-end-line="11" />
+            <state relative-caret-position="152">
+              <caret line="8" column="14" lean-forward="true" selection-start-line="8" selection-start-column="14" selection-end-line="8" selection-end-column="14" />
             </state>
           </provider>
         </entry>
@@ -236,7 +223,6 @@
         <option value="$PROJECT_DIR$/samples/sample23.sp" />
         <option value="$PROJECT_DIR$/lib/math.sp" />
         <option value="$PROJECT_DIR$/samples/sample30.sp" />
-        <option value="$PROJECT_DIR$/spl_interpreter.py" />
         <option value="$PROJECT_DIR$/lib/algorithm.sp" />
         <option value="$PROJECT_DIR$/samples/performance.sp" />
         <option value="$PROJECT_DIR$/document/test-results/performance.txt" />
@@ -246,6 +232,7 @@
         <option value="$PROJECT_DIR$/spl_lexer.py" />
         <option value="$PROJECT_DIR$/spl_coder.py" />
         <option value="$PROJECT_DIR$/spl_decompiler.py" />
+        <option value="$PROJECT_DIR$/spl_interpreter.py" />
         <option value="$PROJECT_DIR$/document/changelog.txt" />
       </list>
     </option>
@@ -505,22 +492,23 @@
       <workItem from="1550459922129" duration="15298000" />
       <workItem from="1550533878355" duration="26239000" />
       <workItem from="1550826879045" duration="308000" />
-      <workItem from="1550897935829" duration="9800000" />
+      <workItem from="1550897935829" duration="10007000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="458879000" />
+    <option name="totallyTimeSpent" value="459086000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-7" y="-7" width="1550" height="838" extended-state="6" />
+    <editor active="true" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.27479893" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.27479893" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.3286119" />
-      <window_info anchor="bottom" id="Run" order="2" visible="true" weight="0.3286119" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.3286119" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.39943343" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -766,16 +754,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/spl_interpreter.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="141">
-          <caret line="255" selection-start-line="255" selection-end-line="255" />
-          <folding>
-            <element signature="e#0#24#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/lib/math.sp">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-2231">
@@ -855,10 +833,20 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/spl_interpreter.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="177">
+          <caret line="1415" column="32" lean-forward="true" selection-start-line="1415" selection-start-column="32" selection-end-line="1415" selection-end-column="32" />
+          <folding>
+            <element signature="e#0#24#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/document/changelog.txt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="209">
-          <caret line="11" selection-start-line="11" selection-end-line="11" />
+        <state relative-caret-position="152">
+          <caret line="8" column="14" lean-forward="true" selection-start-line="8" selection-start-column="14" selection-end-line="8" selection-end-column="14" />
         </state>
       </provider>
     </entry>
