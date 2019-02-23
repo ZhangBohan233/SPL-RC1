@@ -1457,7 +1457,7 @@ def eval_class_stmt(node, env: Environment):
 
 
 def eval_import_stmt(node: psr.ImportStmt, env: Environment):
-    scope = Environment(True, {})
+    scope = Environment(False, env.heap)
     scope.scope_name = "Module " + node.class_name
     evaluate(node.block, scope)
     # print(scope)
