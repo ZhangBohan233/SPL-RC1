@@ -80,7 +80,9 @@ class Environment:
         self.locals = {}  # Local variables
         self.privates = set()
         self.outer = None  # Outer environment, only used for inner functions
-        self.temp_vars = []
+
+        self.temp_vars = []  # Arguments of cross-environment function calls
+        self.use_temp_var = False
 
         self.scope_name = None
 
@@ -1016,6 +1018,7 @@ def init_class(node: psr.ClassInit, env: Environment):
     cla: Class = env.get_heap(node.class_name)
 
     scope = Environment(False, env.heap)
+    scope.outer = env
     scope.scope_name = "Class scope<{}>".format(cla.class_name)
     class_inheritance(cla, env, scope)
 
@@ -1031,10 +1034,12 @@ def init_class(node: psr.ClassInit, env: Environment):
         # constructor: Function = scope.variables[node.class_name]
         fc = psr.FuncCall((node.line_num, node.file), node.class_name)
         fc.args = node.args
+        scope.use_temp_var = True
         for a in fc.args.lines:
             scope.temp_vars.append(evaluate(a, env))
         # print(scope.variables)
         evaluate(fc, scope)
+        # scope.temp_vars.clear()
     return instance
 
 
@@ -1045,10 +1050,16 @@ def call_function(node: psr.FuncCall, env: Environment):
         scope.scope_name = "Function scope<{}>".format(node.f_name)
         scope.outer = func.outer_scope  # supports for closure
 
-        if len(env.temp_vars) == len(func.params) > 0:
+        # if len(env.temp_vars) + len(list(filter(lambda k: not isinstance(k, psr.InvalidToken), func.presets))) == \
+        #         len(func.params) > 0:
+        if env.use_temp_var:
             for i in range(len(func.params)):
-                scope.assign(func.params[i].name, env.temp_vars[i])
+                if i < len(env.temp_vars):
+                    scope.define_local(func.params[i].name, env.temp_vars[i])
+                else:
+                    scope.define_local(func.params[i].name, func.presets[i])
             env.temp_vars.clear()
+            env.use_temp_var = False
         else:
             check_args_len(func, node)
             for i in range(len(func.params)):
@@ -1086,7 +1097,7 @@ def check_args_len(function: Function, call: psr.FuncCall):
                            .format(call.f_name, call.file, call.line_num))
 
 
-def call_dot(node: psr.Dot, env: Environment):
+def eval_dot(node: psr.Dot, env: Environment):
     instance = evaluate(node.left, env)
     obj = node.right
     t = obj.node_type
@@ -1119,7 +1130,11 @@ def call_dot(node: psr.Dot, env: Environment):
                     instance.env.is_private(obj.f_name):
                 raise UnauthorizedException("Class attribute '{}' has private access".format(obj.f_name))
             else:
+                instance.env.use_temp_var = True
+                for arg in obj.args.lines:
+                    instance.env.temp_vars.append(evaluate(arg, env))
                 result = evaluate(obj, instance.env)
+                # env.temp_vars.clear()
                 env.assign("=>", result)
                 return result
         else:
@@ -1166,6 +1181,7 @@ def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment, ri
     else:
         fc = psr.FuncCall((0, "interpreter"), "@" + stl.BINARY_OPERATORS[symbol])
         left.env.temp_vars.append(right)
+        left.env.use_temp_var = True
         res = evaluate(fc, left.env)
         return res
 
@@ -1443,7 +1459,7 @@ NODE_TABLE = {
     psr.BREAK_STMT: lambda n, env: env.break_loop(),
     psr.CONTINUE_STMT: lambda n, env: env.pause_loop(),
     psr.ASSIGNMENT_NODE: assignment,
-    psr.DOT: call_dot,
+    psr.DOT: eval_dot,
     psr.ANONYMOUS_CALL: eval_anonymous_call,
     psr.OPERATOR_NODE: eval_operator,
     psr.NEGATIVE_EXPR: lambda n, env: -evaluate(n.value, env),

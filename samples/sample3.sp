@@ -6,4 +6,4 @@ function f(a, b) {
     };
 };
 
-f(5, 4);
+print(f(5, 4));

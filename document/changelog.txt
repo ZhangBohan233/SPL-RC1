@@ -1,5 +1,13 @@
+********** SPL 1.2 Beta 2 **********
+===== Build 0032: 2019/02/23 =====
+
+*Bug fixes:
+    *Cross-scope function call
+    *Call function from a class method
+    *Bugs that caused by variable length temp vars
+
 ********** SPL 1.2 Beta **********
-===== Build 0030: 2019/02/23
+===== Build 0030: 2019/02/23 =====
 ### Beta Version ###
 
 *No backward compatibility

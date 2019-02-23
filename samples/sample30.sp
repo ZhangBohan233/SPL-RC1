@@ -1,6 +1,8 @@
 import "sample28.sp"
 
-var a = new S28();
-var i = 6;
-a.setx(i);
+const a = new S28();
+let i = 6;
+a.setx(i, 4);
 print(a.x);
+
+print(f(4));
