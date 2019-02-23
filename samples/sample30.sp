@@ -1,14 +1,6 @@
-def ff(a) {
-    b += 1;
-    return a + b;
-}
+import "sample28.sp"
 
-var b = 6;
-
-print(ff(3));
-
-let i, j;
-for (i = 0; i < 5; i += 1) {
-    print(i);
-    print(j);
-}
+var a = new S28();
+var i = 6;
+a.setx(i);
+print(a.x);

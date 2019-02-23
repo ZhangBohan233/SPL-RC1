@@ -1,9 +1,10 @@
-def tc(x, y) {
-    if (x < 1) {
-        return false;
-    } else {
-        return tc(x - 1, y + 1);
+class S28 {
+    var x = 0;
+    def S28() {
+
+    }
+
+    def setx(nx) {
+        x = nx;
     }
 }
-
-tc(600, 2750);

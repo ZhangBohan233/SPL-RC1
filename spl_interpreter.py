@@ -162,8 +162,8 @@ class Environment:
         else:
             self.locals[key] = value
 
-    def define_var(self, key, value):
-        if self.contains_key(key):
+    def define_var(self, key, value, override=False):
+        if not override and self.contains_key(key):
             raise SplException("Cross-scope name '{}' is already defined.".format(key))
         else:
             self.variables[key] = value
@@ -1405,14 +1405,8 @@ def eval_for_loop_stmt(node: psr.ForLoopStmt, env: Environment):
 
 def eval_def(node: psr.DefStmt, env: Environment):
     f = Function(node.params, node.presets, node.body)
-    # if not f.is_global:
     f.outer_scope = env
-    # else:
-    # f.outer_scope = global_env
-    # if node.const:
-    #     env.assign_const(node.name, f)
-    # else:
-    env.define_var(node.name, f)
+    env.define_var(node.name, f, True)
     if node.auth == stl.PRIVATE:
         env.add_private(node.name)
     return f
