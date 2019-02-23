@@ -5,10 +5,10 @@ import "functions"
  * Returns a random `float` number between <0> and <1>.
  */
 function random() {
-    m = (1 << 15) - 1;
-    a = 3;
-    seed = system.time();
-    for (i = 0; i < 100; i += 1) {
+    const m = (1 << 15) - 1;
+    const a = 3;
+    let seed = system.time();
+    for (let i = 0; i < 100; i += 1) {
         seed = seed * a % m;
     }
     return float(seed) / 32768;

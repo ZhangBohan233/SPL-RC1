@@ -1,5 +1,5 @@
 import sys
-from spl_optimizer import Optimizer
+import spl_optimizer as opt
 import spl_coder as cdr
 import spl_lexer as lex
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         block = lexer.parse()
 
         if argv["optimize"] > 0:
-            op = Optimizer(block)
+            op = opt.Optimizer(block)
             op.optimize(argv["optimize"])
 
         coder = cdr.Coder(block, wf)

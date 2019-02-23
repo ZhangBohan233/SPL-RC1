@@ -4,7 +4,7 @@ import spl_parser as psr
 import struct
 
 
-BYTE_CODE_VERSION = 1
+BYTE_CODE_VERSION = 2
 
 NODE_FLAG = 0
 LIST_FLAG = 1

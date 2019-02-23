@@ -5,8 +5,9 @@ import "math";
  * Sorts the <lst> with merge sort algorithm.
  */
 function merge_sort(lst) {
-    length = lst.length();
-    step = 1;
+    let length = lst.length();
+    let step = 1;
+    let mid, end, c_len, i1, i2, ci, cache, remain, x, i;
     while (step < length) {
         for (i = 0; i < length; i += step * 2) {
             mid = i + step;
@@ -49,7 +50,7 @@ function merge_sort(lst) {
                 }
             }
         }
-        step *= 2;;
+        step *= 2;
     }
 }
 
@@ -58,10 +59,11 @@ function merge_sort(lst) {
  * Returns a list with length <length> containing random integers in range [min, max].
  */
 function rand_list(length, min, max) {
-    lst = list();
-    x = 0;
-    r = max - min;
-    for (i = 0; i < length; i += 1) {
+    let lst = list();
+    let x = 0;
+    let r = max - min;
+    let xi;
+    for (let i = 0; i < length; i += 1) {
         x = random() * r + min;
         xi = int(x);
         lst.append(xi);

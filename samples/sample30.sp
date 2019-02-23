@@ -1,13 +1,14 @@
-def printing(func) {
-    return def (a, b) {
-        print("running");
-        func(a, b);
-    }
+def ff(a) {
+    b += 1;
+    return a + b;
 }
 
-def foo(x, y) {
-    return x + y;
-}
+var b = 6;
 
-foo = printing(foo);
-print(foo(4, 5));
+print(ff(3));
+
+let i, j;
+for (i = 0; i < 5; i += 1) {
+    print(i);
+    print(j);
+}

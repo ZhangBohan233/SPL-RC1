@@ -57,13 +57,17 @@ class Decompiler:
                 self.lst.append("null")
             elif t == psr.NAME_NODE:
                 node: psr.NameNode
-                if node.auth == psr.lex.PRIVATE:
+                if node.auth == psr.stl.PRIVATE:
                     self.lst.append("private ")
                 self.lst.append(node.name)
             elif t == psr.ASSIGNMENT_NODE:
                 node: psr.AssignmentNode
-                if node.const:
+                if node.level == psr.CONST:
                     self.lst.append("const ")
+                elif node.level == psr.VAR:
+                    self.lst.append("var ")
+                elif node.level == psr.LOCAL:
+                    self.lst.append("let ")
                 self.decompile_node(node.left)
                 self.lst.append(" = ")
                 self.decompile_node(node.right)
@@ -84,6 +88,17 @@ class Decompiler:
                     self.decompile_node(node.else_block)
                     self.indentation -= 4
                     self.lst.append(" " * self.indentation + "}")
+            elif t == psr.WHILE_STMT or t == psr.FOR_LOOP_STMT:
+                node: psr.WhileStmt
+                self.lst.append("while (")
+                self.new_line = False
+                self.decompile_node(node.condition)
+                self.lst.append(") {\n")
+                self.indentation += 4
+                self.new_line = True
+                self.decompile_node(node.body)
+                self.indentation -= 4
+                self.lst.append(" " * self.indentation + "}")
             elif isinstance(node, psr.BinaryExpr):
                 node: psr.OperatorNode
                 # self.new_line = False
@@ -93,19 +108,17 @@ class Decompiler:
                 self.lst.append(front)
                 self.decompile_node(node.left)
                 if node.operation in NO_SPACE:
-                    s = ""
+                    rep = ""
                 else:
-                    s = " "
-                self.lst.append(s)
+                    rep = " "
+                self.lst.append(rep)
                 self.lst.append(str(node.operation))
-                self.lst.append(s)
+                self.lst.append(rep)
                 self.decompile_node(node.right)
                 self.lst.append(back)
             elif t == psr.DEF_STMT:
                 node: psr.DefStmt
-                if node.const:
-                    self.lst.append("const ")
-                if node.auth == psr.lex.PRIVATE:
+                if node.auth == psr.stl.PRIVATE:
                     self.lst.append("private ")
                 self.lst.append("function ")
                 if len(node.name) < 3 or node.name[:3] != "af-":
@@ -190,6 +203,8 @@ class Decompiler:
             elif t == psr.BOOLEAN_STMT:
                 node: psr.BooleanStmt
                 self.lst.append(node.value)
+            elif t == psr.UNDEFINED_NODE:
+                self.lst.append("undefined")
             # elif t == psr.ANONYMOUS_CALL:
             #     node: psr.AnonymousCall
 

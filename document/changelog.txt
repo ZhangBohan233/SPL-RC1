@@ -1,3 +1,17 @@
+********** SPL 1.2 Beta **********
+===== Build 0030: 2019/02/23
+### Beta Version ###
+
+*No backward compatibility
+*Re-designed variable system:
+    *Added keyword 'var' for variable
+    *Added keyword 'let' for local variable
+*Added syntax:
+    *Multiple variable declaration in one line.
+*Optimization:
+    *Re-organized lexer and parser
+*Updated decompiler: spd alpha 2
+
 ********** SPL 1.1.0 **********
 ===== Build 0027: 2019/02/19 =====
 

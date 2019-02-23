@@ -1,12 +1,10 @@
 import spl_parser as psr
 import spl_lexer as lex
 import time as time_lib
-from spl_lexer import BINARY_OPERATORS
+import spl_token_lib as stl
 
 LST = [72, 97, 112, 112, 121, 32, 66, 105, 114, 116, 104, 100, 97, 121, 32,
        73, 115, 97, 98, 101, 108, 108, 97, 33, 33, 33]
-
-global_env = None
 
 
 class Counter:
@@ -78,7 +76,8 @@ class Environment:
         self.is_global = is_global
         self.heap = heap  # Heap-allocated variables (global)
         self.variables = {}  # Stack variables
-        self.constants = {}
+        self.constants = {}  # Constants
+        self.locals = {}  # Local variables
         self.privates = set()
         self.outer = None  # Outer environment, only used for inner functions
         self.temp_vars = []
@@ -90,6 +89,8 @@ class Environment:
         self.exit_value = None
         self.broken = False
         self.paused = False
+
+        self.define_local("=>", None)
 
         if is_global:
             self._add_natives()
@@ -103,6 +104,12 @@ class Environment:
                 temp.append(": ")
                 temp.append(str(self.constants[c]))
                 temp.append(", ")
+        temp.append("\nLocals: ")
+        for v in self.locals:
+            temp.append(str(v))
+            temp.append(": ")
+            temp.append(str(self.locals[v]))
+            temp.append(", ")
         temp.append("\nVars: ")
         for v in self.variables:
             temp.append(str(v))
@@ -148,9 +155,29 @@ class Environment:
     def pause_loop(self):
         self.paused = True
 
+    def define_local(self, key, value):
+        # if key in self.locals:
+        if self.contains_key(key):
+            raise SplException("Local name '{}' is already defined in this scope.".format(key))
+        else:
+            self.locals[key] = value
+
+    def define_var(self, key, value):
+        if self.contains_key(key):
+            raise SplException("Cross-scope name '{}' is already defined.".format(key))
+        else:
+            self.variables[key] = value
+
+    def define_const(self, key, value):
+        # if key in self.constants:
+        if self.contains_key(key):
+            raise SplException("Name '{}' is already defined in this scope.".format(key))
+        else:
+            self.constants[key] = value
+
     def assign(self, key, value):
-        if self.is_global:
-            self.heap[key] = value
+        if key in self.locals:
+            self.locals[key] = value
         elif key in self.constants:
             raise SplException("Re-assignment to constant values.")
         elif key in self.variables:
@@ -165,13 +192,8 @@ class Environment:
                     out.variables[key] = value
                     return
                 out = out.outer
-            self.variables[key] = value
-
-    def assign_const(self, key, value):
-        if key in self.constants:
-            raise SplException("Attempt to change a constant value")
-        else:
-            self.constants[key] = value
+            # self.variables[key] = value
+            raise SplException("Name '{}' is not defined.".format(key))
 
     def add_private(self, key):
         if key in self.variables:
@@ -179,28 +201,37 @@ class Environment:
         else:
             # look for outer first
             out = self.outer
-            found = False
+            # found = False
             while out:
                 if key in out.variables:
                     out.privates.add(key)
-                    found = True
-                    break
+                    # found = True
+                    return
                 out = out.outer
-            if not found:
-                self.privates.add(key)
+            # if not found:
+            self.privates.add(key)
 
     def inner_get(self, key: str):
-        if key in self.constants:
+        if key in self.locals:
+            return self.locals[key]
+        elif key in self.constants:
             return self.constants[key]
         elif key in self.variables:
             return self.variables[key]
-        elif self.outer:
-            return self.outer.inner_get(key)
-        else:
-            if key in self.heap:
-                return self.heap[key]
+
+        out = self.outer
+        while out:
+            if key in out.constants:
+                return out.constants[key]
+            elif key in out.variables:
+                return out.variables[key]
             else:
-                return NULLPTR
+                out = out.outer
+
+        if key in self.heap:
+            return self.heap[key]
+        else:
+            return NULLPTR
 
     def is_private(self, key):
         if key in self.privates:
@@ -219,6 +250,7 @@ class Environment:
         :return:
         """
         v = self.inner_get(key)
+        # print(key + str(v))
         if v == NULLPTR:
             raise SplException("Name '{}' is not defined, in file {}, at line {}"
                                .format(key, line_file[1], line_file[0]))
@@ -226,7 +258,9 @@ class Environment:
             return v
 
     def direct_get(self, key: str):
-        if key in self.constants:
+        if key in self.locals:
+            return self.locals[key]
+        elif key in self.constants:
             return self.constants[key]
         else:
             return self.variables[key]
@@ -273,13 +307,12 @@ class Function:
     :type outer_scope: Environment
     """
 
-    def __init__(self, params, presets, body, is_global):
+    def __init__(self, params, presets, body):
         # self.name = f_name
         self.params: list = params
         self.presets: list = presets
         self.body = body
         self.outer_scope = None
-        self.is_global = is_global
 
     def __str__(self):
         return "Function<{}>".format(id(self))
@@ -310,6 +343,23 @@ class NullPointer:
 
     def __eq__(self, other):
         return isinstance(other, NullPointer)
+
+    def __str__(self):
+        return "NullPointer"
+
+
+class Undefined:
+    def __init__(self):
+        pass
+
+    def __eq__(self, other):
+        return isinstance(other, Undefined)
+
+    def __str__(self):
+        return "undefined"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class NativeType:
@@ -719,6 +769,7 @@ class UnauthorizedException(SplException):
 
 
 NULLPTR = NullPointer()
+UNDEFINED = Undefined()
 
 PRIMITIVE_FUNC_TABLE = {
     "boolean": "bool",
@@ -739,8 +790,8 @@ class Interpreter:
         self.env = Environment(True, {})
         self.env.add_heap("system", System(argv, encoding))
         self.env.scope_name = "Global"
-        global global_env
-        global_env = self.env
+        # global global_env
+        # global_env = self.env
 
     def set_ast(self, ast: psr.BlockStmt):
         """
@@ -927,15 +978,22 @@ def assignment(node: psr.AssignmentNode, env: Environment):
     value = evaluate(node.right, env)
     t = key.node_type
     if t == psr.NAME_NODE:
-        if node.const:
-            env.assign_const(key.name, value)
-        else:
+        key: psr.NameNode
+        if node.level == psr.ASSIGN:
             env.assign(key.name, value)
-        if key.auth == lex.PRIVATE:
+        elif node.level == psr.LOCAL:
+            env.define_local(key.name, value)
+        elif node.level == psr.CONST:
+            env.define_const(key.name, value)
+        elif node.level == psr.VAR:
+            env.define_var(key.name, value)
+        else:
+            raise SplException("Unknown ")
+        if key.auth == stl.PRIVATE:
             env.add_private(key.name)
         return value
     elif t == psr.DOT:
-        if node.const:
+        if node.level == psr.CONST:
             raise SplException("Unsolved syntax: assigning a constant to an instance")
         node = key
         name_lst = []
@@ -1001,7 +1059,7 @@ def call_function(node: psr.FuncCall, env: Environment):
                     arg = func.presets[i]
 
                 e = evaluate(arg, env)
-                scope.assign(func.params[i].name, e)
+                scope.define_local(func.params[i].name, e)
         result = evaluate(func.body, scope)
         env.assign("=>", result)
         return result
@@ -1071,7 +1129,7 @@ def call_dot(node: psr.Dot, env: Environment):
 
 
 def arithmetic(left, right_node: psr.Node, symbol, env: Environment):
-    if symbol in lex.LAZY:
+    if symbol in stl.LAZY:
         if left is None or isinstance(left, bool):
             return primitive_and_or(left, right_node, symbol, env)
         elif isinstance(left, int) or isinstance(left, float):
@@ -1106,7 +1164,7 @@ def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment, ri
         else:
             return False
     else:
-        fc = psr.FuncCall((0, "interpreter"), "@" + BINARY_OPERATORS[symbol])
+        fc = psr.FuncCall((0, "interpreter"), "@" + stl.BINARY_OPERATORS[symbol])
         left.env.temp_vars.append(right)
         res = evaluate(fc, left.env)
         return res
@@ -1346,16 +1404,16 @@ def eval_for_loop_stmt(node: psr.ForLoopStmt, env: Environment):
 
 
 def eval_def(node: psr.DefStmt, env: Environment):
-    f = Function(node.params, node.presets, node.body, node.is_global)
-    if not f.is_global:
-        f.outer_scope = env
-    else:
-        f.outer_scope = global_env
-    if node.const:
-        env.assign_const(node.name, f)
-    else:
-        env.assign(node.name, f)
-    if node.auth == lex.PRIVATE:
+    f = Function(node.params, node.presets, node.body)
+    # if not f.is_global:
+    f.outer_scope = env
+    # else:
+    # f.outer_scope = global_env
+    # if node.const:
+    #     env.assign_const(node.name, f)
+    # else:
+    env.define_var(node.name, f)
+    if node.auth == stl.PRIVATE:
         env.add_private(node.name)
     return f
 
@@ -1367,7 +1425,7 @@ def eval_class_stmt(node, env: Environment):
     return cla
 
 
-def eval_jump(node, env):
+def eval_jump(node, env: Environment):
     func: Function = env.get(node.to, (0, "f"))
     for i in range(len(node.args.lines)):
         env.assign(func.params[i].name, evaluate(node.args.lines[i], env))
@@ -1412,7 +1470,8 @@ NODE_TABLE = {
                                 .format(n.file, n.line_num))),
     psr.THROW_STMT: lambda n, env: raise_exception(RuntimeException(evaluate(n.value, env))),
     psr.TRY_STMT: eval_try_catch,
-    psr.JUMP_NODE: eval_jump
+    psr.JUMP_NODE: eval_jump,
+    psr.UNDEFINED_NODE: lambda n, env: UNDEFINED
 }
 
 

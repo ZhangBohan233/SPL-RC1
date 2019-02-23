@@ -1,4 +1,5 @@
-import spl_lexer as lex
+import spl_token_lib as stl
+
 
 PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "==": 20, ">": 25, "<": 25, ">=": 25, "<=": 25,
@@ -43,6 +44,12 @@ CATCH_STMT = 28
 TYPE_NODE = 29
 # UNPACK_OPERATOR = 30
 JUMP_NODE = 30
+UNDEFINED_NODE = 31
+
+ASSIGN = 0
+LOCAL = 1
+CONST = 2
+VAR = 3
 
 
 class Parser:
@@ -60,6 +67,12 @@ class Parser:
 
     def __str__(self):
         return str(self.elements)
+
+    def get_active(self):
+        if self.inner:
+            return self.inner.get_active()
+        else:
+            return self
 
     def add_name(self, line, n, auth):
         if self.inner:
@@ -116,16 +129,23 @@ class Parser:
     #         node = UnpackOperator(line, extra_precedence)
     #         self.stack.append(node)
 
-    def add_assignment(self, line, const: bool):
+    def add_assignment(self, line, var_level):
         if self.inner:
-            self.inner.add_assignment(line, const)
+            self.inner.add_assignment(line, var_level)
         else:
             # print(len(self.stack))
 
             name = self.stack.pop()
-            ass_node = AssignmentNode(line, const)
+            ass_node = AssignmentNode(line, var_level)
             ass_node.left = name
             self.stack.append(ass_node)
+
+    def add_undefined(self, line):
+        if self.inner:
+            self.inner.add_undefined(line)
+        else:
+            node = UndefinedNode(line)
+            self.stack.append(node)
 
     def add_type(self, line):
         if self.inner:
@@ -198,11 +218,11 @@ class Parser:
             pass
             # self.inner = Parser()
 
-    def add_function(self, line, f_name, auth, is_const, is_global):
+    def add_function(self, line, f_name, auth):
         if self.inner:
-            self.inner.add_function(line, f_name, auth, is_const, is_global)
+            self.inner.add_function(line, f_name, auth)
         else:
-            func = DefStmt(line, f_name, auth, is_const, is_global)
+            func = DefStmt(line, f_name, auth)
             self.stack.append(func)
 
     def build_func_params(self, params: list, presets: list):
@@ -211,33 +231,28 @@ class Parser:
         else:
             func = self.stack.pop()
             loc = (func.line_num, func.file)
-            lst = [NameNode(loc, x, lex.PUBLIC) for x in params]
-            # for x in params:
-            #     if x == "*":
-            #         lst.append(UnpackOperator(loc))
-            #     else:
-            #         lst.append(NameNode(loc, x, lex.PUBLIC))
+            lst = [NameNode(loc, x, stl.PUBLIC) for x in params]
             pst = []
             for a in presets:
-                if isinstance(a, lex.IdToken):
+                if isinstance(a, stl.IdToken):
                     sbl = a.symbol
-                    if sbl in lex.RESERVED:
+                    if sbl in stl.RESERVED:
                         if sbl == "true" or sbl == "false":
                             pst.append(BooleanStmt(loc, sbl))
                         elif sbl == "null":
                             pst.append(NullStmt(loc))
                         else:
-                            lex.unexpected_token(a)
+                            stl.unexpected_token(a)
                     else:
-                        pst.append(NameNode(loc, sbl, lex.PUBLIC))
-                elif isinstance(a, lex.NumToken):
+                        pst.append(NameNode(loc, sbl, stl.PUBLIC))
+                elif isinstance(a, stl.NumToken):
                     pst.append(get_number_node(loc, a.value))
-                elif isinstance(a, lex.LiteralToken):
+                elif isinstance(a, stl.LiteralToken):
                     pst.append(LiteralNode(loc, a.text))
                 elif isinstance(a, InvalidToken):
                     pst.append(a)
                 else:
-                    lex.unexpected_token(a)
+                    stl.unexpected_token(a)
             func.params = lst
             func.presets = pst
             self.stack.append(func)
@@ -507,62 +522,62 @@ class Parser:
                         # res = node
                 self.elements.append(lst[0])
 
-    def build_line2(self):
-        if self.inner:
-            self.inner.build_line2()
-        else:
-            # print(self.stack)
-            self.build_expr()
-            if len(self.stack) > 0:
-                res = self.stack.pop()
-                res2 = None
-                res3 = None
-                # print(self.stack)
-                while len(self.stack) > 0:
-                    node = self.stack.pop()
-                    if isinstance(node, LeafNode):
-                        res = node
-                    elif isinstance(node, BinaryExpr) and res:
-                        node.right = res
-                        res = node
-                    elif isinstance(node, BlockStmt):
-                        if res:
-                            if res2:
-                                res3 = res2
-                                res2 = res
-                                res = node
-                            else:
-                                res2 = res
-                                res = node
-                        else:
-                            res = node
-                    elif isinstance(node, IfStmt):
-                        node.then_block = res
-                        node.else_block = res2
-                        res = node
-                        res2 = None
-                    elif isinstance(node, WhileStmt) or isinstance(node, ForLoopStmt):
-                        node.body = res
-                        res = node
-                    elif isinstance(node, DefStmt):
-                        node.body = res
-                        res = node
-                    elif isinstance(node, ReturnStmt) or isinstance(node, ThrowStmt):
-                        node.value = res
-                        res = node
-                    elif isinstance(node, CatchStmt):
-                        node.then = res
-                        res = node
-                    elif isinstance(node, TryStmt):
-                        node.try_block = res
-                        node.catch_block = res2
-                        node.finally_block = res3
-                        res = node
-                        res2 = None
-                        res3 = None
-                    else:
-                        res = node
-                self.elements.append(res)
+    # def build_line2(self):
+    #     if self.inner:
+    #         self.inner.build_line2()
+    #     else:
+    #         # print(self.stack)
+    #         self.build_expr()
+    #         if len(self.stack) > 0:
+    #             res = self.stack.pop()
+    #             res2 = None
+    #             res3 = None
+    #             # print(self.stack)
+    #             while len(self.stack) > 0:
+    #                 node = self.stack.pop()
+    #                 if isinstance(node, LeafNode):
+    #                     res = node
+    #                 elif isinstance(node, BinaryExpr) and res:
+    #                     node.right = res
+    #                     res = node
+    #                 elif isinstance(node, BlockStmt):
+    #                     if res:
+    #                         if res2:
+    #                             res3 = res2
+    #                             res2 = res
+    #                             res = node
+    #                         else:
+    #                             res2 = res
+    #                             res = node
+    #                     else:
+    #                         res = node
+    #                 elif isinstance(node, IfStmt):
+    #                     node.then_block = res
+    #                     node.else_block = res2
+    #                     res = node
+    #                     res2 = None
+    #                 elif isinstance(node, WhileStmt) or isinstance(node, ForLoopStmt):
+    #                     node.body = res
+    #                     res = node
+    #                 elif isinstance(node, DefStmt):
+    #                     node.body = res
+    #                     res = node
+    #                 elif isinstance(node, ReturnStmt) or isinstance(node, ThrowStmt):
+    #                     node.value = res
+    #                     res = node
+    #                 elif isinstance(node, CatchStmt):
+    #                     node.then = res
+    #                     res = node
+    #                 elif isinstance(node, TryStmt):
+    #                     node.try_block = res
+    #                     node.catch_block = res2
+    #                     node.finally_block = res3
+    #                     res = node
+    #                     res2 = None
+    #                     res3 = None
+    #                 else:
+    #                     res = node
+    #             self.elements.append(res)
 
     def get_as_block(self):
         block = BlockStmt((0, "block"))
@@ -728,7 +743,7 @@ class NameNode(LeafNode, Limited):
         # print(str(auth) + " " + self.name)
 
     def __str__(self):
-        if self.auth == lex.PUBLIC:
+        if self.auth == stl.PUBLIC:
             return "N(" + self.name + ")"
         else:
             return "N(private " + self.name + ")"
@@ -738,14 +753,14 @@ class NameNode(LeafNode, Limited):
 
 
 class AssignmentNode(BinaryExpr):
-    const = False
+    level = ASSIGN
 
-    def __init__(self, line, is_const):
+    def __init__(self, line, level):
         BinaryExpr.__init__(self, line)
 
         self.node_type = ASSIGNMENT_NODE
         self.operation = "="
-        self.const = is_const
+        self.level = level
 
 
 class TypeNode(BinaryExpr):
@@ -936,10 +951,8 @@ class DefStmt(Node, Limited):
     params = None
     presets = None
     body = None
-    const = False
-    is_global = True
 
-    def __init__(self, line, f_name, auth, is_const, is_global):
+    def __init__(self, line, f_name, auth):
         Node.__init__(self, line)
         Limited.__init__(self, auth)
 
@@ -947,8 +960,6 @@ class DefStmt(Node, Limited):
         self.name = f_name
         self.params = []
         self.presets = []
-        self.const = is_const
-        self.is_global = is_global
         # self.body = None
 
     def __str__(self):
@@ -1126,6 +1137,19 @@ class JumpNode(Node):
 
     def __str__(self):
         return "Jump({}: {})".format(self.to, self.args)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class UndefinedNode(LeafNode):
+    def __init__(self, line):
+        LeafNode.__init__(self, line)
+
+        self.node_type = UNDEFINED_NODE
+
+    def __str__(self):
+        return "undefined"
 
     def __repr__(self):
         return self.__str__()

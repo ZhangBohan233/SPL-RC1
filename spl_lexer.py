@@ -1,33 +1,8 @@
 import _io
 
 import spl_parser as psr
+import spl_token_lib as stl
 import os
-
-EOF = -1
-EOL = ";"
-SYMBOLS = {"{", "}", ".", ","}
-MIDDLE = {"(", ")", "[", "]"}
-BINARY_OPERATORS = {"+": "add", "-": "sub", "*": "mul", "/": "div", "%": "mod",
-                    "<": "lt", ">": "gt", "==": "eq", ">=": "ge", "<=": "le", "!=": "neq",
-                    "&&": "and", "||": "or", "&": "band", "^": "xor", "|": "bor",
-                    "<<": "lshift", ">>": "rshift", "===": "", "!==": "", "instanceof": ""}
-UNARY_OPERATORS = {"!": "not"}
-OTHERS = {"=", "@", ":"}
-ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
-RESERVED = {"class", "function", "def", "if", "else", "new", "extends", "return", "break", "continue",
-            "true", "false", "null", "operator", "while", "for", "import", "throw", "try", "catch", "finally",
-            "abstract", "private", "const"}
-LAZY = {"&&", "||"}
-OMITS = {"\n", "\r", "\t", " "}
-
-OP_EQ = {"+", "-", "*", "/", "%", "&", "^", "|", "<<", ">>"}
-
-ESCAPES = {"n": "\n", "t": "\t", "0": "\0", "a": "\a", "r": "\r", "f": "\f", "v": "\v", "b": "\b", "\\": "\\"}
-
-NO_BUILD_LINE = {"else", "catch", "finally"}
-
-PUBLIC = 0
-PRIVATE = 1
 
 SPL_PATH = os.getcwd()
 
@@ -88,7 +63,7 @@ class Lexer:
             line = file.readline()
             line_num += 1
 
-        self.tokens.append(Token((EOF, self.file_name)))
+        self.tokens.append(stl.Token((stl.EOF, self.file_name)))
 
     def tokenize_text(self, lines):
         for i in range(len(lines)):
@@ -96,7 +71,7 @@ class Lexer:
             line = lines[i]
             self.proceed_line(line, (line_number, "console"), False)
 
-        self.tokens.append(Token((EOF, self.file_name)))
+        self.tokens.append(stl.Token((stl.EOF, self.file_name)))
 
     def proceed_line(self, line: str, line_num: (int, str), in_doc):
         """ Tokenize a line.
@@ -132,13 +107,13 @@ class Lexer:
                 if in_double:
                     if ch == '"':
                         in_double = False
-                        self.tokens.append(LiteralToken(line_num, literal))
+                        self.tokens.append(stl.LiteralToken(line_num, literal))
                         literal = ""
                         continue
                 elif in_single:
                     if ch == "'":
                         in_single = False
-                        self.tokens.append(LiteralToken(line_num, literal))
+                        self.tokens.append(stl.LiteralToken(line_num, literal))
                         literal = ""
                         continue
                 else:
@@ -179,32 +154,32 @@ class Lexer:
             # if part == "//":
             #     break
             if part.isidentifier():
-                if part in RESERVED:
-                    self.tokens.append(IdToken(line_num, part))
+                if part in stl.RESERVED:
+                    self.tokens.append(stl.IdToken(line_num, part))
                 else:
-                    self.tokens.append(IdToken(line_num, part))
+                    self.tokens.append(stl.IdToken(line_num, part))
             elif is_float(part):
-                self.tokens.append(NumToken(line_num, part))
+                self.tokens.append(stl.NumToken(line_num, part))
             elif part.isdigit():
-                self.tokens.append(NumToken(line_num, part))
-            elif part in ALL:
-                self.tokens.append(IdToken(line_num, part))
-            elif part[:-1] in OP_EQ:
-                self.tokens.append(IdToken(line_num, part))
-            elif part == EOL:
-                self.tokens.append(IdToken(line_num, EOL))
+                self.tokens.append(stl.NumToken(line_num, part))
+            elif part in stl.ALL:
+                self.tokens.append(stl.IdToken(line_num, part))
+            elif part[:-1] in stl.OP_EQ:
+                self.tokens.append(stl.IdToken(line_num, part))
+            elif part == stl.EOL:
+                self.tokens.append(stl.IdToken(line_num, stl.EOL))
             elif part == "=>":
-                self.tokens.append(IdToken(line_num, part))
-            elif part in OMITS:
+                self.tokens.append(stl.IdToken(line_num, part))
+            elif part in stl.OMITS:
                 pass
             else:
-                raise ParseException("Unknown symbol: '{}', at line {}".format(part, line_num))
+                raise stl.ParseException("Unknown symbol: '{}', at line {}".format(part, line_num))
 
     def find_import(self, from_, to):
         for i in range(from_, to, 1):
             token = self.tokens[i]
-            if isinstance(token, IdToken) and token.symbol == "import":
-                next_token: LiteralToken = self.tokens[i + 1]
+            if isinstance(token, stl.IdToken) and token.symbol == "import":
+                next_token: stl.LiteralToken = self.tokens[i + 1]
                 name = next_token.text
                 self.tokens.pop(i)
                 self.tokens.pop(i)
@@ -241,8 +216,8 @@ class Lexer:
         i = 0
         func_count = 0
         in_cond = False
-        is_const = False
-        auth = PUBLIC
+        var_level = psr.ASSIGN
+        auth = stl.PUBLIC
         call_nest = 0
         brace_count = 0
         class_brace = -1
@@ -252,15 +227,15 @@ class Lexer:
             try:
                 token = self.tokens[i]
                 line = (token.line_number(), token.file_name())
-                if isinstance(token, IdToken):
+                if isinstance(token, stl.IdToken):
                     sym = token.symbol
                     if sym == "if":
                         in_cond = True
                         parser.add_if(line)
                         i += 1
                         next_token = self.tokens[i]
-                        if not (isinstance(next_token, IdToken) and next_token.symbol == "("):
-                            unexpected_token(token)
+                        if not (isinstance(next_token, stl.IdToken) and next_token.symbol == "("):
+                            stl.unexpected_token(token)
                     elif sym == "while":
                         in_cond = True
                         parser.add_while(line)
@@ -284,7 +259,11 @@ class Lexer:
                     elif sym == "null":
                         parser.add_null(line)
                     elif sym == "const":
-                        is_const = True
+                        var_level = psr.CONST
+                    elif sym == "var":
+                        var_level = psr.VAR
+                    elif sym == "let":
+                        var_level = psr.LOCAL
                     elif sym == "@":
                         i += 1
                     elif sym == "{":
@@ -298,7 +277,7 @@ class Lexer:
                             parser.build_class()
                             class_brace = -1
                         next_token = self.tokens[i + 1]
-                        if not (isinstance(next_token, IdToken) and next_token.symbol in NO_BUILD_LINE):
+                        if not (isinstance(next_token, stl.IdToken) and next_token.symbol in stl.NO_BUILD_LINE):
                             parser.build_expr()
                             parser.build_line()
                     elif sym == "(":
@@ -319,7 +298,7 @@ class Lexer:
                             extra_precedence -= 1
                     elif sym == "]":
                         next_token = self.tokens[i + 1]
-                        if isinstance(next_token, IdToken) and next_token.symbol == "=":
+                        if isinstance(next_token, stl.IdToken) and next_token.symbol == "=":
                             parser.build_get_set(True)
                             parser.build_line()
                             i += 1
@@ -330,8 +309,8 @@ class Lexer:
                             call_nest -= 1
                     elif sym == "=":
                         parser.build_expr()
-                        parser.add_assignment(line, is_const)
-                        is_const = False
+                        parser.add_assignment(line, var_level)
+                        var_level = psr.ASSIGN
                     elif sym == ":":
                         parser.build_expr()
                         parser.add_type(line)
@@ -347,23 +326,23 @@ class Lexer:
                         call_nest += 1
                     elif sym == "function" or sym == "def":
                         i += 1
-                        f_token: IdToken = self.tokens[i]
+                        f_token: stl.IdToken = self.tokens[i]
                         f_name = f_token.symbol
-                        res = parse_def(f_name, self.tokens, i, func_count, parser, auth, is_const, brace_count == 0)
+                        res = parse_def(f_name, self.tokens, i, func_count, parser, auth)
                         i = res[0]
                         func_count = res[1]
-                        auth = PUBLIC
-                        is_const = False
+                        auth = stl.PUBLIC
+                        # is_const = False
                     elif sym == "operator":
                         i += 1
-                        op_token: IdToken = self.tokens[i]
-                        op_name = "@" + BINARY_OPERATORS[op_token.symbol]
-                        res = parse_def(op_name, self.tokens, i, func_count, parser, PUBLIC, False, False)
+                        op_token: stl.IdToken = self.tokens[i]
+                        op_name = "@" + stl.BINARY_OPERATORS[op_token.symbol]
+                        res = parse_def(op_name, self.tokens, i, func_count, parser, stl.PUBLIC)
                         i = res[0]
                         func_count = res[1]
                     elif sym == "class":
                         i += 1
-                        c_token: IdToken = self.tokens[i]
+                        c_token: stl.IdToken = self.tokens[i]
                         class_name = c_token.symbol
                         parser.add_class((c_token.line_number(), c_token.file_name()), class_name)
                         class_brace = brace_count
@@ -375,21 +354,21 @@ class Lexer:
                             superclass_name = c_token.symbol
                             parser.add_extends(superclass_name, cla)
                             next_token = self.tokens[i + 1]
-                            if isinstance(next_token, IdToken) and next_token.symbol == ",":
+                            if isinstance(next_token, stl.IdToken) and next_token.symbol == ",":
                                 i += 2
                             else:
                                 break
                     elif sym == "abstract":
                         parser.add_abstract(line)
                     elif sym == "private":
-                        auth = PRIVATE
+                        auth = stl.PRIVATE
                     elif sym == "new":
                         i += 1
                         c_token = self.tokens[i]
                         class_name = c_token.symbol
                         parser.add_class_new((c_token.line_number(), c_token.file_name()), class_name)
                         next_token = self.tokens[i + 1]
-                        if i + 1 < len(self.tokens) and isinstance(next_token, IdToken) and \
+                        if i + 1 < len(self.tokens) and isinstance(next_token, stl.IdToken) and \
                                 next_token.symbol == "(":
                             i += 1
                             call_nest += 1
@@ -405,17 +384,17 @@ class Lexer:
                         in_cond = True
                     elif sym == "finally":
                         parser.add_finally(line)
-                    elif sym in BINARY_OPERATORS:
+                    elif sym in stl.BINARY_OPERATORS:
                         if sym == "-" and (i == 0 or is_unary(self.tokens[i - 1])):
                             parser.add_neg(line, extra_precedence)
                         # elif sym == "*" and (i == 0 or is_unary(self.tokens[i - 1])):
                         #     parser.add_unpack(line, extra_precedence)
                         else:
                             parser.add_operator(line, sym, extra_precedence)
-                    elif sym in UNARY_OPERATORS:
+                    elif sym in stl.UNARY_OPERATORS:
                         if sym == "!":
                             parser.add_not(line, extra_precedence)
-                    elif sym[:-1] in OP_EQ:
+                    elif sym[:-1] in stl.OP_EQ:
                         parser.add_operator(line, sym, extra_precedence, True)
                     elif token.is_eol():
                         if parser.is_in_get():
@@ -424,11 +403,21 @@ class Lexer:
                             # parser.in_get = False
                             call_nest -= 1
                         parser.build_expr()
-                        # print(parser.stack)
+                        if var_level != psr.ASSIGN:
+                            active = parser.get_active()
+                            und_vars = active.stack.copy()
+                            # print(und_vars)
+                            active.stack.clear()
+                            for node in und_vars:
+                                active.stack.append(node)
+                                parser.add_assignment(line, var_level)
+                                parser.add_undefined(line)
+                                parser.build_line()
+                            var_level = psr.ASSIGN
                         parser.build_line()
                     else:
                         next_token = self.tokens[i + 1]
-                        if isinstance(next_token, IdToken):
+                        if isinstance(next_token, stl.IdToken):
                             if next_token.symbol == "(":
                                 # function call
                                 parser.add_call(line, sym)
@@ -444,40 +433,30 @@ class Lexer:
                                 parser.add_name(line, sym, auth)
                         else:
                             parser.add_name(line, sym, auth)
-                        auth = PUBLIC
+                        auth = stl.PUBLIC
 
-                elif isinstance(token, NumToken):
+                elif isinstance(token, stl.NumToken):
                     value = token.value
                     parser.add_number(line, value)
-                elif isinstance(token, LiteralToken):
+                elif isinstance(token, stl.LiteralToken):
                     value = token.text
                     parser.add_literal(line, value)
                 elif token.is_eof():
                     parser.build_line()
                     break
                 else:
-                    unexpected_token(token)
+                    stl.unexpected_token(token)
                 i += 1
             except Exception:
-                raise ParseException("Parse error in '{}', at line {}".format(self.tokens[i].file_name(),
+                raise stl.ParseException("Parse error in '{}', at line {}".format(self.tokens[i].file_name(),
                                                                               self.tokens[i].line_number()))
 
         if in_cond or call_nest != 0 or brace_count != 0 or extra_precedence != 0:
-            raise ParseException("Reach the end while parsing")
+            raise stl.ParseException("Reach the end while parsing")
         return parser.get_as_block()
 
 
-def unexpected_token(token):
-    if isinstance(token, IdToken):
-        raise ParseException("Unexpected token: '{}', in {}, at line {}".format(token.symbol,
-                                                                                token.file_name(),
-                                                                                token.line_number()))
-    else:
-        raise ParseException("Unexpected token in '{}', at line {}".format(token.file_name(),
-                                                                           token.line_number()))
-
-
-def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth, is_const, is_global):
+def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth):
     """
     Parses a function declaration into abstract syntax tree.
 
@@ -487,29 +466,27 @@ def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth, is_const,
     :param func_count: the count the anonymous functions
     :param parser: the Parser object
     :param auth: the authority of this function
-    :param is_const: whether this defines a constant function
-    :param is_global: whether this function is a global function
     :return: tuple(new index, new anonymous function count)
     """
     tup = (tokens[i].line_number(), tokens[i].file_name())
     if f_name == "(":
-        parser.add_function(tup, "af-{}".format(func_count), auth, is_const, is_global)
+        parser.add_function(tup, "af-{}".format(func_count), auth)
         # "af" stands for anonymous function
         func_count += 1
     else:
-        parser.add_function(tup, f_name, auth, is_const, is_global)
+        parser.add_function(tup, f_name, auth)
         i += 1
     front_par = tokens[i]
-    if isinstance(front_par, IdToken) and front_par.symbol == "(":
+    if isinstance(front_par, stl.IdToken) and front_par.symbol == "(":
         i += 1
         params = []
         presets = []
         ps = False
         while True:
             token = tokens[i]
-            if isinstance(token, IdToken):
+            if isinstance(token, stl.IdToken):
                 sbl = token.symbol
-            elif isinstance(tokens[i], NumToken):
+            elif isinstance(tokens[i], stl.NumToken):
                 sbl = token.value
             else:
                 sbl = token.text
@@ -542,24 +519,24 @@ def is_unary(last_token):
     :return:
     :rtype: bool
     """
-    if isinstance(last_token, IdToken):
+    if isinstance(last_token, stl.IdToken):
         if last_token.is_eol():
             return True
         else:
             sym = last_token.symbol
-            if sym in BINARY_OPERATORS:
+            if sym in stl.BINARY_OPERATORS:
                 return True
-            elif sym in SYMBOLS:
+            elif sym in stl.SYMBOLS:
                 return True
             elif sym == "(":
                 return True
             elif sym == "=":
                 return True
-            elif sym in RESERVED:
+            elif sym in stl.RESERVED:
                 return True
             else:
                 return False
-    elif isinstance(last_token, NumToken):
+    elif isinstance(last_token, stl.NumToken):
         return False
     else:
         return True
@@ -669,121 +646,6 @@ def is_float(num_str):
     return False
 
 
-class Token:
-
-    def __init__(self, line):
-        self.line = line[0]
-        self.file = line[1]
-
-    def __str__(self):
-        if self.is_eof():
-            return "EOF"
-        else:
-            raise LexerException("Not Implemented")
-
-    def __repr__(self):
-        return self.__str__()
-
-    def is_eof(self):
-        return self.line == EOF
-
-    def is_eol(self):
-        return False
-
-    def is_number(self):
-        return False
-
-    def is_literal(self):
-        return False
-
-    def is_identifier(self):
-        return False
-
-    def file_name(self):
-        return self.file
-
-    def line_number(self):
-        return self.line
-
-
-class NumToken(Token):
-    def __init__(self, line, v):
-        Token.__init__(self, line)
-
-        self.value = v
-
-    def is_number(self):
-        return True
-
-    def __str__(self):
-        return "NumToken({})".format(self.value)
-
-    def __repr__(self):
-        return self.__str__()
-
-
-class LiteralToken(Token):
-    def __init__(self, line, t: str):
-        Token.__init__(self, line)
-
-        # self.text = t.encode().decode('unicode_escape').encode('utf8').decode('utf8')
-        # self.text = t.encode().decode('unicode_escape')
-        self.text = replace_escapes(t)
-
-    def is_literal(self):
-        return True
-
-    def __str__(self):
-        return "LIT({})".format(self.text)
-
-    def __repr__(self):
-        return self.__str__()
-
-
-class IdToken(Token):
-    def __init__(self, line, s):
-        Token.__init__(self, line)
-
-        self.symbol = s
-
-    def __eq__(self, other):
-        return isinstance(other, IdToken) and other.symbol == self.symbol
-
-    def is_identifier(self):
-        return True
-
-    def is_eol(self):
-        return self.symbol == ";"
-
-    def __str__(self):
-        if self.is_eol():
-            return "Id(EOL)"
-        else:
-            return "Id({})".format(self.symbol)
-
-    def __repr__(self):
-        return self.__str__()
-
-
-def replace_escapes(text: str):
-    lst = []
-    in_slash = False
-    for i in range(len(text)):
-        ch = text[i]
-        if in_slash:
-            in_slash = False
-            if ch in ESCAPES:
-                lst.append(ESCAPES[ch])
-            else:
-                lst.append("\\" + ch)
-        else:
-            if ch == "\\":
-                in_slash = True
-            else:
-                lst.append(ch)
-    return "".join(lst)
-
-
 def get_dir(f_name: str):
     if os.sep in f_name:
         return f_name[:f_name.find(os.sep)]
@@ -791,13 +653,3 @@ def get_dir(f_name: str):
         return f_name[:f_name.find("/")]
     else:
         return ""
-
-
-class LexerException(Exception):
-    def __init__(self, msg=""):
-        Exception.__init__(self, msg)
-
-
-class ParseException(Exception):
-    def __init__(self, msg=""):
-        Exception.__init__(self, msg)
