@@ -1,3 +1,9 @@
+===== Build 0031: 2019/02/23 =====
+### Beta Version ###
+
+*Fixed cross-scope calling problem
+*Bugs: module
+
 ===== Build 0029: 2019/02/22 =====
 ### Beta Version ###
 

@@ -94,7 +94,7 @@ class Environment:
             # self._add_base_exception()
 
     def __str__(self):
-        temp = [self.scope_name, "global" if self.is_global else "", "\nConst: "]
+        temp = [self.scope_name, " global" if self.is_global else "", "\nConst: "]
         for c in self.constants:
             if c != "this":
                 temp.append(str(c))
@@ -988,28 +988,23 @@ def get_module_env(node: psr.Node, env: Environment):
 
 
 def init_class(node: psr.ClassInit, env: Environment):
-    # if isinstance(node.class_name, str):
-    #     print("This should not be happened")
-    #     cla: Class = env.get_heap(node.class_name)
     if node.class_name.node_type == psr.NAME_NODE:
+        # print(env.outer.outer.scope_name)
         cla: Class = env.get_heap(node.class_name.name)
         module_env = env
     else:
         cla: Class = get_imported_class(node.class_name, env)
         module_env = get_module_env(node.class_name, env)
 
-    # print(node)
-    # print(module_env)
     scope = Environment(False, env.heap)
+    scope.outer = module_env
     scope.scope_name = "Class scope<{}>".format(cla.class_name)
     class_inheritance(cla, module_env, scope)
 
-    # print(scope.variables)
     instance = ClassInstance(scope, node.class_name)
     for k in scope.variables:
         v = scope.variables[k]
         if isinstance(v, Function):
-            # v.parent = instance
             v.outer_scope = scope
 
     if node.args:
@@ -1056,9 +1051,13 @@ def call_function(node: psr.FuncCall, env: Environment):
         scope.scope_name = "Function scope<{}>".format(node.f_name)
         scope.outer = func.outer_scope  # supports for closure
 
-        if len(env.temp_vars) == len(func.params) > 0:
+        if len(env.temp_vars) + len(list(filter(lambda k: not isinstance(k, psr.InvalidToken), func.presets))) == \
+                len(func.params) > 0:
             for i in range(len(func.params)):
-                scope.assign(func.params[i].name, env.temp_vars[i])
+                if i < len(env.temp_vars):
+                    scope.assign(func.params[i].name, env.temp_vars[i])
+                else:
+                    scope.assign(func.params[i].name, func.presets[i])
             env.temp_vars.clear()
         else:
             check_args_len(func, node)
@@ -1106,7 +1105,6 @@ def eval_namespace(node: psr.Namespace, env: Environment):
         attr = left.env.get(obj.name, (node.line_num, node.file))
         return attr
     elif t == psr.FUNCTION_CALL:
-        print(123124)
         obj: psr.FuncCall
         result = evaluate(obj, left.env)
         env.assign("=>", result)
@@ -1145,11 +1143,16 @@ def eval_dot(node: psr.Dot, env: Environment):
                 raise IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
                                                .format(node.file, node.line_num))
         elif isinstance(instance, ClassInstance):
+            # method call
             if (not isinstance(node.left, psr.NameNode) or node.left.name != "this") and \
                     instance.env.is_private(obj.f_name):
                 raise UnauthorizedException("Class attribute '{}' has private access".format(obj.f_name))
             else:
+                args = obj.args
+                for x in args.lines:
+                    instance.env.temp_vars.append(evaluate(x, env))
                 result = evaluate(obj, instance.env)
+                instance.env.temp_vars.clear()
                 env.assign("=>", result)
                 return result
         else:
@@ -1457,7 +1460,7 @@ def eval_class_stmt(node, env: Environment):
 
 
 def eval_import_stmt(node: psr.ImportStmt, env: Environment):
-    scope = Environment(False, env.heap)
+    scope = Environment(True, {})
     scope.scope_name = "Module " + node.class_name
     evaluate(node.block, scope)
     # print(scope)

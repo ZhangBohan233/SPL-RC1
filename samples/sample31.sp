@@ -1,12 +1,8 @@
 import "sample28.sp" as s28
 
-class B {
-    c = new s28::S28(33);
+c = new s28::S28();
 
-    i = 0;
-    c.set(i);
+i = 2;
+c.setx(i);
 
-    print(c.value);
-}
-
-b = new B;
+print(c.value);
