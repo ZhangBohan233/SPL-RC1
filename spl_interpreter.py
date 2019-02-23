@@ -94,7 +94,7 @@ class Environment:
             # self._add_base_exception()
 
     def __str__(self):
-        temp = [self.scope_name, "\nConst: "]
+        temp = [self.scope_name, "global" if self.is_global else "", "\nConst: "]
         for c in self.constants:
             if c != "this":
                 temp.append(str(c))
@@ -735,7 +735,7 @@ class Interpreter:
         self.argv = argv
         self.env = Environment(True, {})
         self.env.add_heap("system", System(argv, encoding))
-        self.env.scope_name = "Global"
+        self.env.scope_name = "Main"
 
     def set_ast(self, ast: psr.BlockStmt):
         """
@@ -789,6 +789,14 @@ class ClassInstance:
     def __repr__(self):
         return self.__str__()
 
+    def get_class_name(self):
+        if isinstance(self.class_name, psr.NameNode):
+            return self.class_name.name
+        elif isinstance(self.class_name, psr.Namespace):
+            return psr.binary_expr_to_string(self.class_name)
+        else:
+            raise SplException("Unprintable class name")
+
     def __str__(self):
         if self.env.contains_key("__str__"):
             call = psr.FuncCall((0, "interpreter"), "__str__")
@@ -797,7 +805,7 @@ class ClassInstance:
         else:
             attr = self.env.attributes()
             attr.pop("this")
-            return str(self.class_name) + ": " + str(attr)
+            return self.get_class_name() + ": " + str(attr)
 
 
 class RuntimeException(Exception):
@@ -964,6 +972,13 @@ def get_imported_class(namespace: psr.Namespace, env: Environment):
 
 
 def get_module_env(node: psr.Node, env: Environment):
+    """
+    Returns the global environment of a module.
+
+    :param node: the node
+    :param env: the current global environment
+    :return: the global environment of a module
+    """
     if isinstance(node, psr.Namespace):
         return get_module_env(node.left, env)
     elif isinstance(node, psr.NameNode):
@@ -1013,8 +1028,8 @@ def get_local_function(node: psr.FuncCall, env):
 
 
 def get_imported_function(node: psr.FuncCall, env: Environment):
-    dot: psr.Dot = node.f_name
-    res = evaluate(dot, env)
+    ns: psr.Namespace = node.f_name
+    res = evaluate(ns, env)
     if isinstance(res, Class):
         f = env.direct_get(res.class_name)
         return f
@@ -1023,11 +1038,18 @@ def get_imported_function(node: psr.FuncCall, env: Environment):
 
 
 def call_function(node: psr.FuncCall, env: Environment):
-    # print(node.f_name)
+    """
+    :param node:
+    :param env: the environment outside the function.
+    :return:
+    """
+    # print(node)
     if isinstance(node.f_name, str):
         func = get_local_function(node, env)
-    else:
+    elif isinstance(node.f_name, psr.Namespace):
         func = get_imported_function(node, env)
+    else:
+        raise SplException("Syntax error")
 
     if isinstance(func, Function):
         scope = Environment(False, env.heap)
@@ -1047,8 +1069,8 @@ def call_function(node: psr.FuncCall, env: Environment):
                 else:
                     arg = func.presets[i]
 
-                e = evaluate(arg, env)
-                scope.assign(func.params[i].name, e)
+                a = evaluate(arg, env)
+                scope.assign(func.params[i].name, a)
         result = evaluate(func.body, scope)
         env.assign("=>", result)
         return result
@@ -1084,6 +1106,7 @@ def eval_namespace(node: psr.Namespace, env: Environment):
         attr = left.env.get(obj.name, (node.line_num, node.file))
         return attr
     elif t == psr.FUNCTION_CALL:
+        print(123124)
         obj: psr.FuncCall
         result = evaluate(obj, left.env)
         env.assign("=>", result)
@@ -1440,9 +1463,6 @@ def eval_import_stmt(node: psr.ImportStmt, env: Environment):
     # print(scope)
     imp = Module(node.class_name, scope)
     env.add_heap(node.class_name, imp)
-    # print(node.class_name)
-    # print(env)
-    # print(node.class_name)
     return imp
 
 
@@ -1457,8 +1477,7 @@ def raise_exception(e: Exception):
     raise e
 
 
-# SELF_RETURN_TABLE = {"int", "float", "bool", "NoneType", "String", "List", "Set", "Pair", "System", "File"}
-SELF_RETURN_TABLE_2 = {int, float, bool, String, List, Set, Pair, System, File}
+SELF_RETURN_SET = {int, float, bool, String, List, Set, Pair, System, File}
 
 NODE_TABLE = {
     psr.INT_NODE: lambda n, env: n.value,
@@ -1509,7 +1528,7 @@ def evaluate(node: psr.Node, env: Environment):
         return env.exit_value
     if env.paused or node is None:
         return None
-    if type(node) in SELF_RETURN_TABLE_2:
+    if type(node) in SELF_RETURN_SET:
         return node
     t = node.node_type
     node.execution += 1

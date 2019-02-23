@@ -1206,3 +1206,13 @@ def parse_expr(lst):
             lst.pop(index + 1)
             lst.pop(index - 1)
     return lst[0]
+
+
+# Helper functions
+def binary_expr_to_string(node, s=""):
+    if isinstance(node, BinaryExpr):
+        return binary_expr_to_string(node.left, s) + node.operation + binary_expr_to_string(node.right, s)
+    elif isinstance(node, NameNode):
+        return node.name
+    else:
+        raise TypeError("Unexpected type")

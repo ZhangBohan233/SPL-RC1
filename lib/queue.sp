@@ -42,7 +42,7 @@ class Queue {
 }
 
 
-class Deque extends Queue, Stack {
+class Deque extends Queue, stack::Stack {
 
     function Deque() {
         abstract;
@@ -70,11 +70,10 @@ class LLNode {
     before = null;
     after = null;
     value = null;
-
 }
 
 
-class LinkedList extends Deque, Iterable {
+class LinkedList extends Deque, iterable::Iterable {
 
     private size_ = 0;
     private head = null;
@@ -98,7 +97,7 @@ class LinkedList extends Deque, Iterable {
             iter_node = iter_node.after;
             return value;
         } else {
-            return new StopIteration;
+            return new iterable::StopIteration();
         }
     }
 

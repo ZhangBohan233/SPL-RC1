@@ -416,8 +416,6 @@ class Lexer:
                     elif sym == "extends":
                         i += 1
                         cla = parser.get_current_class()
-                        # while True:
-                        #
                         little_parser = psr.Parser()
                         c_token = self.tokens[i]
                         while c_token.is_identifier() and c_token.symbol != "{":
@@ -439,12 +437,6 @@ class Lexer:
                         last_extend = little_parser.get_as_block().lines
                         if len(last_extend) > 0:
                             parser.add_extends(last_extend[0], cla)
-                        # parser.add_extends(superclass_name, cla)
-                        # next_token = self.tokens[i + 1]
-                        # if isinstance(next_token, IdToken) and next_token.symbol == ",":
-                        #     i += 2
-                        # else:
-                        #     break
                     elif sym == "abstract":
                         parser.add_abstract(line)
                     elif sym == "private":
@@ -455,17 +447,21 @@ class Lexer:
                         first_name = c_token.symbol
                         little_parser = psr.Parser()
                         little_parser.add_name(line, first_name, PUBLIC)
-                        # parser.add_class_new((c_token.line_number(), c_token.file_name()), class_name)
                         i += 1
                         next_token = self.tokens[i]
+                        has_call = False
                         while next_token.is_identifier():
                             if next_token.symbol == "(":
                                 # i += 1
                                 call_nest += 1
+                                has_call = True
                                 # parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
                                 break
                             elif next_token.symbol == "::":
                                 little_parser.add_namespace(line)
+                            elif next_token.symbol == ";":
+                                i -= 1
+                                break
                             else:
                                 little_parser.add_name(line, next_token.symbol, PUBLIC)
                             i += 1
@@ -473,7 +469,8 @@ class Lexer:
                         little_parser.build_line()
                         block = little_parser.get_as_block()
                         parser.add_class_new(line, block.lines[0])
-                        parser.add_call((next_token.line_number(), next_token.file_name()), block.lines[0])
+                        if has_call:
+                            parser.add_call((next_token.line_number(), next_token.file_name()), block.lines[0])
                     elif sym == "throw":
                         parser.add_throw(line)
                     elif sym == "try":
