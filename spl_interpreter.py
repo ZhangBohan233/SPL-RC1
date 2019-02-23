@@ -959,23 +959,35 @@ def assignment(node: psr.AssignmentNode, env: Environment):
         raise InterpretException("Unknown assignment, in {}, at line {}".format(node.file, node.line_num))
 
 
-def get_imported_class(dot: psr.Dot, env: Environment):
-    return evaluate(dot, env)
+def get_imported_class(namespace: psr.Namespace, env: Environment):
+    return evaluate(namespace, env)
+
+
+def get_module_env(node: psr.Node, env: Environment):
+    if isinstance(node, psr.Namespace):
+        return get_module_env(node.left, env)
+    elif isinstance(node, psr.NameNode):
+        return env.get_heap(node.name).env
+    else:
+        raise SplException("Invalid namespace in {}, at line {}".format(node.file, node.line_num))
 
 
 def init_class(node: psr.ClassInit, env: Environment):
-    if isinstance(node.class_name, str):
-        print("This should not be happened")
-        cla: Class = env.get_heap(node.class_name)
-    elif node.class_name.node_type == psr.NAME_NODE:
+    # if isinstance(node.class_name, str):
+    #     print("This should not be happened")
+    #     cla: Class = env.get_heap(node.class_name)
+    if node.class_name.node_type == psr.NAME_NODE:
         cla: Class = env.get_heap(node.class_name.name)
+        module_env = env
     else:
-
         cla: Class = get_imported_class(node.class_name, env)
+        module_env = get_module_env(node.class_name, env)
 
+    # print(node)
+    # print(module_env)
     scope = Environment(False, env.heap)
     scope.scope_name = "Class scope<{}>".format(cla.class_name)
-    class_inheritance(cla, env, scope)
+    class_inheritance(cla, module_env, scope)
 
     # print(scope.variables)
     instance = ClassInstance(scope, node.class_name)
@@ -1063,7 +1075,24 @@ def check_args_len(function: Function, call: psr.FuncCall):
                            .format(call.f_name, call.file, call.line_num))
 
 
-def call_dot(node: psr.Dot, env: Environment):
+def eval_namespace(node: psr.Namespace, env: Environment):
+    left: Module = evaluate(node.left, env)
+    obj = node.right
+    t = obj.node_type
+    if t == psr.NAME_NODE:
+        obj: psr.NameNode
+        attr = left.env.get(obj.name, (node.line_num, node.file))
+        return attr
+    elif t == psr.FUNCTION_CALL:
+        obj: psr.FuncCall
+        result = evaluate(obj, left.env)
+        env.assign("=>", result)
+        return result
+    else:
+        raise InterpretException("Unknown Syntax")
+
+
+def eval_dot(node: psr.Dot, env: Environment):
     instance = evaluate(node.left, env)
     obj = node.right
     t = obj.node_type
@@ -1081,12 +1110,6 @@ def call_dot(node: psr.Dot, env: Environment):
                 # attr = instance.env.variables[obj.name]
                 attr = instance.env.direct_get(obj.name)
                 return attr
-        elif isinstance(instance, Module):
-            if instance.env.is_private(obj.name):
-                raise UnauthorizedException("Class attribute '{}' has private access".format(obj.name))
-            else:
-                attr = instance.env.get(obj.name, (node.line_num, node.file))
-                return attr
         else:
             raise InterpretException("Neither a class instance nor a module, "
                                      "in {}, at line {}".format(node.file, node.line_num))
@@ -1098,7 +1121,7 @@ def call_dot(node: psr.Dot, env: Environment):
             except IndexError as ie:
                 raise IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
                                                .format(node.file, node.line_num))
-        elif isinstance(instance, ClassInstance) or isinstance(instance, Module):
+        elif isinstance(instance, ClassInstance):
             if (not isinstance(node.left, psr.NameNode) or node.left.name != "this") and \
                     instance.env.is_private(obj.f_name):
                 raise UnauthorizedException("Class attribute '{}' has private access".format(obj.f_name))
@@ -1288,7 +1311,6 @@ def class_inheritance(cla, env, scope):
     :return:
     """
     for sc in cla.superclass_names:
-        # print(sc)
         sc_ins = evaluate(sc, env)
         class_inheritance(sc_ins, env, scope)
         # class_inheritance(env.get_heap(sc), env, scope)
@@ -1448,7 +1470,7 @@ NODE_TABLE = {
     psr.BREAK_STMT: lambda n, env: env.break_loop(),
     psr.CONTINUE_STMT: lambda n, env: env.pause_loop(),
     psr.ASSIGNMENT_NODE: assignment,
-    psr.DOT: call_dot,
+    psr.DOT: eval_dot,
     psr.ANONYMOUS_CALL: eval_anonymous_call,
     psr.OPERATOR_NODE: eval_operator,
     psr.NEGATIVE_EXPR: lambda n, env: -evaluate(n.value, env),
@@ -1470,7 +1492,8 @@ NODE_TABLE = {
     psr.THROW_STMT: lambda n, env: raise_exception(RuntimeException(evaluate(n.value, env))),
     psr.TRY_STMT: eval_try_catch,
     psr.JUMP_NODE: eval_jump,
-    psr.IMPORT_STMT: eval_import_stmt
+    psr.IMPORT_STMT: eval_import_stmt,
+    psr.NAMESPACE: eval_namespace
 }
 
 

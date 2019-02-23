@@ -1,3 +1,9 @@
+===== Build 0029: 2019/02/22 =====
+### Beta Version ###
+
+*Import system:
+    *Namespace, with syntax '::'
+
 ===== Build 0028: 2019/02/21 =====
 ### Alpha Version ###
 

@@ -10,7 +10,8 @@ MIDDLE = {"(", ")", "[", "]"}
 BINARY_OPERATORS = {"+": "add", "-": "sub", "*": "mul", "/": "div", "%": "mod",
                     "<": "lt", ">": "gt", "==": "eq", ">=": "ge", "<=": "le", "!=": "neq",
                     "&&": "and", "||": "or", "&": "band", "^": "xor", "|": "bor",
-                    "<<": "lshift", ">>": "rshift", "===": "", "!==": "", "instanceof": ""}
+                    "<<": "lshift", ">>": "rshift", "===": "", "!==": "", "instanceof": "",
+                    "::": ""}
 UNARY_OPERATORS = {"!": "not"}
 OTHERS = {"=", "@", ":"}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
@@ -378,6 +379,8 @@ class Lexer:
                             parser.build_line()
                     elif sym == ".":
                         parser.add_dot(line, extra_precedence)
+                    elif sym == "::":
+                        parser.add_namespace(line)
                     elif sym == "=>":
                         parser.add_anonymous_call(line, extra_precedence)
                         i += 1
@@ -422,8 +425,8 @@ class Lexer:
                                 little_parser.build_line()
                                 parser.add_extends(little_parser.get_as_block().lines[0], cla)
                                 little_parser = psr.Parser()
-                            elif c_token.symbol == ".":
-                                little_parser.add_dot(line, 0)
+                            elif c_token.symbol == "::":
+                                little_parser.add_namespace(line)
                             else:
                                 little_parser.add_name(line, c_token.symbol, PUBLIC)
                             i += 1
@@ -433,7 +436,9 @@ class Lexer:
                         # superclass_name = c_token.symbol
 
                         little_parser.build_line()
-                        parser.add_extends(little_parser.get_as_block().lines[0], cla)
+                        last_extend = little_parser.get_as_block().lines
+                        if len(last_extend) > 0:
+                            parser.add_extends(last_extend[0], cla)
                         # parser.add_extends(superclass_name, cla)
                         # next_token = self.tokens[i + 1]
                         # if isinstance(next_token, IdToken) and next_token.symbol == ",":
@@ -459,22 +464,16 @@ class Lexer:
                                 call_nest += 1
                                 # parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
                                 break
-                            elif next_token.symbol == ".":
-                                little_parser.add_dot(line, 0)
+                            elif next_token.symbol == "::":
+                                little_parser.add_namespace(line)
                             else:
                                 little_parser.add_name(line, next_token.symbol, PUBLIC)
                             i += 1
                             next_token = self.tokens[i]
                         little_parser.build_line()
                         block = little_parser.get_as_block()
-                        # print(block.lines[0])
                         parser.add_class_new(line, block.lines[0])
                         parser.add_call((next_token.line_number(), next_token.file_name()), block.lines[0])
-                        # if i + 1 < len(self.tokens) and isinstance(next_token, IdToken) and \
-                        #         next_token.symbol == "(":
-                        #     i += 1
-                        #     call_nest += 1
-                        #     parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
                     elif sym == "throw":
                         parser.add_throw(line)
                     elif sym == "try":
@@ -660,7 +659,7 @@ def normalize(string):
         if len(string) > 0:
             s = string[0]
             last_type = char_type(s)
-            self_concatenate = {0, 1, 8, 9, 10, 11, 14}
+            self_concatenate = {0, 1, 8, 9, 10, 11, 14, 19}
             cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0), (15, 9), (17, 9), (16, 9), (10, 9), (11, 9),
                                  (9, 8)}
             for i in range(1, len(string), 1):
@@ -728,6 +727,8 @@ def char_type(ch):
         return 17
     elif ch == "@":
         return 18
+    elif ch == ":":
+        return 19
 
 
 def is_float(num_str):

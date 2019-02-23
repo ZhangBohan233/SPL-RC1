@@ -8,12 +8,15 @@ class A {
     }
 }
 
-b = new A(1);
-print(b);
+def func() {
+    return 3;
+}
 
-c = new s28.S28();
+c = new s28::S28(new A(3));
 print(c);
 
-s28.fuck(6);
+s28::fuck(6);
 
-print(s28.b);
+print(new s28::iterable::StopIteration());
+
+//print(s28::c);

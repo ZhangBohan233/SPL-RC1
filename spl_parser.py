@@ -3,7 +3,7 @@ import spl_lexer as lex
 PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "==": 20, ">": 25, "<": 25, ">=": 25, "<=": 25,
               "!=": 20, "&&": 5, "||": 5, "&": 12, "^": 11, "|": 10,
-              "<<": 40, ">>": 40, "unpack": 200,
+              "<<": 40, ">>": 40, "unpack": 200, "::": 500,
               ".": 500, "!": 200, "neg": 200, "return": 1, "throw": 1,
               "+=": 2, "-=": 2, "*=": 2, "/=": 2, "%=": 2,
               "&=": 2, "^=": 2, "|=": 2, "<<=": 2, ">>=": 2, "=>": 500,
@@ -45,6 +45,7 @@ TYPE_NODE = 29
 JUMP_NODE = 30
 # MODULE_STMT = 31
 IMPORT_STMT = 32
+NAMESPACE = 33
 
 
 class Parser:
@@ -435,6 +436,14 @@ class Parser:
         else:
             self.in_expr = True
             node = Dot(line, extra_precedence)
+            self.stack.append(node)
+
+    def add_namespace(self, line):
+        if self.inner:
+            self.inner.add_namespace(line)
+        else:
+            self.in_expr = True
+            node = Namespace(line)
             self.stack.append(node)
 
     def build_block(self):
@@ -1065,6 +1074,14 @@ class Dot(OperatorNode):
 
     def __repr__(self):
         return self.__str__()
+
+
+class Namespace(OperatorNode):
+    def __init__(self, line):
+        OperatorNode.__init__(self, line, 0)
+
+        self.node_type = NAMESPACE
+        self.operation = "::"
 
 
 class Abstract(LeafNode):
