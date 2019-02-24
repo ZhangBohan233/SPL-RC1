@@ -1,6 +1,6 @@
 class Person {
-    name = "unknown";
-    age = 0;
+    var name = "unknown";
+    var age = 0;
     function Person(n) {
         name = n;
     }
@@ -15,15 +15,21 @@ class Person {
 }
 
 class Human {
-    alive = true;
+    var alive = true;
 
-    def die() {
-        alive = false;
+    def Human() {
+
     }
+
+    //def die() {
+    //    alive = false;
+    //}
 }
 
 class Creature {
-    molecules = 10000;
+    var molecules = 10000;
+
+    def Creature();
 
     def die() {
         abstract;
@@ -31,13 +37,14 @@ class Creature {
 }
 
 class Student extends Person, Human, Creature {
-    private grade = 0;
+    var grade = 0;
     const v = "STUDENT";
-    private const g2 = "sb";
-    father = new Human;
+    const g2 = "sb";
+    var father = new Human;
 
     function Student(n, g) {
         Person(n);
+        Creature();
         age = g + 18;
         grade = g;
     }
@@ -49,10 +56,6 @@ class Student extends Person, Human, Creature {
 
     def test() {
         print("xxx");
-    }
-
-    const def access() {
-        test();
     }
 
     def set_grade(g) {
@@ -74,20 +77,16 @@ class Student extends Person, Human, Creature {
     function get() {
         return this;
     }
-
-    //function get_name() {
-    //    return name;
-    //}
 }
 
 
-a = new Student("True", 1);
-print(type(a));
-b = new Student("True", 1);
-print(a == b);
+let a = new Student("True", 1);
+println(type(a));
+let b = new Student("True", 1);
+println(a == b);
 b.test = function () {print("yyy")};
 b.set_grade(2);
-print(b.get_grade())
-print(dir(Student));
-//print(b);
+println(b.get_grade());
+println(dir(Student));
+print(b);
 

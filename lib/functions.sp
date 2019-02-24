@@ -3,9 +3,9 @@
  * results, in the original order.
  */
 function map(ftn, lst) {
-    res = list();
-    for (element; lst) {
-        cal = ftn(element);
+    let res = list();
+    for (let element; lst) {
+        let cal = ftn(element);
         res.append(cal);
     }
     return res;
@@ -17,9 +17,9 @@ function map(ftn, lst) {
  * Only elements make <ftn> returns <true> will be in the retuning list.
  */
 function filter(ftn, lst) {
-    res = list();
-    for (element; lst) {
-        bool = ftn(element);
+    let res = list();
+    for (let element; lst) {
+        let bool = ftn(element);
         if (bool) {
             res.append(element);
         }
@@ -32,7 +32,8 @@ function filter(ftn, lst) {
  * Returns true iff every element in <lst> satisfies boolean function <ftn>.
  */
 function all(ftn, lst) {
-    for (element; lst) {
+    for (let element; lst) {
+        let res;
         if (ftn === null) {
             res = element;
         } else {
@@ -50,7 +51,8 @@ function all(ftn, lst) {
  * Returns true iff any element in <lst> satisfies boolean function <ftn>.
  */
 function any(ftn, lst) {
-    for (element; lst) {
+    for (let element; lst) {
+        let res;
         if (ftn === null) {
             res = element;
         } else {
@@ -68,8 +70,8 @@ function any(ftn, lst) {
  * Performs the same operation to every element until it went into one.
  */
 function reduce(ftn, lst) {
-    result = null;
-    for (element; lst) {
+    let result = null;
+    for (let element; lst) {
         if (result) {
             result = ftn(result, element);
         } else {

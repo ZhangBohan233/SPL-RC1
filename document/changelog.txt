@@ -1,3 +1,13 @@
+********** SPL 1.2 Beta 5 **********
+===== Build 0034: 2019/02/23 =====
+
+*Updated spl-lib:
+    *Updated 'functions' and 'io'
+*Bug fixes:
+    *Changed the outer scope of a class instance from where the instance be created to where the class locates
+*Optimization:
+    *Sub-scope now not creating a '=>' mark
+
 ********** SPL 1.2 Beta 4 **********
 ===== Build 0034: 2019/02/23 =====
 

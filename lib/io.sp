@@ -3,7 +3,7 @@
  */
 class TextInputStream {
 
-    fp = null;
+    var fp = null;
 
     function TextInputStream(file_name) {
         fp = f_open(file_name, "r");
@@ -28,7 +28,7 @@ class TextInputStream {
  */
 class FileInputStream {
 
-    fp = null;
+    var fp = null;
 
     function FileInputStream(file_name) {
         fp = f_open(file_name, "rb");
@@ -53,7 +53,7 @@ class FileInputStream {
  */
 class TextOutputStream {
 
-    fp = null;
+    var fp = null;
 
     function TextOutputStream(file_name) {
         fp = f_open(file_name, "w");
@@ -78,7 +78,7 @@ class TextOutputStream {
  */
 class FileOutputStream {
 
-    fp = null;
+    var fp = null;
 
     function FileOutputStream(file_name) {
         fp = f_open(file_name, "wb");

@@ -122,9 +122,7 @@ class Environment:
         self.broken = False
         self.paused = False
 
-        if self.contains_key("=>"):
-            self.assign("=>", None, (0, "interpreter"))
-        else:
+        if not self.is_sub():
             self.define_local("=>", None, (0, "interpreter"))
 
         if self.is_global():
@@ -286,7 +284,7 @@ class Environment:
         if key in self.locals:
             self.locals[key] = value
         elif key in self.constants:
-            raise SplException("Re-assignment to constant values, in {}, at line {}"
+            raise SplException("Re-assignment to constant values, in '{}', at line {}"
                                .format(key, lf[1], lf[0]))
         elif key in self.variables:
             self.variables[key] = value
@@ -298,14 +296,16 @@ class Environment:
                     out.locals[key] = value
                     return
                 if key in out.constants:
-                    raise SplException("Re-assignment to constant values.")
+                    raise SplException("Re-assignment to constant values, in '{}', at line {}"
+                                       .format(key, lf[1], lf[0]))
                 if key in out.variables:
                     out.variables[key] = value
                     return
                 if not out.is_sub:
                     sub = False
                 out = out.outer
-            raise SplException("Name '{}' is not defined.".format(key))
+            raise SplException("Name '{}' is not defined, in '{}', at line {}"
+                               .format(key, lf[1], lf[0]))
 
     # def add_private(self, key):
     #     if key in self.variables:
@@ -443,6 +443,7 @@ class Class:
         self.class_name = class_name
         self.body = body
         self.superclass_names = []
+        self.outer_env = None
 
     def __str__(self):
         if len(self.superclass_names):
@@ -1140,6 +1141,7 @@ def assignment(node: psr.AssignmentNode, env: Environment):
     value = evaluate(node.right, env)
     t = key.node_type
     lf = node.line_num, node.file
+    # print(key)
     if t == psr.NAME_NODE:
         key: psr.NameNode
         if node.level == psr.ASSIGN:
@@ -1178,17 +1180,17 @@ def assignment(node: psr.AssignmentNode, env: Environment):
 def init_class(node: psr.ClassInit, env: Environment):
     cla: Class = env.get_heap(node.class_name)
 
-    scope = Environment(CLASS_SCOPE, env)
+    scope = Environment(CLASS_SCOPE, cla.outer_env)
     # scope.outer = env
     scope.scope_name = "Class scope<{}>".format(cla.class_name)
     class_inheritance(cla, env, scope)
 
     # print(scope.variables)
     instance = ClassInstance(scope, node.class_name)
-    for k in scope.variables:
-        v = scope.variables[k]
+    attrs = scope.attributes()
+    for k in attrs:
+        v = attrs[k]
         if isinstance(v, Function):
-            # v.parent = instance
             v.outer_scope = scope
 
     if node.args:
@@ -1471,17 +1473,15 @@ def num_arithmetic(left, right, symbol):
     return ARITHMETIC_TABLE[symbol](left, right)
 
 
-def class_inheritance(cla, env, scope):
+def class_inheritance(cla: Class, env: Environment, scope: Environment):
     """
 
     :param cla:
-    :type cla: Class
     :param env: the global environment
-    :type env: Environment
     :param scope: the class scope
-    :type scope: Environment
-    :return:
+    :return: None
     """
+    # print(cla)
     for sc in cla.superclass_names:
         class_inheritance(env.get_heap(sc), env, scope)
 
@@ -1604,6 +1604,7 @@ def eval_def(node: psr.DefStmt, env: Environment):
 def eval_class_stmt(node, env: Environment):
     cla = Class(node.class_name, node.block)
     cla.superclass_names = node.superclass_names
+    cla.outer_env = env
     env.add_heap(node.class_name, cla)
     return cla
 

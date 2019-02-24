@@ -1,10 +1,10 @@
 import "functions";
 
-a = list(1, 2, 3, 4);
+let a = list(1, 2, 3, 4);
 
-//r = reduce(function (x, y) {x + y}, a);
-//print(r);
+let r = reduce(function (x, y) {x + y}, a);
+println(r);
 
-//print(sum(list(7, 8, 2, 3, 6)));
+println(sum(list(7, 8, 2, 3, 6)));
 
-print(all(null, list()));
+println(all(null, list()));
