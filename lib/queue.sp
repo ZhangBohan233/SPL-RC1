@@ -67,20 +67,19 @@ class Deque extends Queue, Stack {
 
 
 class LLNode {
-    before = null;
-    after = null;
-    value = null;
-
+    let before = null;
+    let after = null;
+    let value = null;
 }
 
 
 class LinkedList extends Deque, Iterable {
 
-    private size_ = 0;
-    private head = null;
-    private tail = null;
+    var size_ = 0;
+    var head = null;
+    var tail = null;
 
-    private iter_node = null;
+    var iter_node = null;
 
     function LinkedList() {
     }
@@ -94,7 +93,7 @@ class LinkedList extends Deque, Iterable {
     @Override
     function __next__() {
         if (iter_node) {
-            value = iter_node.value;
+            let value = iter_node.value;
             iter_node = iter_node.after;
             return value;
         } else {
@@ -103,8 +102,8 @@ class LinkedList extends Deque, Iterable {
     }
 
     function __str__() {
-        s = "Link[";
-        for (cur = head; cur; cur = cur.after) {
+        let s = "Link[";
+        for (let cur = head; cur; cur = cur.after) {
             s += string(cur.value) + "->";
         }
         s += "]";
@@ -121,7 +120,7 @@ class LinkedList extends Deque, Iterable {
         if (size_ == 0) {
             create(element);
         } else {
-            n = new LLNode;
+            let n = new LLNode;
             n.value = element;
             n.before = tail;
             tail.after = n;
@@ -135,7 +134,7 @@ class LinkedList extends Deque, Iterable {
         if (size_ == 0) {
             create(element);
         } else {
-            n = new LLNode;
+            let n = new LLNode;
             n.value = element;
             n.after = head;
             head.before = n;
@@ -156,7 +155,7 @@ class LinkedList extends Deque, Iterable {
 
     @Override
     function remove_first() {
-        n = head;
+        let n = head;
         head = head.after;
         if (head !== null) {
             head.before = null;
@@ -167,7 +166,7 @@ class LinkedList extends Deque, Iterable {
 
     @Override
     function remove_last() {
-        n = tail;
+        let n = tail;
         tail = head.before;
         if (tail) {
             tail.after = null;
@@ -191,15 +190,15 @@ class LinkedList extends Deque, Iterable {
         return add_last(element)
     }
 
-    private function create(ele) {
-        n = new LLNode;
+    function create(ele) {
+        let n = new LLNode;
         n.value = ele;
         head = n;
         tail = n;
         size_ = 1;
     }
 
-    private function removable() {
+    function removable() {
         return size_ > 0;
     }
 }

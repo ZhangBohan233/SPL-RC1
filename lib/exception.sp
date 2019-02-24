@@ -2,7 +2,7 @@
  * Superclass of all spl exceptions.
  */
 class Exception {
-    message = "";
+    var message = "";
 
     /*
      * Create a new <Exception>, with message <msg>.

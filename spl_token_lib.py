@@ -11,15 +11,15 @@ OTHERS = {"=", "@", ":"}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
 RESERVED = {"class", "function", "def", "if", "else", "new", "extends", "return", "break", "continue",
             "true", "false", "null", "operator", "while", "for", "import", "throw", "try", "catch", "finally",
-            "abstract", "private", "const", "var", "let"}
+            "abstract", "const", "var", "let"}
 LAZY = {"&&", "||"}
 OMITS = {"\n", "\r", "\t", " "}
 OP_EQ = {"+", "-", "*", "/", "%", "&", "^", "|", "<<", ">>"}
 ESCAPES = {"n": "\n", "t": "\t", "0": "\0", "a": "\a", "r": "\r", "f": "\f", "v": "\v", "b": "\b", "\\": "\\"}
 NO_BUILD_LINE = {"else", "catch", "finally"}
 
-PUBLIC = 0
-PRIVATE = 1
+# PUBLIC = 0
+# PRIVATE = 1
 
 
 def replace_escapes(text: str):

@@ -9,12 +9,12 @@ function run() {
     }
 
     const t1 = system.time();
-    print(t1 - t0);
+    println(t1 - t0);
 
     fib(25);
 
     const t2 = system.time();
-    print(t2 - t1);
+    println(t2 - t1);
 
     const lst = rand_list(1000, -32768, 32767);
 
@@ -22,7 +22,7 @@ function run() {
     merge_sort(lst);
     const t4 = system.time();
 
-    print(t4 - t3);
+    println(t4 - t3);
 }
 
 run();

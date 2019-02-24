@@ -1,3 +1,13 @@
+********** SPL 1.2 Beta 3 **********
+===== Build 0033: 2019/02/23 =====
+
+*Added block-scope environment
+*Re-organized status in environment
+*Canceled keyword 'private'
+*Updated built-in functions:
+    *Added function 'println'
+    *'print' now does not print a new line.
+
 ********** SPL 1.2 Beta 2 **********
 ===== Build 0032: 2019/02/23 =====
 

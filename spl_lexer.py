@@ -217,7 +217,7 @@ class Lexer:
         func_count = 0
         in_cond = False
         var_level = psr.ASSIGN
-        auth = stl.PUBLIC
+        # auth = stl.PUBLIC
         call_nest = 0
         brace_count = 0
         class_brace = -1
@@ -328,16 +328,16 @@ class Lexer:
                         i += 1
                         f_token: stl.IdToken = self.tokens[i]
                         f_name = f_token.symbol
-                        res = parse_def(f_name, self.tokens, i, func_count, parser, auth)
+                        res = parse_def(f_name, self.tokens, i, func_count, parser)
                         i = res[0]
                         func_count = res[1]
-                        auth = stl.PUBLIC
+                        # auth = stl.PUBLIC
                         # is_const = False
                     elif sym == "operator":
                         i += 1
                         op_token: stl.IdToken = self.tokens[i]
                         op_name = "@" + stl.BINARY_OPERATORS[op_token.symbol]
-                        res = parse_def(op_name, self.tokens, i, func_count, parser, stl.PUBLIC)
+                        res = parse_def(op_name, self.tokens, i, func_count, parser)
                         i = res[0]
                         func_count = res[1]
                     elif sym == "class":
@@ -360,8 +360,8 @@ class Lexer:
                                 break
                     elif sym == "abstract":
                         parser.add_abstract(line)
-                    elif sym == "private":
-                        auth = stl.PRIVATE
+                    # elif sym == "private":
+                    #     auth = stl.PRIVATE
                     elif sym == "new":
                         i += 1
                         c_token = self.tokens[i]
@@ -424,16 +424,16 @@ class Lexer:
                                 call_nest += 1
                                 i += 1
                             elif next_token.symbol == "[":
-                                parser.add_name(line, sym, auth)
+                                parser.add_name(line, sym)
                                 parser.add_dot(line, extra_precedence)
                                 parser.add_get_set(line)
                                 call_nest += 1
                                 i += 1
                             else:
-                                parser.add_name(line, sym, auth)
+                                parser.add_name(line, sym)
                         else:
-                            parser.add_name(line, sym, auth)
-                        auth = stl.PUBLIC
+                            parser.add_name(line, sym)
+                        # auth = stl.PUBLIC
 
                 elif isinstance(token, stl.NumToken):
                     value = token.value
@@ -449,14 +449,14 @@ class Lexer:
                 i += 1
             except Exception:
                 raise stl.ParseException("Parse error in '{}', at line {}".format(self.tokens[i].file_name(),
-                                                                              self.tokens[i].line_number()))
+                                                                                  self.tokens[i].line_number()))
 
         if in_cond or call_nest != 0 or brace_count != 0 or extra_precedence != 0:
             raise stl.ParseException("Reach the end while parsing")
         return parser.get_as_block()
 
 
-def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth):
+def parse_def(f_name, tokens, i, func_count, parser: psr.Parser):
     """
     Parses a function declaration into abstract syntax tree.
 
@@ -465,16 +465,16 @@ def parse_def(f_name, tokens, i, func_count, parser: psr.Parser, auth):
     :param i: the current reading index of the token list
     :param func_count: the count the anonymous functions
     :param parser: the Parser object
-    :param auth: the authority of this function
+    # :param auth: the authority of this function
     :return: tuple(new index, new anonymous function count)
     """
     tup = (tokens[i].line_number(), tokens[i].file_name())
     if f_name == "(":
-        parser.add_function(tup, "af-{}".format(func_count), auth)
+        parser.add_function(tup, "af-{}".format(func_count))
         # "af" stands for anonymous function
         func_count += 1
     else:
-        parser.add_function(tup, f_name, auth)
+        parser.add_function(tup, f_name)
         i += 1
     front_par = tokens[i]
     if isinstance(front_par, stl.IdToken) and front_par.symbol == "(":
@@ -626,6 +626,8 @@ def char_type(ch):
         return 17
     elif ch == "@":
         return 18
+    elif ch == ":":
+        return 19
 
 
 def is_float(num_str):

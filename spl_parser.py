@@ -74,11 +74,11 @@ class Parser:
         else:
             return self
 
-    def add_name(self, line, n, auth):
+    def add_name(self, line, n):
         if self.inner:
-            self.inner.add_name(line, n, auth)
+            self.inner.add_name(line, n)
         else:
-            node = NameNode(line, n, auth)
+            node = NameNode(line, n)
             self.stack.append(node)
 
     def add_number(self, line, v):
@@ -218,11 +218,11 @@ class Parser:
             pass
             # self.inner = Parser()
 
-    def add_function(self, line, f_name, auth):
+    def add_function(self, line, f_name):
         if self.inner:
-            self.inner.add_function(line, f_name, auth)
+            self.inner.add_function(line, f_name)
         else:
-            func = DefStmt(line, f_name, auth)
+            func = DefStmt(line, f_name)
             self.stack.append(func)
 
     def build_func_params(self, params: list, presets: list):
@@ -231,7 +231,7 @@ class Parser:
         else:
             func = self.stack.pop()
             loc = (func.line_num, func.file)
-            lst = [NameNode(loc, x, stl.PUBLIC) for x in params]
+            lst = [NameNode(loc, x) for x in params]
             pst = []
             for a in presets:
                 if isinstance(a, stl.IdToken):
@@ -244,7 +244,7 @@ class Parser:
                         else:
                             stl.unexpected_token(a)
                     else:
-                        pst.append(NameNode(loc, sbl, stl.PUBLIC))
+                        pst.append(NameNode(loc, sbl))
                 elif isinstance(a, stl.NumToken):
                     pst.append(get_number_node(loc, a.value))
                 elif isinstance(a, stl.LiteralToken):
@@ -522,63 +522,6 @@ class Parser:
                         # res = node
                 self.elements.append(lst[0])
 
-    # def build_line2(self):
-    #     if self.inner:
-    #         self.inner.build_line2()
-    #     else:
-    #         # print(self.stack)
-    #         self.build_expr()
-    #         if len(self.stack) > 0:
-    #             res = self.stack.pop()
-    #             res2 = None
-    #             res3 = None
-    #             # print(self.stack)
-    #             while len(self.stack) > 0:
-    #                 node = self.stack.pop()
-    #                 if isinstance(node, LeafNode):
-    #                     res = node
-    #                 elif isinstance(node, BinaryExpr) and res:
-    #                     node.right = res
-    #                     res = node
-    #                 elif isinstance(node, BlockStmt):
-    #                     if res:
-    #                         if res2:
-    #                             res3 = res2
-    #                             res2 = res
-    #                             res = node
-    #                         else:
-    #                             res2 = res
-    #                             res = node
-    #                     else:
-    #                         res = node
-    #                 elif isinstance(node, IfStmt):
-    #                     node.then_block = res
-    #                     node.else_block = res2
-    #                     res = node
-    #                     res2 = None
-    #                 elif isinstance(node, WhileStmt) or isinstance(node, ForLoopStmt):
-    #                     node.body = res
-    #                     res = node
-    #                 elif isinstance(node, DefStmt):
-    #                     node.body = res
-    #                     res = node
-    #                 elif isinstance(node, ReturnStmt) or isinstance(node, ThrowStmt):
-    #                     node.value = res
-    #                     res = node
-    #                 elif isinstance(node, CatchStmt):
-    #                     node.then = res
-    #                     res = node
-    #                 elif isinstance(node, TryStmt):
-    #                     node.try_block = res
-    #                     node.catch_block = res2
-    #                     node.finally_block = res3
-    #                     res = node
-    #                     res2 = None
-    #                     res3 = None
-    #                 else:
-    #                     res = node
-    #             self.elements.append(res)
-
     def get_as_block(self):
         block = BlockStmt((0, "block"))
         block.lines = self.elements
@@ -603,16 +546,6 @@ class Node:
         self.file = line[1]
         self.node_type = 0
         self.execution = 0
-
-
-class Limited:
-    """
-    :type auth: int
-    """
-    auth = 0
-
-    def __init__(self, auth: int):
-        self.auth = auth
 
 
 class LeafNode(Node):
@@ -729,24 +662,20 @@ class UnaryOperator(Node):
         return self.__str__()
 
 
-class NameNode(LeafNode, Limited):
+class NameNode(LeafNode):
     name = None
 
-    def __init__(self, line, n, auth):
+    def __init__(self, line, n):
         LeafNode.__init__(self, line)
-        Limited.__init__(self, auth)
 
         self.node_type = NAME_NODE
         self.name = n
-        # self.index = None
-        # self.nest = None
-        # print(str(auth) + " " + self.name)
 
     def __str__(self):
-        if self.auth == stl.PUBLIC:
-            return "N(" + self.name + ")"
-        else:
-            return "N(private " + self.name + ")"
+        # if self.auth == stl.PUBLIC:
+        return "N(" + self.name + ")"
+        # else:
+        #     return "N(private " + self.name + ")"
 
     def __repr__(self):
         return self.__str__()
@@ -946,15 +875,15 @@ class ForLoopStmt(CondStmt):
         return self.__str__()
 
 
-class DefStmt(Node, Limited):
+class DefStmt(Node):
     name = None
     params = None
     presets = None
     body = None
 
-    def __init__(self, line, f_name, auth):
+    def __init__(self, line, f_name):
         Node.__init__(self, line)
-        Limited.__init__(self, auth)
+        # Limited.__init__(self, auth)
 
         self.node_type = DEF_STMT
         self.name = f_name
