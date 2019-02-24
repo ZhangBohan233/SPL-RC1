@@ -2,13 +2,13 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="aa552da4-f5d0-41ef-8bb1-73f5bb98524d" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/samples/sample32.sp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/code_searcher.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/document/changelog.txt" beforeDir="false" afterPath="$PROJECT_DIR$/document/changelog.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/functions.sp" beforeDir="false" afterPath="$PROJECT_DIR$/lib/functions.sp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/io.sp" beforeDir="false" afterPath="$PROJECT_DIR$/lib/io.sp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/samples/sample15.sp" beforeDir="false" afterPath="$PROJECT_DIR$/samples/sample15.sp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/samples/sample23.sp" beforeDir="false" afterPath="$PROJECT_DIR$/samples/sample23.sp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/math.sp" beforeDir="false" afterPath="$PROJECT_DIR$/lib/math.sp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/samples/sample18.sp" beforeDir="false" afterPath="$PROJECT_DIR$/samples/sample18.sp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/samples/sample31.sp" beforeDir="false" afterPath="$PROJECT_DIR$/samples/sample31.sp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/samples/sample32.sp" beforeDir="false" afterPath="$PROJECT_DIR$/samples/sample32.sp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/spl_interpreter.py" beforeDir="false" afterPath="$PROJECT_DIR$/spl_interpreter.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -18,11 +18,12 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="CoverageDataManager">
-    <SUITE FILE_PATH="coverage/SPL_RC1$spl.coverage" NAME="spl Coverage Results" MODIFIED="1550980649180" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SPL_RC1$spl.coverage" NAME="spl Coverage Results" MODIFIED="1551002439567" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/SPL_RC1$spc.coverage" NAME="spc Coverage Results" MODIFIED="1550907666473" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/SPL_RC1$test6.coverage" NAME="test6 Coverage Results" MODIFIED="1549959997686" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
     <SUITE FILE_PATH="coverage/SPL_RC1$test2.coverage" NAME="test2 Coverage Results" MODIFIED="1548711550863" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/SPL_RC1$test5.coverage" NAME="test5 Coverage Results" MODIFIED="1549001154090" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SPL_RC1$code_searcher.coverage" NAME="code_searcher Coverage Results" MODIFIED="1550996047514" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/SPL_RC1$console.coverage" NAME="console Coverage Results" MODIFIED="1549512445041" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/SPL_RC1$spd.coverage" NAME="spd Coverage Results" MODIFIED="1550908134606" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/SPL_RC1$test4.coverage" NAME="test4 Coverage Results" MODIFIED="1548741866731" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
@@ -48,23 +49,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/document/SPL Manual.md">
-          <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
-            <state split_layout="SPLIT">
-              <first_editor relative-caret-position="162">
-                <caret line="357" column="9" selection-start-line="357" selection-start-column="9" selection-end-line="357" selection-end-column="9" />
-              </first_editor>
-              <second_editor />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/document/changelog.txt">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="19">
-              <caret line="1" selection-start-line="1" selection-end-line="8" selection-end-column="43" />
+            <state relative-caret-position="57">
+              <caret line="3" column="26" lean-forward="true" selection-start-line="3" selection-start-column="26" selection-end-line="3" selection-end-column="26" />
             </state>
           </provider>
         </entry>
@@ -72,17 +61,22 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/lib/math.sp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="19">
-              <caret line="10" column="13" selection-start-line="10" selection-start-column="13" selection-end-line="10" selection-end-column="13" />
+            <state relative-caret-position="201">
+              <caret line="137" column="1" lean-forward="true" selection-start-line="137" selection-start-column="1" selection-end-line="137" selection-end-column="1" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/samples/sample22.sp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/spl_interpreter.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="188">
-              <caret line="1182" column="51" lean-forward="true" selection-start-line="1182" selection-start-column="51" selection-end-line="1182" selection-end-column="51" />
+            <state relative-caret-position="241">
+              <caret line="1703" column="11" lean-forward="true" selection-start-line="1703" selection-start-column="11" selection-end-line="1703" selection-end-column="11" />
               <folding>
                 <element signature="e#0#24#0" expanded="true" />
               </folding>
@@ -94,7 +88,7 @@
         <entry file="file://$PROJECT_DIR$/samples/sample7.sp">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="266">
-              <caret line="14" column="12" lean-forward="true" selection-start-line="14" selection-start-column="12" selection-end-line="14" selection-end-column="12" />
+              <caret line="14" column="12" selection-start-line="14" selection-start-column="12" selection-end-line="14" selection-end-column="12" />
             </state>
           </provider>
         </entry>
@@ -102,8 +96,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/samples/sample23.sp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="228">
-              <caret line="84" column="31" lean-forward="true" selection-start-line="84" selection-start-column="31" selection-end-line="84" selection-end-column="31" />
+            <state relative-caret-position="1596">
+              <caret line="84" column="31" selection-start-line="84" selection-start-column="31" selection-end-line="84" selection-end-column="31" />
             </state>
           </provider>
         </entry>
@@ -111,8 +105,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/samples/sample31.sp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="209">
-              <caret line="11" column="18" selection-start-line="11" selection-start-column="18" selection-end-line="11" selection-end-column="18" />
+            <state relative-caret-position="285">
+              <caret line="15" column="13" lean-forward="true" selection-start-line="15" selection-start-column="13" selection-end-line="15" selection-end-column="13" />
             </state>
           </provider>
         </entry>
@@ -120,8 +114,20 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/samples/sample32.sp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="19">
-              <caret line="1" column="17" selection-start-line="1" selection-start-column="17" selection-end-line="1" selection-end-column="17" />
+            <state relative-caret-position="258">
+              <caret line="18" lean-forward="true" selection-start-line="18" selection-end-line="18" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/spl.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="196">
+              <caret line="94" column="37" lean-forward="true" selection-start-line="94" selection-start-column="37" selection-end-line="94" selection-end-column="37" />
+              <folding>
+                <element signature="e#30#40#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -137,11 +143,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>defs</find>
-      <find>func.ou</find>
-      <find>f.ou</find>
-      <find>assign</find>
-      <find>global_e</find>
       <find>defst</find>
       <find>NULLPT</find>
       <find>assignment</find>
@@ -167,6 +168,11 @@
       <find>init_cla</find>
       <find>print</find>
       <find>init_clas</find>
+      <find>system</find>
+      <find>Interpreter</find>
+      <find>interp</find>
+      <find>add_he</find>
+      <find>System</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -175,7 +181,6 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/tools/move.cmd" />
         <option value="$PROJECT_DIR$/samples/sample22.sp" />
         <option value="$PROJECT_DIR$/samples/sample24.sp" />
         <option value="$PROJECT_DIR$/console.py" />
@@ -188,7 +193,6 @@
         <option value="$PROJECT_DIR$/samples/sample26.sp" />
         <option value="$PROJECT_DIR$/samples/sample25.sp" />
         <option value="$PROJECT_DIR$/lib/iterable.sp" />
-        <option value="$PROJECT_DIR$/samples/sample18.sp" />
         <option value="$PROJECT_DIR$/spl_compiler.py" />
         <option value="$PROJECT_DIR$/spl_virtual_machine.py" />
         <option value="$PROJECT_DIR$/samples/sample14.sp" />
@@ -201,7 +205,6 @@
         <option value="$PROJECT_DIR$/tests/test8.py" />
         <option value="$PROJECT_DIR$/spl.py" />
         <option value="$PROJECT_DIR$/spd.py" />
-        <option value="$PROJECT_DIR$/lib/math.sp" />
         <option value="$PROJECT_DIR$/spc.py" />
         <option value="$PROJECT_DIR$/spl_coder.py" />
         <option value="$PROJECT_DIR$/spl_decompiler.py" />
@@ -215,16 +218,19 @@
         <option value="$PROJECT_DIR$/lib/algorithm.sp" />
         <option value="$PROJECT_DIR$/samples/performance.sp" />
         <option value="$PROJECT_DIR$/document/test-results/performance.txt" />
-        <option value="$PROJECT_DIR$/samples/sample31.sp" />
         <option value="$PROJECT_DIR$/samples/sample30.sp" />
         <option value="$PROJECT_DIR$/samples/sample7.sp" />
         <option value="$PROJECT_DIR$/document/SPL Manual.md" />
         <option value="$PROJECT_DIR$/lib/functions.sp" />
         <option value="$PROJECT_DIR$/samples/sample15.sp" />
         <option value="$PROJECT_DIR$/lib/io.sp" />
-        <option value="$PROJECT_DIR$/samples/sample32.sp" />
-        <option value="$PROJECT_DIR$/spl_interpreter.py" />
         <option value="$PROJECT_DIR$/samples/sample23.sp" />
+        <option value="$PROJECT_DIR$/code_searcher.py" />
+        <option value="$PROJECT_DIR$/samples/sample18.sp" />
+        <option value="$PROJECT_DIR$/lib/math.sp" />
+        <option value="$PROJECT_DIR$/spl_interpreter.py" />
+        <option value="$PROJECT_DIR$/samples/sample32.sp" />
+        <option value="$PROJECT_DIR$/samples/sample31.sp" />
         <option value="$PROJECT_DIR$/document/changelog.txt" />
       </list>
     </option>
@@ -240,7 +246,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -274,10 +279,16 @@
               <item name="SPL-RC1" type="462c0819:PsiDirectoryNode" />
               <item name="tests" type="462c0819:PsiDirectoryNode" />
             </path>
+            <path>
+              <item name="SPL-RC1" type="b2602c69:ProjectViewProjectNode" />
+              <item name="SPL-RC1" type="462c0819:PsiDirectoryNode" />
+              <item name="tools" type="462c0819:PsiDirectoryNode" />
+            </path>
           </expand>
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -314,6 +325,28 @@
     </option>
   </component>
   <component name="RunManager" selected="Python.spl">
+    <configuration name="code_searcher" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="SPL RC1" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/code_searcher.py" />
+      <option name="PARAMETERS" value="prime samples" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="spc" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="SPL RC1" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -372,29 +405,7 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/spl.py" />
-      <option name="PARAMETERS" value="samples/sample7.sp" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="test7" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="SPL RC1" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/tests/test7.py" />
-      <option name="PARAMETERS" value="" />
+      <option name="PARAMETERS" value="samples/sample32.sp" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -428,16 +439,16 @@
       <item itemvalue="Python.spl" />
       <item itemvalue="Python.spc" />
       <item itemvalue="Python.test8" />
-      <item itemvalue="Python.test7" />
       <item itemvalue="Python.spd" />
+      <item itemvalue="Python.code_searcher" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.spl" />
+        <item itemvalue="Python.code_searcher" />
         <item itemvalue="Python.spd" />
         <item itemvalue="Python.spc" />
         <item itemvalue="Python.test8" />
-        <item itemvalue="Python.test7" />
       </list>
     </recent_temporary>
   </component>
@@ -487,18 +498,19 @@
       <workItem from="1550897935829" duration="10007000" />
       <workItem from="1550912436871" duration="369000" />
       <workItem from="1550916402007" duration="1213000" />
-      <workItem from="1550958605310" duration="20102000" />
+      <workItem from="1550958605310" duration="20118000" />
+      <workItem from="1550988832796" duration="7032000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="480770000" />
+    <option name="totallyTimeSpent" value="487818000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-7" y="-7" width="1550" height="838" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.28686327" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.29088473" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -525,21 +537,6 @@
     <option name="version" value="1" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/spl_lib.py" />
-    <entry file="file://$PROJECT_DIR$/samples/sample25.sp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="380">
-          <caret line="20" column="1" selection-start-line="20" selection-start-column="1" selection-end-line="20" selection-end-column="1" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/samples/sample26.sp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="133">
-          <caret line="7" column="1" lean-forward="true" selection-start-line="7" selection-start-column="1" selection-end-line="7" selection-end-column="1" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/samples/sample23.spe">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
@@ -595,16 +592,6 @@
           <caret line="12" column="23" lean-forward="true" selection-start-line="12" selection-start-column="23" selection-end-line="12" selection-end-column="23" />
           <folding>
             <element signature="e#0#23#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/spl.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="158">
-          <caret line="203" column="28" selection-start-line="203" selection-start-column="28" selection-end-line="203" selection-end-column="28" />
-          <folding>
-            <element signature="e#30#40#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -722,13 +709,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/lib/math.sp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="19">
-          <caret line="10" column="13" selection-start-line="10" selection-start-column="13" selection-end-line="10" selection-end-column="13" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/lib/exception.sp">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="76">
@@ -777,13 +757,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/samples/sample31.sp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="209">
-          <caret line="11" column="18" selection-start-line="11" selection-start-column="18" selection-end-line="11" selection-end-column="18" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/samples/sample30.sp">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="220">
@@ -794,48 +767,92 @@
     <entry file="file://$PROJECT_DIR$/document/SPL Manual.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
         <state split_layout="SPLIT">
-          <first_editor relative-caret-position="162">
+          <first_editor relative-caret-position="6783">
             <caret line="357" column="9" selection-start-line="357" selection-start-column="9" selection-end-line="357" selection-end-column="9" />
           </first_editor>
           <second_editor />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/samples/sample32.sp">
+    <entry file="file://$PROJECT_DIR$/samples/sample7.sp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="19">
-          <caret line="1" column="17" selection-start-line="1" selection-start-column="17" selection-end-line="1" selection-end-column="17" />
+        <state relative-caret-position="266">
+          <caret line="14" column="12" selection-start-line="14" selection-start-column="12" selection-end-line="14" selection-end-column="12" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/samples/sample23.sp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="228">
-          <caret line="84" column="31" lean-forward="true" selection-start-line="84" selection-start-column="31" selection-end-line="84" selection-end-column="31" />
+        <state relative-caret-position="1596">
+          <caret line="84" column="31" selection-start-line="84" selection-start-column="31" selection-end-line="84" selection-end-column="31" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/code_searcher.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="158">
+          <caret line="25" lean-forward="true" selection-start-line="25" selection-end-line="25" />
+          <folding>
+            <element signature="e#0#9#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/spl.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="196">
+          <caret line="94" column="37" lean-forward="true" selection-start-line="94" selection-start-column="37" selection-end-line="94" selection-end-column="37" />
+          <folding>
+            <element signature="e#30#40#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/lib/math.sp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="201">
+          <caret line="137" column="1" lean-forward="true" selection-start-line="137" selection-start-column="1" selection-end-line="137" selection-end-column="1" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/spl_interpreter.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="188">
-          <caret line="1182" column="51" lean-forward="true" selection-start-line="1182" selection-start-column="51" selection-end-line="1182" selection-end-column="51" />
+        <state relative-caret-position="241">
+          <caret line="1703" column="11" lean-forward="true" selection-start-line="1703" selection-start-column="11" selection-end-line="1703" selection-end-column="11" />
           <folding>
             <element signature="e#0#24#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/samples/sample7.sp">
+    <entry file="file://$PROJECT_DIR$/samples/sample18.sp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="266">
-          <caret line="14" column="12" lean-forward="true" selection-start-line="14" selection-start-column="12" selection-end-line="14" selection-end-column="12" />
+        <state relative-caret-position="152">
+          <caret line="8" column="20" lean-forward="true" selection-start-line="8" selection-start-column="20" selection-end-line="8" selection-end-column="20" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/samples/sample22.sp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/samples/sample32.sp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="258">
+          <caret line="18" lean-forward="true" selection-start-line="18" selection-end-line="18" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/samples/sample31.sp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="285">
+          <caret line="15" column="13" lean-forward="true" selection-start-line="15" selection-start-column="13" selection-end-line="15" selection-end-column="13" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/document/changelog.txt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="19">
-          <caret line="1" selection-start-line="1" selection-end-line="8" selection-end-column="43" />
+        <state relative-caret-position="57">
+          <caret line="3" column="26" lean-forward="true" selection-start-line="3" selection-start-column="26" selection-end-line="3" selection-end-column="26" />
         </state>
       </provider>
     </entry>

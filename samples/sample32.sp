@@ -1,3 +1,5 @@
+import "sample31.sp"
+
 class Vehicle {
     var speed = 0;
 
@@ -15,5 +17,6 @@ class Car extends Vehicle {
 }
 
 
-let c = new Car(90);
-print(c.d.speed);
+if (main()) {
+    println(getcwf());
+}

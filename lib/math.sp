@@ -28,7 +28,7 @@ function abs(n) {
 
 
 function ceil(n) {
-    x = int(n);
+    let x = int(n);
     if (n > x) {
         return x + 1;
     } else {
@@ -46,8 +46,8 @@ function floor(n) {
  * Returns the square root of <n>.
  */
 function sqrt(n) {
-    x = float(n);
-    g = x;
+    let x = float(n);
+    let g = x;
     while (abs(g * g - x) > 0.000001) {
         g = (g + x / g) / 2;
     }
@@ -59,10 +59,10 @@ function sqrt(n) {
  * Returns the nearest integer of number <n>.
  */
 function round(n) {
-    fl = floor(n);
-    ce = ceil(n);
-    low = n - fl;
-    up = ce - n;
+    let fl = floor(n);
+    let ce = ceil(n);
+    let low = n - fl;
+    let up = ce - n;
     if (up > low) {
         return fl;
     } else {
@@ -75,7 +75,7 @@ function round(n) {
  * Returns <true> if <p> is a prime.
  */
 function is_prime(p) {
-    lim = ceil(sqrt(p));
+    let lim = ceil(sqrt(p));
     if (p == 2) {
         return true;
     } else if (p % 2 == 0) {
@@ -95,16 +95,15 @@ function is_prime(p) {
  * Returns a list of primes that less than or equal to <limit>.
  */
 function primes(limit) {
-    lst = list();
-    for (i = 2; i <= limit; i += 1) {
+    let lst = list();
+    for (let i = 2; i <= limit; i += 1) {
         lst.append(i);
     }
-    index = 0;
-    tar = lst[0];
+    let index = 0;
+    var tar = lst[0];
     while (lst[lst.length() - 1] > tar * tar) {
         tar = lst[index];
         lst = filter(function (x) {x == tar || x % tar != 0}, lst);
-        lim = tar * tar;
         index += 1;
     }
     return lst;
@@ -115,15 +114,15 @@ function primes(limit) {
  * Returns the prime factorization of integer <n>.
  */
 function factorization(n) {
-    x = n;
-    ps = primes(n);
-    res = pair();
+    let x = n;
+    let ps = primes(n);
+    let res = pair();
     if (ps[ps.length() - 1] == n) {
         res[n] = 1;
         return res;
     }
     while (x > 1) {
-        for (p; ps) {
+        for (let p; ps) {
             if (x % p == 0) {
                 x /= p;
                 if (res.contains(p)) {

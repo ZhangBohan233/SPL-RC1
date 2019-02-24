@@ -18,6 +18,47 @@ LOOP_INNER_SCOPE = 6
 LOCAL_SCOPES = {LOOP_SCOPE, IF_ELSE_SCOPE, TRY_CATCH_SCOPE, LOOP_INNER_SCOPE}
 
 
+class Interpreter:
+    """
+    :type ast: Node
+    :type argv: list
+    :type encoding: str
+    """
+
+    def __init__(self, argv, encoding):
+        self.ast = None
+        self.argv = argv
+        self.env = Environment(GLOBAL_SCOPE, None)
+        self.env.add_heap("system", System(List(*parse_args(argv)), encoding))
+        self.env.scope_name = "Global"
+
+    def set_ast(self, ast: psr.BlockStmt):
+        """
+        Sets up the abstract syntax tree to be interpreted.
+
+        :param ast: the root of the abstract syntax tree to be interpreted
+        :return: None
+        """
+        self.ast = ast
+
+    def interpret(self):
+        """
+        Starts the interpretation.
+
+        :return: the exit value
+        """
+        return evaluate(self.ast, self.env)
+
+
+def parse_args(argv):
+    """
+
+    :param argv: the system argv
+    :return: the argv in spl String object
+    """
+    return [String(x) for x in argv]
+
+
 class Counter:
     def __init__(self):
         self.count = 0
@@ -177,9 +218,13 @@ class Environment:
         self.add_heap("f_open", NativeFunction(f_open, "f_open"))
         self.add_heap("eval", NativeFunction(eval_, "eval"))
         self.add_heap("dir", NativeFunction(dir_, "dir", self))
+        self.add_heap("getcwf", NativeFunction(getcwf, "getcwf", self))
+        self.add_heap("main", NativeFunction(is_main, "main", self))
 
         self.add_heap("boolean", NativeFunction(to_boolean, "boolean"))
         self.add_heap("void", NativeFunction(None, "void"))
+
+        self.add_heap("cwf", None)
 
     def add_heap(self, k, v):
         self.heap[k] = v
@@ -666,14 +711,14 @@ class Set(NativeType, Iterable):
 
 
 class System(NativeType):
-    argv = None
-    encoding = None
+    argv: List
+    encoding: str
 
-    def __init__(self, argv_: list, enc: str):
+    def __init__(self, argv_: List, enc: str):
         NativeType.__init__(self)
 
         type(self).argv = argv_
-        setattr(self, "encoding", enc)
+        type(self).encoding = enc
 
     def time(self):
         return int(time_lib.time() * 1000)
@@ -858,6 +903,14 @@ def dir_(env, obj):
     return lst
 
 
+def getcwf(env: Environment):
+    return env.get_heap("cwf")
+
+
+def is_main(env: Environment):
+    return env.get_heap("system").argv[0] == getcwf(env)
+
+
 # Exceptions
 
 class InterpretException(Exception):
@@ -902,40 +955,6 @@ PRIMITIVE_FUNC_TABLE = {
     "boolean": "bool",
     "void": "NoneType"
 }
-
-
-class Interpreter:
-    """
-    :type ast: Node
-    :type argv: list
-    :type encoding: str
-    """
-
-    def __init__(self, argv, encoding):
-        self.ast = None
-        self.argv = argv
-        self.env = Environment(GLOBAL_SCOPE, None)
-        self.env.add_heap("system", System(argv, encoding))
-        self.env.scope_name = "Global"
-        # global global_env
-        # global_env = self.env
-
-    def set_ast(self, ast: psr.BlockStmt):
-        """
-        Sets up the abstract syntax tree to be interpreted.
-
-        :param ast: the root of the abstract syntax tree to be interpreted
-        :return: None
-        """
-        self.ast = ast
-
-    def interpret(self):
-        """
-        Starts the interpretation.
-
-        :return: the exit value
-        """
-        return evaluate(self.ast, self.env)
 
 
 class ClassInstance:
@@ -1265,6 +1284,7 @@ def eval_dot(node: psr.Dot, env: Environment):
     instance = evaluate(node.left, env)
     obj = node.right
     t = obj.node_type
+    # print(node.left)
     if t == psr.NAME_NODE:
         obj: psr.NameNode
         if obj.name == "this":
@@ -1679,6 +1699,7 @@ def evaluate(node: psr.Node, env: Environment):
     t = node.node_type
     node.execution += 1
     tn = NODE_TABLE[t]
+    env.add_heap("cwf", String(node.file))
     return tn(node, env)
     # else:
     #     raise InterpretException("Invalid Syntax Tree in {}, at line {}".format(node.file, node.line_num))

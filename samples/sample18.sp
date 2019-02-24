@@ -1,10 +1,12 @@
 import "math";
 
-t1 = system.time();
-//d = factorization(84084);
-//print(d);
+
+println(getcwf());
+let t1 = system.time();
+let d = factorization(123);
+println(d);
 //a = primes(100000);
 //print(a.length());
-print(fib(15));
-t2 = system.time();
-print("time used: " + string(t2 - t1) + " ms");
+//println(fib(15));
+let t2 = system.time();
+println("time used: " + string(t2 - t1) + " ms");

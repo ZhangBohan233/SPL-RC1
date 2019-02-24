@@ -1,3 +1,12 @@
+********** SPL 1.2 Beta 6 **********
+===== Build 0034: 2019/02/24 =====
+
+*Added tool: code searcher
+*Updated math lib
+*Added native function:
+    *'getcwf' which returns the working script name
+    *'main' which returns true if the current working file is the main script
+
 ********** SPL 1.2 Beta 5 **********
 ===== Build 0034: 2019/02/23 =====
 
