@@ -32,12 +32,52 @@ SPL uses `//` as one-line comment. In a line, codes after `//` will be ignored b
 interpreter. The `/*` symbol is the beginning of a multi-line comment, where
 the `*/` marks the end of the multi-line comment.
 
-SPL is a dynamic language. There is ne need for declaring type when declare a variable.
+#### Variable System:
+
+SPL is a dynamic language. There is no need for declaring the typeof a variable,
+but it is necessary to declare the scope level of it.
 For example the expression:
 
-`a = 1;`
+`var a = 1;`
 
-declares a variable `a` and sets it to integer 1.
+declares a var-level variable `a` and sets it to integer 1.
+
+There are 3 types of variables in SPL, which are:
+
+* `var` declares a variable that is accessible in any scope under the scope
+where the variable is declared.
+
+* `const` declares a constant that has the same access with the variables
+declared by `var`, be once the `const` was declared, it cannot be assigned
+again.
+
+* `let` declares a local variable, which is not accessible by other 
+main-level scopes.
+
+There are different types of scopes in SPL. The global, class, and function
+scopes are called main-level scope, which does not allow `let` level variables
+to look up. For example,
+
+```
+let a = 1;
+function f() {
+    return a;
+}
+```
+will cause an undefined-error because function scope of `f` cannot access
+to local variable `a`.
+
+Loops, if-else, try-catch-finally blocks also create scopes, but this type
+of scope does not stop the local-variable lookup. For example the following
+code:
+
+```
+let a = 1;
+if (a < 2) {
+    a += 1;
+}
+```
+is valid.
 
 ### SPL Built-in types:
 
@@ -176,15 +216,15 @@ SPL uses keyword `class` to specify a class declaration. Attributes of a class
 lies directly under the class layer. For example:
 ```
 class Person {
-    name = "unknown";
-    age = 0;
+    var name = "unknown";
+    var age = 0;
 }
 ```
 Class constructor is a method that has same name of that class.
 ```
 class Person {
-    name = "unknown";
-    age = 0;
+    var name = "unknown";
+    var age = 0;
     function Person(n) {
         name = n;
     }
@@ -198,7 +238,7 @@ same names, the value from the posterior superclass will be inherited.
 
 ```
 class Student extends Person, Other {
-    private grade = 0;
+    var grade = 0;
     function Student(n, g) {
         Person(n);
         Other();
@@ -227,7 +267,7 @@ comparator `instanceof`.
 
 ```
 class A {
-    value = 0;
+    var value = 0;
     operator +(other) {
         return new A(value + other.value);
     }
@@ -265,6 +305,7 @@ Note that, nested "if-else" block can be simplified using "else if",
 for example:
 
 ```
+let num;
 if (ch == "a") {
     num = 1;
 } else if (ch == "b") {
@@ -298,7 +339,7 @@ for (beginning; stop-condition; step) {
 
 For example,
 ```
-for (i = 0; i < 4; i += 1) {
+for (let i = 0; i < 4; i += 1) {
     print(i);
 }
 ```
@@ -314,7 +355,7 @@ Note that, `i += 1` is equivalent to `i = i + 1`.
 SPL supports another type of for-loop, which is called for-each loop.
 The syntax of for-each loop is:
 ```
-for (invariant; iterable) {
+for (let invariant; iterable) {
     ...
 }
 ```

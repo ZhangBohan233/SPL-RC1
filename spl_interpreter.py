@@ -13,8 +13,9 @@ FUNCTION_SCOPE = 2
 LOOP_SCOPE = 3
 IF_ELSE_SCOPE = 4
 TRY_CATCH_SCOPE = 5
+LOOP_INNER_SCOPE = 6
 
-LOCAL_SCOPES = {LOOP_SCOPE, IF_ELSE_SCOPE, TRY_CATCH_SCOPE}
+LOCAL_SCOPES = {LOOP_SCOPE, IF_ELSE_SCOPE, TRY_CATCH_SCOPE, LOOP_INNER_SCOPE}
 
 
 class Counter:
@@ -122,9 +123,9 @@ class Environment:
         self.paused = False
 
         if self.contains_key("=>"):
-            self.assign("=>", None)
+            self.assign("=>", None, (0, "interpreter"))
         else:
-            self.define_local("=>", None)
+            self.define_local("=>", None, (0, "interpreter"))
 
         if self.is_global():
             self._add_natives()
@@ -236,31 +237,57 @@ class Environment:
         else:
             raise SplException("Not inside loop.")
 
-    def define_local(self, key, value):
+    def define_local(self, key, value, lf):
         # if key in self.locals:
         if self.contains_key(key):
-            raise SplException("Local name '{}' is already defined in this scope.".format(key))
+            raise SplException("Local name '{}' is already defined in this scope, in {}, at line {}"
+                               .format(key, lf[1], lf[0]))
         else:
             self.locals[key] = value
 
-    def define_var(self, key, value, override=False):
+    def define_var(self, key, value, lf, override=False):
         if not override and self.contains_key(key):
-            raise SplException("Cross-scope name '{}' is already defined.".format(key))
+            if value == UNDEFINED:
+                local_v = self._pop_local(key)
+                if key != NULLPTR:
+                    self.variables[key] = local_v
+                    return
+            raise SplException("Cross-scope name '{}' is already defined, in {}, at line {}"
+                               .format(key, lf[1], lf[0]))
         else:
             self.variables[key] = value
 
-    def define_const(self, key, value):
+    def define_const(self, key, value, lf):
         # if key in self.constants:
         if self.contains_key(key):
-            raise SplException("Name '{}' is already defined in this scope.".format(key))
+            raise SplException("Name '{}' is already defined in this scope, in {}, at line {}"
+                               .format(key, lf[1], lf[0]))
         else:
             self.constants[key] = value
 
-    def assign(self, key, value):
+    def _pop_local(self, key):
+        if key in self.locals:
+            k = self.locals[key]
+            del self.locals[key]
+            return k
+        else:
+            out = self.outer
+            sub = self.is_sub()
+            while out and sub:
+                if key in out.locals:
+                    k = out.locals[key]
+                    del out.locals[key]
+                    return k
+                if not out.is_sub():
+                    return NULLPTR
+                out = out.outer
+
+    def assign(self, key, value, lf):
         if key in self.locals:
             self.locals[key] = value
         elif key in self.constants:
-            raise SplException("Re-assignment to constant values.")
+            raise SplException("Re-assignment to constant values, in {}, at line {}"
+                               .format(key, lf[1], lf[0]))
         elif key in self.variables:
             self.variables[key] = value
         else:
@@ -347,13 +374,13 @@ class Environment:
         else:
             return v
 
-    def direct_get(self, key: str):
-        if key in self.locals:
-            return self.locals[key]
-        elif key in self.constants:
-            return self.constants[key]
-        else:
-            return self.variables[key]
+    # def direct_get(self, key: str):
+    #     if key in self.locals:
+    #         return self.locals[key]
+    #     elif key in self.constants:
+    #         return self.constants[key]
+    #     else:
+    #         return self.variables[key]
 
     def contains_key(self, key: str):
         v = self.inner_get(key)
@@ -954,64 +981,76 @@ class RuntimeException(Exception):
 
 def eval_for_loop(node: psr.ForLoopStmt, env: Environment):
     # print(env.scope_name)
-    block_scope = Environment(LOOP_SCOPE, env)
-    block_scope.scope_name = "Block scope for"
+
     con: psr.BlockStmt = node.condition
     start = con.lines[0]
     end = con.lines[1]
     step = con.lines[2]
-    result = evaluate(start, block_scope)
-    while not block_scope.broken and evaluate(end, block_scope):
+
+    title_scope = Environment(LOOP_SCOPE, env)
+    title_scope.scope_name = "Loop title"
+
+    result = evaluate(start, title_scope)
+
+    while not title_scope.broken and evaluate(end, title_scope):
+        block_scope = Environment(LOOP_INNER_SCOPE, title_scope)
+        block_scope.scope_name = "Block scope for"
         result = evaluate(node.body, block_scope)
-        block_scope.resume_loop()
-        evaluate(step, block_scope)
-    # block_scope.broken = False
-    del block_scope
+        title_scope.resume_loop()
+        evaluate(step, title_scope)
+
     return result
 
 
 def eval_for_each_loop(node: psr.ForLoopStmt, env: Environment):
-    block_scope = Environment(LOOP_SCOPE, env)
-    block_scope.scope_name = "Block scope for each"
     con: psr.BlockStmt = node.condition
     inv: psr.Node = con.lines[0]
+    lf = node.line_num, node.file
+
+    title_scope = Environment(LOOP_SCOPE, env)
+    title_scope.scope_name = "Loop title"
+
     if inv.node_type == psr.NAME_NODE:
         inv: psr.NameNode
         invariant = inv.name
     elif inv.node_type == psr.ASSIGNMENT_NODE:
         inv: psr.AssignmentNode
-        evaluate(inv, block_scope)
+        evaluate(inv, title_scope)
         invariant = inv.left.name
     else:
         raise SplException("Unknown type for for-each loop invariant")
     target = con.lines[1]
     # print(target)
-    iterable = evaluate(target, block_scope)
+    iterable = evaluate(target, title_scope)
     if isinstance(iterable, Iterable):
         result = None
         for x in iterable:
-            block_scope.assign(invariant, x)
+            block_scope = Environment(LOOP_INNER_SCOPE, title_scope)
+            block_scope.scope_name = "Block scope for each"
+            block_scope.assign(invariant, x, lf)
             result = evaluate(node.body, block_scope)
-            block_scope.resume_loop()
-            if block_scope.broken:
+            title_scope.resume_loop()
+            if title_scope.broken:
                 break
         # env.broken = False
         return result
-    elif isinstance(iterable, ClassInstance) and is_subclass_of(block_scope.get_heap(iterable.class_name), "Iterable",
-                                                                block_scope):
+    elif isinstance(iterable, ClassInstance) and is_subclass_of(title_scope.get_heap(iterable.class_name), "Iterable",
+                                                                title_scope):
         lf = (0, "interpreter")
         ite = psr.FuncCall(lf, "__iter__")
         iterator: ClassInstance = evaluate(ite, iterable.env)
         result = None
-        while not block_scope.broken:
+        while not title_scope.broken:
+            block_scope = Environment(LOOP_INNER_SCOPE, title_scope)
+            block_scope.scope_name = "Block scope for each"
             nex = psr.FuncCall(lf, "__next__")
             res = evaluate(nex, iterator.env)
-            if isinstance(res, ClassInstance) and is_subclass_of(block_scope.get_heap(res.class_name), "StopIteration",
-                                                                 block_scope):
+            if isinstance(res, ClassInstance) and is_subclass_of(title_scope.get_heap(res.class_name), "StopIteration",
+                                                                 title_scope):
                 break
-            block_scope.assign(invariant, res)
+            block_scope.assign(invariant, res, lf)
             result = evaluate(node.body, block_scope)
-            block_scope.resume_loop()
+            title_scope.resume_loop()
         # env.broken = False
         return result
     else:
@@ -1100,16 +1139,17 @@ def assignment(node: psr.AssignmentNode, env: Environment):
     key = node.left
     value = evaluate(node.right, env)
     t = key.node_type
+    lf = node.line_num, node.file
     if t == psr.NAME_NODE:
         key: psr.NameNode
         if node.level == psr.ASSIGN:
-            env.assign(key.name, value)
+            env.assign(key.name, value, lf)
         elif node.level == psr.LOCAL:
-            env.define_local(key.name, value)
+            env.define_local(key.name, value, lf)
         elif node.level == psr.CONST:
-            env.define_const(key.name, value)
+            env.define_const(key.name, value, lf)
         elif node.level == psr.VAR:
-            env.define_var(key.name, value)
+            env.define_var(key.name, value, lf)
         else:
             raise SplException("Unknown ")
         # if key.auth == stl.PRIVATE:
@@ -1129,7 +1169,7 @@ def assignment(node: psr.AssignmentNode, env: Environment):
         scope = env
         for t in name_lst[:-1]:
             scope = scope.get(t, (node.line_num, node.file)).env
-        scope.assign(name_lst[-1], value)
+        scope.assign(name_lst[-1], value, lf)
         return value
     else:
         raise InterpretException("Unknown assignment, in {}, at line {}".format(node.file, node.line_num))
@@ -1166,6 +1206,7 @@ def init_class(node: psr.ClassInit, env: Environment):
 
 def call_function(node: psr.FuncCall, env: Environment):
     func = env.get(node.f_name, (node.line_num, node.file))
+    lf = node.line_num, node.file
     if isinstance(func, Function):
         scope = Environment(FUNCTION_SCOPE, func.outer_scope)
         scope.scope_name = "Function scope<{}>".format(node.f_name)
@@ -1176,9 +1217,9 @@ def call_function(node: psr.FuncCall, env: Environment):
         if env.use_temp_var:
             for i in range(len(func.params)):
                 if i < len(env.temp_vars):
-                    scope.define_local(func.params[i].name, env.temp_vars[i])
+                    scope.define_local(func.params[i].name, env.temp_vars[i], lf)
                 else:
-                    scope.define_local(func.params[i].name, func.presets[i])
+                    scope.define_local(func.params[i].name, func.presets[i], lf)
             env.temp_vars.clear()
             env.use_temp_var = False
         else:
@@ -1191,9 +1232,9 @@ def call_function(node: psr.FuncCall, env: Environment):
                     arg = func.presets[i]
 
                 e = evaluate(arg, env)
-                scope.define_local(func.params[i].name, e)
+                scope.define_local(func.params[i].name, e, lf)
         result = evaluate(func.body, scope)
-        env.assign("=>", result)
+        env.assign("=>", result, lf)
         return result
     elif isinstance(func, NativeFunction):
         args = []
@@ -1234,7 +1275,8 @@ def eval_dot(node: psr.Dot, env: Environment):
             #     raise UnauthorizedException("Class attribute '{}' has private access".format(obj.name))
             # else:
             # attr = instance.env.variables[obj.name]
-            attr = instance.env.direct_get(obj.name)
+            # attr = instance.env.direct_get(obj.name)
+            attr = instance.env.get(obj.name, (node.line_num, node.file))
             return attr
         else:
             raise InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
@@ -1256,7 +1298,8 @@ def eval_dot(node: psr.Dot, env: Environment):
                 instance.env.temp_vars.append(evaluate(arg, env))
             result = evaluate(obj, instance.env)
             # env.temp_vars.clear()
-            env.assign("=>", result)
+            lf = node.line_num, node.file
+            env.assign("=>", result, lf)
             return result
         else:
             raise InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
@@ -1523,12 +1566,16 @@ def eval_if_stmt(node: psr.IfStmt, env: Environment):
 
 
 def eval_while(node: psr.WhileStmt, env: Environment):
-    block_scope = Environment(LOOP_SCOPE, env)
-    block_scope.scope_name = "Block scope while loop"
+    title_scope = Environment(LOOP_SCOPE, env)
+    title_scope.scope_name = "While loop title"
+
     result = 0
-    while not block_scope.broken and evaluate(node.condition, block_scope):
+    while not title_scope.broken and evaluate(node.condition, title_scope):
+        block_scope = Environment(LOOP_INNER_SCOPE, title_scope)
+        block_scope.scope_name = "Block scope while loop"
+
         result = evaluate(node.body, block_scope)
-        block_scope.resume_loop()
+        title_scope.resume_loop()
         # env.paused = False  # reset the environment the the next iteration
     # env.broken = False  # reset the environment for next loop
     return result
@@ -1548,7 +1595,7 @@ def eval_for_loop_stmt(node: psr.ForLoopStmt, env: Environment):
 def eval_def(node: psr.DefStmt, env: Environment):
     f = Function(node.params, node.presets, node.body)
     f.outer_scope = env
-    env.define_var(node.name, f, True)
+    env.define_var(node.name, f, (node.line_num, node.file), True)
     # if node.auth == stl.PRIVATE:
     #     env.add_private(node.name)
     return f
@@ -1563,8 +1610,9 @@ def eval_class_stmt(node, env: Environment):
 
 def eval_jump(node, env: Environment):
     func: Function = env.get(node.to, (0, "f"))
+    lf = node.line_num, node.file
     for i in range(len(node.args.lines)):
-        env.assign(func.params[i].name, evaluate(node.args.lines[i], env))
+        env.assign(func.params[i].name, evaluate(node.args.lines[i], env), lf)
     return evaluate(func.body, env)
 
 
@@ -1621,7 +1669,9 @@ def evaluate(node: psr.Node, env: Environment):
     """
     if env.is_terminated():
         return env.terminate_value()
-    if env.paused or node is None:
+    # if env.paused or node is None:
+    #     return None
+    if node is None:
         return None
     if type(node) in SELF_RETURN_TABLE_2:
         return node

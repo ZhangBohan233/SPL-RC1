@@ -1,3 +1,12 @@
+********** SPL 1.2 Beta 4 **********
+===== Build 0034: 2019/02/23 =====
+
+*Added more debug information:
+    *Assigns now shows file and line number if error occurs
+*Scope updates:
+    *Added a inner scope of loop
+    *Re-added supports for function closure
+
 ********** SPL 1.2 Beta 3 **********
 ===== Build 0033: 2019/02/23 =====
 

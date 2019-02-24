@@ -33,7 +33,7 @@ for (let i; a) {
 def ff(a) {
     for (let i = 0; i < 10; i += 1) {
         if (i == 4) {
-            return i;
+            return null;
         }
         println(i);
     }
