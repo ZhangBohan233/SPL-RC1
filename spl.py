@@ -160,11 +160,6 @@ def interpret():
     if argv["exec_time"]:
         print(block)
 
-    try:
-        os.remove(argv["doc"])
-    finally:
-        pass
-
 
 def compiled_exe():
     decoder = cdr.Decoder(f)
@@ -222,6 +217,10 @@ if __name__ == "__main__":
                 raise e
             finally:
                 f.close()
+                try:
+                    os.remove(argv["doc"])
+                finally:
+                    pass
         else:
             # elif file_name[-4:] == ".spe":
             f = open(file_name, "rb")
