@@ -1,5 +1,5 @@
 import _io
-
+import io
 import spl_parser as psr
 import spl_token_lib as stl
 import os
@@ -16,8 +16,10 @@ class Lexer:
         self.tokens = []
         self.script_dir = ""
         self.file_name = ""
+        self.doc_name = ""
+        self.doc_file: io.TextIOWrapper = None
 
-    def setup(self, file_name: str, script_dir: str):
+    def setup(self, file_name: str, script_dir: str, doc_name: str):
         """
         Sets up the parameters of this lexer.
 
@@ -28,10 +30,12 @@ class Lexer:
 
         :param file_name: the name of the main script
         :param script_dir: the directory of the main script
+        :param doc_name: the file to save the spl document
         :return:
         """
         self.file_name = file_name
         self.script_dir = script_dir
+        self.doc_name = doc_name
 
     def tokenize(self, source):
         """
@@ -44,7 +48,13 @@ class Lexer:
         if isinstance(source, list):
             self.tokenize_text(source)
         else:
+            try:
+                self.doc_file = open(self.doc_name, "w")
+            except IOError:
+                self.doc_file = None
             self.tokenize_file(source)
+            if self.doc_file is not None:
+                self.doc_file.close()
 
     def tokenize_file(self, file: _io.TextIOWrapper):
         """
@@ -73,7 +83,7 @@ class Lexer:
 
         self.tokens.append(stl.Token((stl.EOF, self.file_name)))
 
-    def proceed_line(self, line: str, line_num: (int, str), in_doc):
+    def proceed_line(self, line: str, line_num: (int, str), in_doc: bool):
         """ Tokenize a line.
 
         :param line: line to be proceed
@@ -85,6 +95,7 @@ class Lexer:
         in_double = False
         literal = ""
         non_literal = ""
+        doc = ""
         # last_ch = ""
 
         length = len(line)
@@ -135,11 +146,29 @@ class Lexer:
                         self.line_tokenize(non_literal[:-2], line_num)
                         non_literal = ""
                         break
+            else:
+                doc += ch
 
         if len(non_literal) > 0:
             self.line_tokenize(non_literal, line_num)
 
+        if self.doc_file is not None:
+            if len(doc) > 0:
+                self.doc_file.write("*")
+                self.doc_file.write(doc.strip("/\n *"))
+            self.doc_file.write('\n')
+            self.doc_file.flush()
+
         return in_doc
+
+    def write_mark(self):
+        """
+        Writes a mark to the doc file that shows this line contains non-doc content.
+
+        :return: None
+        """
+        if self.doc_file is not None:
+            self.doc_file.write("+")
 
     def line_tokenize(self, non_literal, line_num):
         """
@@ -150,9 +179,11 @@ class Lexer:
         :return: None
         """
         lst = normalize(non_literal)
+        wm = 0
         for part in lst:
             # if part == "//":
             #     break
+            wm += 1
             if part.isidentifier():
                 if part in stl.RESERVED:
                     self.tokens.append(stl.IdToken(line_num, part))
@@ -171,9 +202,12 @@ class Lexer:
             elif part == "=>":
                 self.tokens.append(stl.IdToken(line_num, part))
             elif part in stl.OMITS:
-                pass
+                wm -= 1
             else:
                 raise stl.ParseException("Unknown symbol: '{}', at line {}".format(part, line_num))
+
+        if wm > 0:
+            self.write_mark()
 
     def find_import(self, from_, to):
         for i in range(from_, to, 1):
@@ -452,7 +486,7 @@ class Lexer:
                                                                                   self.tokens[i].line_number()))
 
         if in_cond or call_nest != 0 or brace_count != 0 or extra_precedence != 0:
-            raise stl.ParseException("Reach the end while parsing")
+            raise stl.ParseEOFException("Reach the end while parsing")
         return parser.get_as_block()
 
 

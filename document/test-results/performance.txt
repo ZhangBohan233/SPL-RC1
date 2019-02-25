@@ -1,4 +1,11 @@
-===== Build 0034 =====
+===== Build 0037 =====
+
+-o2:
+1 million while loop: ~26500 ms
+25 fib: ~8800 ms
+1k elements merge sort: ~3100 ms
+
+===== Build 0035 =====
 
 -o2:
 1 million while loop: ~20500 ms

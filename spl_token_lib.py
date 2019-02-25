@@ -51,6 +51,16 @@ def unexpected_token(token):
                                                                            token.line_number()))
 
 
+def get_doc_name(sp_name: str):
+    """
+    Returns the auto-generated document name of a .sp file.
+
+    :param sp_name:
+    :return:
+    """
+    return sp_name[:-2] + "sdoc"
+
+
 class Token:
 
     def __init__(self, line):
@@ -155,3 +165,8 @@ class LexerException(Exception):
 class ParseException(Exception):
     def __init__(self, msg=""):
         Exception.__init__(self, msg)
+
+
+class ParseEOFException(ParseException):
+    def __init__(self, msg=""):
+        ParseException.__init__(self, msg)

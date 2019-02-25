@@ -146,8 +146,8 @@ class Environment:
         else:
             self.heap = {}
         self.variables: dict = {}  # Stack variables
-        self.constants = {}  # Constants
-        self.locals = {}  # Local variables
+        self.constants: dict = {}  # Constants
+        self.locals: dict = {}  # Local variables
         # self.privates = set()
 
         self.outer: Environment = outer
@@ -198,6 +198,12 @@ class Environment:
             temp.append(", ")
         return "".join(['null' if k is None else k for k in temp])
 
+    def invalidate(self):
+        self.variables.clear()
+        self.constants.clear()
+        self.locals.clear()
+        # self.define_local("=>", None, (0, "interpreter"))
+
     def is_global(self):
         return self.scope_type == GLOBAL_SCOPE
 
@@ -220,7 +226,10 @@ class Environment:
         self.add_heap("dir", NativeFunction(dir_, "dir", self))
         self.add_heap("getcwf", NativeFunction(getcwf, "getcwf", self))
         self.add_heap("main", NativeFunction(is_main, "main", self))
+        self.add_heap("exit", NativeFunction(exit_, "exit"))
+        self.add_heap("help", NativeFunction(help_, "help", self))
 
+        # type of built-in
         self.add_heap("boolean", NativeFunction(to_boolean, "boolean"))
         self.add_heap("void", NativeFunction(None, "void"))
 
@@ -475,6 +484,8 @@ class Function:
         self.presets: list = presets
         self.body = body
         self.outer_scope = None
+        self.file = None
+        self.line_num = None
 
     def __str__(self):
         return "Function<{}>".format(id(self))
@@ -489,6 +500,8 @@ class Class:
         self.body = body
         self.superclass_names = []
         self.outer_env = None
+        self.line_num = None
+        self.file = None
 
     def __str__(self):
         if len(self.superclass_names):
@@ -818,9 +831,9 @@ def input_(*prompt):
     return String(s)
 
 
-def typeof(obj):
+def typeof(obj) -> String:
     if obj is None:
-        return "void"
+        return String("void")
     elif isinstance(obj, ClassInstance):
         return String(obj.class_name)
     elif isinstance(obj, bool):
@@ -881,6 +894,13 @@ def eval_(expr: String):
 
 
 def dir_(env, obj):
+    """
+    Returns a List containing all attributes of a type or an object.
+
+    :param env:
+    :param obj:
+    :return:
+    """
     lst = List()
     if isinstance(obj, Class):
         # instance = inter.ClassInstance(env, obj.class_name)
@@ -909,6 +929,77 @@ def getcwf(env: Environment):
 
 def is_main(env: Environment):
     return env.get_heap("system").argv[0] == getcwf(env)
+
+
+def exit_(code=0):
+    exit(code)
+
+
+def help_(env, obj):
+    if isinstance(obj, NativeFunction):
+        pass
+    elif isinstance(obj, Function):
+        print(obj)
+    elif isinstance(obj, Class):
+        cla_self = _get_doc(obj)
+        print("Help on class", obj.class_name, "\n")
+        title = ["class ", obj.class_name]
+        if len(obj.superclass_names) > 0:
+            title.append(" extends ")
+            for x in obj.superclass_names:
+                title.append(x)
+                title.append(", ")
+            title.pop()
+        print("".join(title))
+        print(cla_self)
+        print("---------- Attributes ----------")
+
+        create = psr.ClassInit((0, "dir"), obj.class_name)
+        instance: ClassInstance = evaluate(create, env)
+        exc = {"id", "this"}
+        # for attr in instance.env.variables:
+        for attr in instance.env.attributes():
+            if attr not in exc:
+                print(attr)
+                print(_get_doc(instance.env.get(attr, (0, "help"))))
+
+
+# Helper functions
+
+def _get_doc(obj):
+    if isinstance(obj, Class) or isinstance(obj, Function) or isinstance(obj, psr.Node):
+        doc_file = stl.get_doc_name(obj.file)
+        try:
+            with open(doc_file, "r") as f:
+                lines = f.readlines()
+
+            pos = obj.line_num - 1
+            result = []
+            result.extend(_filter_doc(lines, pos))
+            return "".join(result)
+        except IOError:
+            return "| "
+    else:
+        return "| " + typeof(obj).literal
+
+
+def _filter_doc(lines: [str], pos: int):
+    """
+
+    :param lines:
+    :return:
+    """
+    lst = []
+    in_doc = False
+    for i in range(pos - 1, -1, -1):
+        line = lines[i]
+        if not in_doc:
+            if line[0] == "+":
+                break
+            elif line[0] == "*":
+                lst.append("| ")
+                lst.append(line[1:])
+    return lst
 
 
 # Exceptions
@@ -947,6 +1038,8 @@ class UnauthorizedException(SplException):
     def __init__(self, msg):
         SplException.__init__(self, msg)
 
+
+# Interpreter
 
 NULLPTR = NullPointer()
 UNDEFINED = Undefined()
@@ -1010,15 +1103,19 @@ def eval_for_loop(node: psr.ForLoopStmt, env: Environment):
     title_scope = Environment(LOOP_SCOPE, env)
     title_scope.scope_name = "Loop title"
 
+    block_scope = Environment(LOOP_INNER_SCOPE, title_scope)
+    block_scope.scope_name = "Block scope for"
+
     result = evaluate(start, title_scope)
 
     while not title_scope.broken and evaluate(end, title_scope):
-        block_scope = Environment(LOOP_INNER_SCOPE, title_scope)
-        block_scope.scope_name = "Block scope for"
+        block_scope.invalidate()
         result = evaluate(node.body, block_scope)
         title_scope.resume_loop()
         evaluate(step, title_scope)
 
+    del title_scope
+    del block_scope
     return result
 
 
@@ -1029,6 +1126,9 @@ def eval_for_each_loop(node: psr.ForLoopStmt, env: Environment):
 
     title_scope = Environment(LOOP_SCOPE, env)
     title_scope.scope_name = "Loop title"
+
+    block_scope = Environment(LOOP_INNER_SCOPE, title_scope)
+    block_scope.scope_name = "Block scope for each"
 
     if inv.node_type == psr.NAME_NODE:
         inv: psr.NameNode
@@ -1045,13 +1145,15 @@ def eval_for_each_loop(node: psr.ForLoopStmt, env: Environment):
     if isinstance(iterable, Iterable):
         result = None
         for x in iterable:
-            block_scope = Environment(LOOP_INNER_SCOPE, title_scope)
-            block_scope.scope_name = "Block scope for each"
+            block_scope.invalidate()
             block_scope.assign(invariant, x, lf)
             result = evaluate(node.body, block_scope)
             title_scope.resume_loop()
             if title_scope.broken:
                 break
+
+        del title_scope
+        del block_scope
         # env.broken = False
         return result
     elif isinstance(iterable, ClassInstance) and is_subclass_of(title_scope.get_heap(iterable.class_name), "Iterable",
@@ -1061,8 +1163,7 @@ def eval_for_each_loop(node: psr.ForLoopStmt, env: Environment):
         iterator: ClassInstance = evaluate(ite, iterable.env)
         result = None
         while not title_scope.broken:
-            block_scope = Environment(LOOP_INNER_SCOPE, title_scope)
-            block_scope.scope_name = "Block scope for each"
+            block_scope.invalidate()
             nex = psr.FuncCall(lf, "__next__")
             res = evaluate(nex, iterator.env)
             if isinstance(res, ClassInstance) and is_subclass_of(title_scope.get_heap(res.class_name), "StopIteration",
@@ -1072,6 +1173,8 @@ def eval_for_each_loop(node: psr.ForLoopStmt, env: Environment):
             result = evaluate(node.body, block_scope)
             title_scope.resume_loop()
         # env.broken = False
+        del title_scope
+        del block_scope
         return result
     else:
         raise SplException(
@@ -1589,15 +1692,18 @@ def eval_while(node: psr.WhileStmt, env: Environment):
     title_scope = Environment(LOOP_SCOPE, env)
     title_scope.scope_name = "While loop title"
 
+    block_scope = Environment(LOOP_INNER_SCOPE, title_scope)
+    block_scope.scope_name = "Block scope while loop"
+
     result = 0
     while not title_scope.broken and evaluate(node.condition, title_scope):
-        block_scope = Environment(LOOP_INNER_SCOPE, title_scope)
-        block_scope.scope_name = "Block scope while loop"
-
+        block_scope.invalidate()
         result = evaluate(node.body, block_scope)
         title_scope.resume_loop()
         # env.paused = False  # reset the environment the the next iteration
     # env.broken = False  # reset the environment for next loop
+    del title_scope
+    del block_scope
     return result
 
 
@@ -1615,16 +1721,19 @@ def eval_for_loop_stmt(node: psr.ForLoopStmt, env: Environment):
 def eval_def(node: psr.DefStmt, env: Environment):
     f = Function(node.params, node.presets, node.body)
     f.outer_scope = env
+    f.file = node.file
+    f.line_num = node.line_num
     env.define_var(node.name, f, (node.line_num, node.file), True)
     # if node.auth == stl.PRIVATE:
     #     env.add_private(node.name)
     return f
 
 
-def eval_class_stmt(node, env: Environment):
+def eval_class_stmt(node: psr.ClassStmt, env: Environment):
     cla = Class(node.class_name, node.block)
     cla.superclass_names = node.superclass_names
     cla.outer_env = env
+    cla.line_num, cla.file = node.line_num, node.file
     env.add_heap(node.class_name, cla)
     return cla
 

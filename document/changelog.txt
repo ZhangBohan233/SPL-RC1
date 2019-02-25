@@ -1,5 +1,16 @@
+********** SPL 1.2 Beta 7 **********
+===== Build 0037: 2019/02/24 =====
+
+*Updated console:
+    *Exception catch and multi-line input
+*Added native function:
+    *'exit'
+    *'help', still in experimental version
+*Performance optimization:
+    *Loop environment optimization
+
 ********** SPL 1.2 Beta 6 **********
-===== Build 0034: 2019/02/24 =====
+===== Build 0036: 2019/02/24 =====
 
 *Added tool: code searcher
 *Updated math lib
@@ -8,7 +19,7 @@
     *'main' which returns true if the current working file is the main script
 
 ********** SPL 1.2 Beta 5 **********
-===== Build 0034: 2019/02/23 =====
+===== Build 0035: 2019/02/23 =====
 
 *Updated spl-lib:
     *Updated 'functions' and 'io'

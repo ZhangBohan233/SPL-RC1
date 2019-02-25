@@ -7,6 +7,7 @@ import time
 import os
 import spl_optimizer as opt
 import spl_coder as cdr
+import spl_token_lib as stl
 
 sys.setrecursionlimit(10000)
 
@@ -49,7 +50,7 @@ Example
 def parse_arg(args):
     d = {"file": None, "dir": None, "debugger": False, "timer": False, "ast": False, "tokens": False,
          "vars": False, "argv": [], "encoding": None, "exit": False, "optimize": 0, "exec_time": False,
-         "spe": False, "script": False}
+         "spe": False, "script": False, "doc": None}
     # for i in range(1, len(args), 1):
     i = 1
     while i < len(args):
@@ -91,7 +92,8 @@ def parse_arg(args):
                 return None
             else:
                 d["file"] = arg
-                d["dir"] = spl_lexer.get_dir(d["file"])
+                d["dir"] = spl_lexer.get_dir(arg)
+                d["doc"] = stl.get_doc_name(arg)
                 d["argv"].append(arg)
         i += 1
     if d["file"] is None:
@@ -113,7 +115,7 @@ def interpret():
     lex_start = time.time()
 
     lexer = spl_lexer.Lexer()
-    lexer.setup(file_name, argv["dir"])
+    lexer.setup(file_name, argv["dir"], argv["doc"])
     lexer.tokenize(f)
 
     if argv["tokens"]:
@@ -157,6 +159,11 @@ def interpret():
 
     if argv["exec_time"]:
         print(block)
+
+    try:
+        os.remove(argv["doc"])
+    finally:
+        pass
 
 
 def compiled_exe():

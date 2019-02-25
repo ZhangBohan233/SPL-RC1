@@ -63,7 +63,7 @@ if __name__ == "__main__":
         out_file_name = argv["out_file"]
 
         lexer = lex.Lexer()
-        lexer.setup(file_name, lex.get_dir(file_name))
+        lexer.setup(file_name, lex.get_dir(file_name), "")
 
         f = open(file_name, "r")
         wf = open(out_file_name, "wb")
