@@ -315,7 +315,16 @@ class Lexer:
                             parser.build_expr()
                             parser.build_line()
                     elif sym == "(":
-                        extra_precedence += 1
+                        if i > 0:
+                            last_token = self.tokens[i - 1]
+                            if isinstance(last_token, stl.IdToken) and stl.is_func_call(last_token):
+                                parser.build_line()
+                                parser.add_call(line)
+                                call_nest += 1
+                            else:
+                                extra_precedence += 1
+                        else:
+                            extra_precedence += 1
                     elif sym == ")":
                         if extra_precedence == 0:
                             if call_nest > 0:
@@ -406,7 +415,7 @@ class Lexer:
                                 next_token.symbol == "(":
                             i += 1
                             call_nest += 1
-                            parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
+                            parser.add_call((c_token.line_number(), c_token.file_name()))
                             # in_call = True
                     elif sym == "throw":
                         parser.add_throw(line)
@@ -450,23 +459,23 @@ class Lexer:
                             var_level = psr.ASSIGN
                         parser.build_line()
                     else:
-                        next_token = self.tokens[i + 1]
-                        if isinstance(next_token, stl.IdToken):
-                            if next_token.symbol == "(":
-                                # function call
-                                parser.add_call(line, sym)
-                                call_nest += 1
-                                i += 1
-                            elif next_token.symbol == "[":
-                                parser.add_name(line, sym)
-                                parser.add_dot(line, extra_precedence)
-                                parser.add_get_set(line)
-                                call_nest += 1
-                                i += 1
-                            else:
-                                parser.add_name(line, sym)
-                        else:
-                            parser.add_name(line, sym)
+                        # next_token = self.tokens[i + 1]
+                        # if isinstance(next_token, stl.IdToken):
+                        #     if next_token.symbol == "(":
+                        #         # function call
+                        #         parser.add_call(line, sym)
+                        #         call_nest += 1
+                        #         i += 1
+                        #     elif next_token.symbol == "[":
+                        #         parser.add_name(line, sym)
+                        #         parser.add_dot(line, extra_precedence)
+                        #         parser.add_get_set(line)
+                        #         call_nest += 1
+                        #         i += 1
+                        #     else:
+                        #         parser.add_name(line, sym)
+                        # else:
+                        parser.add_name(line, sym)
                         # auth = stl.PUBLIC
 
                 elif isinstance(token, stl.NumToken):

@@ -136,7 +136,7 @@ class IdToken(Token):
     def __init__(self, line, s):
         Token.__init__(self, line)
 
-        self.symbol = s
+        self.symbol: str = s
 
     def __eq__(self, other):
         return isinstance(other, IdToken) and other.symbol == self.symbol
@@ -160,6 +160,11 @@ class IdToken(Token):
 class LexerException(Exception):
     def __init__(self, msg=""):
         Exception.__init__(self, msg)
+
+
+def is_func_call(token: IdToken):
+    sym = token.symbol
+    return sym.isidentifier() or sym == ")" or sym == "]"
 
 
 class ParseException(Exception):

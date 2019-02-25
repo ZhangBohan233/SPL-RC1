@@ -8,11 +8,5 @@ function f(a) {
     }
 }
 
-let d = f(3)=>(2)=>();
+let d = f(3)(2)();
 println(d);
-
-let a = 1;
-if (a < 2) {
-    a += 1;
-}
-println(a);

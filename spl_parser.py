@@ -257,12 +257,12 @@ class Parser:
             func.presets = pst
             self.stack.append(func)
 
-    def add_call(self, line, f_name):
+    def add_call(self, line):
         # print(f_name)
         if self.inner:
-            self.inner.add_call(line, f_name)
+            self.inner.add_call(line)
         else:
-            fc = FuncCall(line, f_name)
+            fc = FuncCall(line)
             self.stack.append(fc)
             self.inner = Parser()
 
@@ -275,7 +275,7 @@ class Parser:
             op_node.assignment = False
             op_node.operation = "=>"
             self.stack.append(op_node)
-            self.add_call(line, "=>")
+            self.add_call(line)
 
     def is_in_get(self):
         if self.inner:
@@ -520,6 +520,7 @@ class Parser:
                     else:
                         lst.__setitem__(0, node) if len(lst) > 0 else lst.append(node)
                         # res = node
+                # print(lst)
                 self.elements.append(lst[0])
 
     def get_as_block(self):
@@ -892,7 +893,7 @@ class DefStmt(Node):
         # self.body = None
 
     def __str__(self):
-        return "func({}({} :{}) -> {})".format(self.name, self.params, self.presets, self.body)
+        return "func(({} :{}) -> {})".format(self.params, self.presets, self.body)
 
     def __repr__(self):
         return self.__str__()
@@ -902,20 +903,20 @@ class FuncCall(LeafNode):
     """
     :type args: BlockStmt
     """
-    f_name = None
+    # f_name = None
     args = None
     is_get_set = False
 
-    def __init__(self, line, f_name):
+    def __init__(self, line):
         LeafNode.__init__(self, line)
 
         self.node_type = FUNCTION_CALL
-        self.f_name = f_name
+        # self.f_name = f_name
         # self.args = None
         # self.is_get_set = False
 
     def __str__(self):
-        return "{}({})".format(self.f_name, self.args)
+        return "call({})".format(self.args)
 
     def __repr__(self):
         return self.__str__()

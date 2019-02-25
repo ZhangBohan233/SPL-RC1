@@ -133,6 +133,7 @@ class Environment:
     heap: dict
     variables: dict
     scope_type: int
+    call_stack: list
 
     """
     ===== Attributes =====
@@ -143,8 +144,10 @@ class Environment:
         self.scope_type = scope_type
         if outer is not None:
             self.heap: dict = outer.heap  # Heap-allocated variables (global)
+            self.call_stack = outer.call_stack
         else:
             self.heap = {}
+            self.call_stack = []
         self.variables: dict = {}  # Stack variables
         self.constants: dict = {}  # Constants
         self.locals: dict = {}  # Local variables
@@ -163,8 +166,8 @@ class Environment:
         self.broken = False
         self.paused = False
 
-        if not self.is_sub():
-            self.define_local("=>", None, (0, "interpreter"))
+        # if not self.contains_key("=>"):
+        #     self.add_heap("=>", None)
 
         if self.is_global():
             self._add_natives()
@@ -483,12 +486,12 @@ class Function:
         self.params: list = params
         self.presets: list = presets
         self.body = body
-        self.outer_scope = None
+        self.outer_scope: Environment = None
         self.file = None
         self.line_num = None
 
     def __str__(self):
-        return "Function<{}>".format(id(self))
+        return "Function<{}>".format(self.body)
 
     def __repr__(self):
         return self.__str__()
@@ -1058,25 +1061,27 @@ class ClassInstance:
         :param env: instance attributes
         """
         self.class_name = class_name
-        self.env = env
+        self.env: Environment = env
         self.env.constants["id"] = ID_COUNTER.get()
         ID_COUNTER.increment()
         self.env.constants["this"] = self
 
-    def __hash__(self):
-        if self.env.contains_key("__hash__"):
-            call = psr.FuncCall((0, "interpreter"), "__hash__")
-            call.args = []
-            return evaluate(call, self.env)
-        else:
-            return hash(self)
+    # def __hash__(self):
+    #     if self.env.contains_key("__hash__"):
+    #         call = psr.FuncCall((0, "interpreter"), "__hash__")
+    #         call.args = []
+    #         return evaluate(call, self.env)
+    #     else:
+    #         return hash(self)
 
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
         if self.env.contains_key("__str__"):
-            call = psr.FuncCall((0, "interpreter"), "__str__")
+            lf = 0, "interpreter"
+            # self.env.add_heap("=>", self.env.get("__str__", lf))
+            call = psr.FuncCall(lf)
             call.args = []
             return str(evaluate(call, self.env))
         else:
@@ -1317,7 +1322,9 @@ def init_class(node: psr.ClassInit, env: Environment):
 
     if node.args:
         # constructor: Function = scope.variables[node.class_name]
-        fc = psr.FuncCall((node.line_num, node.file), node.class_name)
+        # scope.add_heap("=>", cla.class_name)
+        scope.call_stack
+        fc = psr.FuncCall((node.line_num, node.file))
         fc.args = node.args
         scope.use_temp_var = True
         for a in fc.args.lines:
@@ -1329,11 +1336,16 @@ def init_class(node: psr.ClassInit, env: Environment):
 
 
 def call_function(node: psr.FuncCall, env: Environment):
-    func = env.get(node.f_name, (node.line_num, node.file))
+    lf = node.line_num, node.file
+    # func = env.get(env.get("=>", lf), lf)
+    func = env.get("=>", lf)
+    # print(func)
     lf = node.line_num, node.file
     if isinstance(func, Function):
+        # print(func.body)
+        # print()
         scope = Environment(FUNCTION_SCOPE, func.outer_scope)
-        scope.scope_name = "Function scope<{}>".format(node.f_name)
+        scope.scope_name = "Function scope<>"
         # scope.outer = func.outer_scope  # supports for closure
 
         # if len(env.temp_vars) + len(list(filter(lambda k: not isinstance(k, psr.InvalidToken), func.presets))) == \
@@ -1358,7 +1370,8 @@ def call_function(node: psr.FuncCall, env: Environment):
                 e = evaluate(arg, env)
                 scope.define_local(func.params[i].name, e, lf)
         result = evaluate(func.body, scope)
-        env.assign("=>", result, lf)
+        # print(result)
+        env.add_heap("=>", result)
         return result
     elif isinstance(func, NativeFunction):
         args = []
@@ -1380,7 +1393,7 @@ def check_args_len(function: Function, call: psr.FuncCall):
     if call.args and not list(filter(lambda k: not isinstance(k, psr.InvalidToken), function.presets)).count(True) \
                          <= len(call.args.lines) <= len(function.params):
         raise SplException("Too few or too many arguments for function '{}', in '{}', at line {}"
-                           .format(call.f_name, call.file, call.line_num))
+                           .format(call, call.file, call.line_num))
 
 
 def eval_dot(node: psr.Dot, env: Environment):
@@ -1424,7 +1437,7 @@ def eval_dot(node: psr.Dot, env: Environment):
             result = evaluate(obj, instance.env)
             # env.temp_vars.clear()
             lf = node.line_num, node.file
-            env.assign("=>", result, lf)
+            env.add_heap("=>", result)
             return result
         else:
             raise InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
@@ -1468,7 +1481,9 @@ def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment, ri
         else:
             return False
     else:
-        fc = psr.FuncCall((0, "interpreter"), "@" + stl.BINARY_OPERATORS[symbol])
+        lf = right_node.line_num, right_node.file
+        env.add_heap("=>", "@" + stl.BINARY_OPERATORS[symbol])
+        fc = psr.FuncCall(lf)
         left.env.temp_vars.append(right)
         left.env.use_temp_var = True
         res = evaluate(fc, left.env)
@@ -1489,7 +1504,7 @@ def string_arithmetic(left, right, symbol):
     elif symbol == "instanceof":
         return isinstance(right, NativeFunction) and right.name == "string"
     else:
-        raise TypeException("Unsupported operation between string and " + typeof(right))
+        raise TypeException("Unsupported operation between string and " + typeof(right).literal)
 
     return result
 
@@ -1622,7 +1637,8 @@ def native_types_call(instance: NativeType, method: psr.FuncCall, env: Environme
     args = []
     for x in method.args.lines:
         args.append(evaluate(x, env))
-    name = method.f_name
+    # name = method.f_name
+    name = env.get("=>", (method.line_num, method.file))
     type_ = type(instance)
     method = getattr(type_, name)
     res = method(instance, *args)
@@ -1656,9 +1672,10 @@ def eval_boolean_stmt(node: psr.BooleanStmt, env):
 
 
 def eval_anonymous_call(node: psr.AnonymousCall, env: Environment):
+    print("boomed")
     evaluate(node.left, env)
     right = node.right.args
-    fc = psr.FuncCall((node.line_num, node.file), "=>")
+    fc = psr.FuncCall((node.line_num, node.file))
     fc.args = right
     return evaluate(fc, env)
 
@@ -1723,7 +1740,9 @@ def eval_def(node: psr.DefStmt, env: Environment):
     f.outer_scope = env
     f.file = node.file
     f.line_num = node.line_num
-    env.define_var(node.name, f, (node.line_num, node.file), True)
+    lf = (node.line_num, node.file)
+    # name = env.get("=>", lf)
+    env.define_var(node.name, f, lf, True)
     # if node.auth == stl.PRIVATE:
     #     env.add_private(node.name)
     return f
@@ -1746,6 +1765,13 @@ def eval_jump(node, env: Environment):
     return evaluate(func.body, env)
 
 
+def eval_name(node: psr.NameNode, env: Environment):
+    lf = node.line_num, node.file
+    result = env.get(node.name, lf)
+    env.add_heap("=>", result)
+    return result
+
+
 def raise_exception(e: Exception):
     raise e
 
@@ -1757,7 +1783,7 @@ NODE_TABLE = {
     psr.INT_NODE: lambda n, env: n.value,
     psr.FLOAT_NODE: lambda n, env: n.value,
     psr.LITERAL_NODE: lambda n, env: String(n.literal),
-    psr.NAME_NODE: lambda n, env: env.get(n.name, (n.line_num, n.file)),
+    psr.NAME_NODE: eval_name,
     psr.BOOLEAN_STMT: eval_boolean_stmt,
     psr.NULL_STMT: lambda n, env: None,
     psr.BREAK_STMT: lambda n, env: env.break_loop(),
