@@ -3,10 +3,10 @@
 import sys
 import spl_lexer
 import spl_interpreter
+import spl_parser as psr
 import time
 import os
 import spl_optimizer as opt
-import spl_coder as cdr
 import spl_token_lib as stl
 
 sys.setrecursionlimit(10000)
@@ -31,7 +31,6 @@ OPTIONS:
     -exit,   --exit value              shows the program's exit value
     -o1,     --optimize 1              enable level 1 optimization
     -o2,     --optimize 2              enable level 2 optimization
-    -script, --script mode             interpret as spl source code
     -timer,  --timer                   enables the timer
     -tokens, --tokens                  shows language tokens
     -vars,   --variables               prints out all global variables after execution
@@ -50,7 +49,7 @@ Example
 def parse_arg(args):
     d = {"file": None, "dir": None, "debugger": False, "timer": False, "ast": False, "tokens": False,
          "vars": False, "argv": [], "encoding": None, "exit": False, "optimize": 0, "exec_time": False,
-         "spe": False, "script": False, "doc": None}
+         "spe": False, "doc": None}
     # for i in range(1, len(args), 1):
     i = 1
     while i < len(args):
@@ -81,10 +80,6 @@ def parse_arg(args):
                     d["optimize"] = 1
                 elif flag == "o2":
                     d["optimize"] = 2
-                # elif flag == "spe":
-                #     d["spe"] = True
-                elif flag == "script":
-                    d["script"] = True
                 else:
                     print("unknown flag: -" + flag)
             elif arg.lower() == "help":
@@ -114,7 +109,7 @@ def print_help():
 def interpret():
     lex_start = time.time()
 
-    lexer = spl_lexer.Lexer()
+    lexer = spl_lexer.Tokenizer()
     lexer.setup(file_name, argv["dir"], argv["doc"])
     lexer.tokenize(f)
 
@@ -123,7 +118,8 @@ def interpret():
 
     parse_start = time.time()
 
-    block = lexer.parse()
+    parser = psr.Parser(lexer.get_tokens())
+    block = parser.parse()
 
     o_level = argv["optimize"]
 
@@ -148,7 +144,7 @@ def interpret():
     end = time.time()
 
     if argv["exit"]:
-        print("Process finished with exit value " + spl_interpreter.replace_bool_none(str(result)))
+        print("Process finished with exit value " + stl.replace_bool_none(str(result)))
 
     if argv["vars"]:
         print(itr.env)
@@ -161,37 +157,9 @@ def interpret():
         print(block)
 
 
-def compiled_exe():
-    decoder = cdr.Decoder(f)
-    ast = decoder.decode()
-
-    if argv["ast"]:
-        print("===== Abstract Syntax Tree =====")
-        print(ast)
-        print("===== End of AST =====")
-    if argv["debugger"]:
-        spl_interpreter.DEBUG = True
-
-    interpret_start = time.time()
-
-    itr = spl_interpreter.Interpreter(argv["argv"], "utf-8")
-    itr.set_ast(ast)
-    result = itr.interpret()
-
-    end = time.time()
-
-    if argv["exit"]:
-        print("Process finished with exit value " + spl_interpreter.replace_bool_none(str(result)))
-
-    if argv["vars"]:
-        print(itr.env.variables)
-        print("Heap: " + str(itr.env.heap))
-
-    if argv["timer"]:
-        print("Time used: execute: {}s.".format(end - interpret_start))
-
-    if argv["exec_time"]:
-        print(ast)
+class ArgumentsException(Exception):
+    def __init__(self, msg=""):
+        Exception.__init__(self, msg)
 
 
 if __name__ == "__main__":
@@ -203,7 +171,7 @@ if __name__ == "__main__":
             print("File Not Found!")
             exit(1)
 
-        if argv["script"] or file_name[-3:] == ".sp":
+        if file_name[-3:] == ".sp":
             encoding = argv["encoding"]
             if encoding is not None:
                 assert isinstance(encoding, str)
@@ -222,11 +190,4 @@ if __name__ == "__main__":
                 finally:
                     pass
         else:
-            # elif file_name[-4:] == ".spe":
-            f = open(file_name, "rb")
-            try:
-                compiled_exe()
-            except Exception as e:
-                raise e
-            finally:
-                f.close()
+            raise ArgumentsException("SPL scripts must ended with '.sp'.")

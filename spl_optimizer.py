@@ -1,4 +1,4 @@
-import spl_parser as psr
+import spl_ast as psr
 
 
 class Optimizer:

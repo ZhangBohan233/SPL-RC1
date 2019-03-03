@@ -51,34 +51,6 @@ where the variable is declared.
 declared by `var`, be once the `const` was declared, it cannot be assigned
 again.
 
-* `let` declares a local variable, which is not accessible by other 
-main-level scopes.
-
-There are different types of scopes in SPL. The global, class, and function
-scopes are called main-level scope, which does not allow `let` level variables
-to look up. For example,
-
-```
-let a = 1;
-function f() {
-    return a;
-}
-```
-will cause an undefined-error because function scope of `f` cannot access
-to local variable `a`.
-
-Loops, if-else, try-catch-finally blocks also create scopes, but this type
-of scope does not stop the local-variable lookup. For example the following
-code:
-
-```
-let a = 1;
-if (a < 2) {
-    a += 1;
-}
-```
-is valid.
-
 ### SPL Built-in types:
 
 SPL has several built-in types:
@@ -339,7 +311,7 @@ for (beginning; stop-condition; step) {
 
 For example,
 ```
-for (let i = 0; i < 4; i += 1) {
+for (var i = 0; i < 4; i += 1) {
     print(i);
 }
 ```
@@ -355,7 +327,7 @@ Note that, `i += 1` is equivalent to `i = i + 1`.
 SPL supports another type of for-loop, which is called for-each loop.
 The syntax of for-each loop is:
 ```
-for (let invariant; iterable) {
+for (var invariant; iterable) {
     ...
 }
 ```

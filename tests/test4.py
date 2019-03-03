@@ -1,6 +1,6 @@
 if __name__ == "__main__":
-    import spl_parser
-    psr = spl_parser.Parser()
+    import spl_ast
+    psr = spl_ast.Parser()
 
     # n = 5;
     psr.add_name("n")
@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     print(psr)
 
-    block = spl_parser.BlockStmt()
+    block = spl_ast.BlockStmt()
     block.lines = psr.elements
 
     import spl_interpreter

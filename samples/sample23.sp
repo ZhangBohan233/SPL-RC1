@@ -14,33 +14,31 @@ class Person {
     }
 }
 
-class Human {
+abstract class Human {
     var alive = true;
 
-    def Human() {
-
-    }
+    def Human();
 
     //def die() {
     //    alive = false;
     //}
 }
 
-class Creature {
-    var molecules = 10000;
+abstract class Creature {
+    var molecules;
 
-    def Creature();
-
-    def die() {
-        abstract;
+    function Creature() {
+         molecules = 10000;
     }
+
+    abstract function die();
 }
 
 class Student extends Person, Human, Creature {
     var grade = 0;
     const v = "STUDENT";
     const g2 = "sb";
-    var father = new Human;
+    //var father = new Human;
 
     function Student(n, g) {
         Person(n);
@@ -49,6 +47,7 @@ class Student extends Person, Human, Creature {
         grade = g;
     }
 
+    @Override
     def die() {
         alive = false;
         molecules = 1;
@@ -80,13 +79,10 @@ class Student extends Person, Human, Creature {
 }
 
 
-let a = new Student("True", 1);
+var a = new Student("True", 1);
 println(type(a));
-let b = new Student("True", 1);
+var b = new Student("True", 1);
 println(a == b);
-b.test = function () {print("yyy")};
-b.set_grade(2);
-println(b.get_grade());
-println(dir(Student));
-print(b);
+//println(dir(Student));
+println(b);
 

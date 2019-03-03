@@ -1,6 +1,6 @@
 if __name__ == "__main__":
     import spl_lexer
-    import spl_parser
+    import spl_ast
     import spl_interpreter
     file_name = "sample.sp"
     file_name = "samples/sample5.sp"
@@ -13,7 +13,7 @@ if __name__ == "__main__":
     psr = lexer.parse()
     print(psr)
 
-    block = spl_parser.BlockStmt()
+    block = spl_ast.BlockStmt()
     block.lines = psr.elements
 
     itr = spl_interpreter.Interpreter(block)

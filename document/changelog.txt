@@ -1,3 +1,22 @@
+********** SPL 1.3 Alpha 1 **********
+===== Build 0040: 2019/03/03 =====
+
+*Function parameter changes:
+    *Default parameter now can contain expressions
+*Syntax changes:
+    *Removed local variable declaration 'let'
+    *Changed the functionality of keyword 'abstract'
+    *Implemented tag tagged by '@'
+    *Changed internal method from '@' to '__'
+*Object-id counter changes:
+    *Removed unnecessary cost of object id by function 'dir'
+    *Slightly changed the default to string method of object
+*File structure optimization:
+    *Removed spl coder
+    *Removed spl decompiler
+    *Removed spc and spd
+    *Separated Parser from tokenizer and AbstractSyntaxTree
+
 ********** SPL 1.2 Release **********
 ===== Build 0039: 2019/02/25 =====
 

@@ -1,7 +1,7 @@
 if __name__ == "__main__":
-    import spl_parser
+    import spl_ast
 
-    psr = spl_parser.Parser()
+    psr = spl_ast.Parser()
     psr.add_name("a")
     psr.add_assignment()
     psr.add_number("3")
