@@ -324,8 +324,6 @@ class AbstractSyntaxTree:
     def build_call(self):
         if self.inner.inner:
             self.inner.build_call()
-        # elif self.condition.condition:
-        #     self.condition.build_call()
         else:
             # line = self.condition.get_as_line()
             self.inner.build_line()
@@ -379,11 +377,11 @@ class AbstractSyntaxTree:
             target_class: ClassStmt
             target_class.superclass_names.append(superclass_name)
 
-    def add_abstract(self, line):
-        if self.inner:
-            self.inner.add_abstract(line)
-        else:
-            self.stack.append(Abstract(line))
+    # def add_abstract(self, line):
+    #     if self.inner:
+    #         self.inner.add_abstract(line)
+    #     else:
+    #         self.stack.append(Abstract(line))
 
     def build_class(self):
         if self.inner:
@@ -961,17 +959,17 @@ class Dot(OperatorNode):
         return self.__str__()
 
 
-class Abstract(LeafNode):
-    def __init__(self, line):
-        LeafNode.__init__(self, line)
-
-        self.node_type = ABSTRACT
-
-    def __str__(self):
-        return "abstract"
-
-    def __repr__(self):
-        return self.__str__()
+# class Abstract(LeafNode):
+#     def __init__(self, line):
+#         LeafNode.__init__(self, line)
+#
+#         self.node_type = ABSTRACT
+#
+#     def __str__(self):
+#         return "abstract"
+#
+#     def __repr__(self):
+#         return self.__str__()
 
 
 class InvalidToken(Node):

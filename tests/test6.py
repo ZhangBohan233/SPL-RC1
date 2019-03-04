@@ -1,11 +1,6 @@
-def tcf():
-    try:
-        return 0
-    except ZeroDivisionError:
-        return 1
-    finally:
-        return 2
+def test(a, b=0, c=1, d=2):
+    return a + b + c + d
 
 
 if __name__ == "__main__":
-    print(tcf())
+    print(test(1, d=4))

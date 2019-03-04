@@ -25,15 +25,15 @@ Usage
     
 Description
 OPTIONS:    
-    -ast,    --abstract syntax tree    shows the structure of the abstract syntax tree     
-    -debug,  --debugger                enables debugger
-    -et,     --execution               shows the execution times of each node
-    -exit,   --exit value              shows the program's exit value
-    -o1,     --optimize 1              enable level 1 optimization
-    -o2,     --optimize 2              enable level 2 optimization
-    -timer,  --timer                   enables the timer
-    -tokens, --tokens                  shows language tokens
-    -vars,   --variables               prints out all global variables after execution
+    -a,   -ast,     --abstract syntax tree    shows the structure of the abstract syntax tree     
+    -d,   -debug,   --debugger                enables debugger
+    -et,            --execution               shows the execution times of each node
+    -e,   -exit,    --exit value              shows the program's exit value
+    -o1,            --optimize 1              enable level 1 optimization
+    -o2,            --optimize 2              enable level 2 optimization
+    -t,   -timer,   --timer                   enables the timer
+    -tk,  -tokens,  --tokens                  shows language tokens
+    -v,   -vars,    --variables               prints out all global variables after execution
     
 FLAGS:
     -Dfile ENCODING    --file encoding    changes the sp file decoding
@@ -59,17 +59,17 @@ def parse_arg(args):
         else:
             if arg[0] == "-":
                 flag = arg[1:]
-                if flag == "debug":
+                if flag == "d" or flag == "debug":
                     d["debugger"] = True
-                elif flag == "timer":
+                elif flag == "t" or flag == "timer":
                     d["timer"] = True
-                elif flag == "ast":
+                elif flag == "a" or flag == "ast":
                     d["ast"] = True
-                elif flag == "tokens":
+                elif flag == "tk" or flag == "tokens":
                     d["tokens"] = True
-                elif flag == "vars":
+                elif flag == "v" or flag == "vars":
                     d["vars"] = True
-                elif flag == "exit":
+                elif flag == "e" or flag == "exit":
                     d["exit"] = True
                 elif flag == "Dfile":
                     i += 1

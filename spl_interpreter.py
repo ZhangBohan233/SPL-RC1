@@ -16,7 +16,8 @@ SUB_SCOPE = 4
 
 # LOCAL_SCOPES = {LOOP_SCOPE, IF_ELSE_SCOPE, TRY_CATCH_SCOPE, LOOP_INNER_SCOPE}
 
-INVALID = ast.InvalidToken((0, "interpreter"))
+LINE_FILE = 0, "interpreter"
+INVALID = ast.InvalidToken(LINE_FILE)
 
 
 class Interpreter:
@@ -98,10 +99,6 @@ class Environment:
         # self.privates = set()
 
         self.outer: Environment = outer
-
-        self.temp_vars = []  # Arguments of cross-environment function calls
-        self.use_temp_var = False
-
         self.scope_name = None
 
         # environment signals
@@ -296,7 +293,7 @@ class Environment:
         """
         v = self.inner_get(key)
         # print(key + str(v))
-        if v == NULLPTR:
+        if v is NULLPTR:
             raise SplException("Name '{}' is not defined, in file {}, at line {}"
                                .format(key, line_file[1], line_file[0]))
         else:
@@ -304,7 +301,7 @@ class Environment:
 
     def contains_key(self, key: str):
         v = self.inner_get(key)
-        if v == NULLPTR:
+        if v is NULLPTR:
             return False
         else:
             return True
@@ -397,8 +394,8 @@ class NullPointer:
     def __init__(self):
         pass
 
-    def __eq__(self, other):
-        return isinstance(other, NullPointer)
+    # def __eq__(self, other):
+    #     return isinstance(other, NullPointer)
 
     def __str__(self):
         return "NullPointer"
@@ -765,7 +762,7 @@ def f_open(file, mode=String("r"), encoding=String("utf-8")):
 
 
 def eval_(expr: String):
-    lexer = lex.Lexer()
+    lexer = lex.Tokenizer()
     lexer.file_name = "expression"
     lexer.script_dir = "expression"
     lexer.tokenize([expr.text()])
@@ -840,7 +837,7 @@ def help_(env, obj):
         create = ast.ClassInit((0, "dir"), obj.class_name)
         instance: ClassInstance = evaluate(create, env)
         ID_COUNTER.decrement()
-        exc = {"id", "this"}
+        exc = {"this"}
         # for attr in instance.env.variables:
         for attr in instance.env.attributes():
             if attr not in exc:
@@ -899,27 +896,32 @@ class SplException(InterpretException):
 
 
 class TypeException(SplException):
-    def __init__(self, msg):
+    def __init__(self, msg=""):
         SplException.__init__(self, msg)
 
 
 class IndexOutOfRangeException(SplException):
-    def __init__(self, msg):
+    def __init__(self, msg=""):
         SplException.__init__(self, msg)
 
 
 class IOException(SplException):
-    def __init__(self, msg):
+    def __init__(self, msg=""):
         SplException.__init__(self, msg)
 
 
 class AbstractMethodException(SplException):
-    def __init__(self, msg):
+    def __init__(self, msg=""):
         SplException.__init__(self, msg)
 
 
 class UnauthorizedException(SplException):
-    def __init__(self, msg):
+    def __init__(self, msg=""):
+        SplException.__init__(self, msg)
+
+
+class ArgumentException(SplException):
+    def __init__(self, msg=""):
         SplException.__init__(self, msg)
 
 
@@ -949,7 +951,7 @@ class ClassInstance:
 
     def __hash__(self):
         if self.env.contains_key("__hash__"):
-            call = ast.FuncCall((0, "interpreter"), "__hash__")
+            call = ast.FuncCall(LINE_FILE, "__hash__")
             call.args = []
             return evaluate(call, self.env)
         else:
@@ -960,7 +962,7 @@ class ClassInstance:
 
     def __str__(self):
         if self.env.contains_key("__str__"):
-            call = ast.FuncCall((0, "interpreter"), "__str__")
+            call = ast.FuncCall(LINE_FILE, "__str__")
             call.args = []
             return str(evaluate(call, self.env))
         else:
@@ -978,7 +980,6 @@ class RuntimeException(Exception):
 
 
 def eval_for_loop(node: ast.ForLoopStmt, env: Environment):
-
     con: ast.BlockStmt = node.condition
     start = con.lines[0]
     end = con.lines[1]
@@ -1042,7 +1043,6 @@ def eval_for_each_loop(node: ast.ForLoopStmt, env: Environment):
         return result
     elif isinstance(iterable, ClassInstance) and is_subclass_of(title_scope.get_heap(iterable.class_name), "Iterable",
                                                                 title_scope):
-        lf = (0, "interpreter")
         ite = ast.FuncCall(lf, "__iter__")
         iterator: ClassInstance = evaluate(ite, iterable.env)
         result = None
@@ -1202,49 +1202,17 @@ def init_class(node: ast.ClassInit, env: Environment):
         # constructor: Function = scope.variables[node.class_name]
         fc = ast.FuncCall((node.line_num, node.file), node.class_name)
         fc.args = node.args
-        scope.use_temp_var = True
-        for a in fc.args.lines:
-            scope.temp_vars.append(evaluate(a, env))
-        # print(scope.variables)
-        evaluate(fc, scope)
-        # scope.temp_vars.clear()
+        func = scope.get(node.class_name, (node.line_num, node.file))
+        call_function(fc, func, scope, env)
     return instance
 
 
-def call_function(node: ast.FuncCall, env: Environment):
-    func = env.get(node.f_name, (node.line_num, node.file))
+def eval_func_call(node: ast.FuncCall, env: Environment):
     lf = node.line_num, node.file
+    func = env.get(node.f_name, lf)
+
     if isinstance(func, Function):
-        if func.abstract:
-            raise AbstractMethodException("Abstract method is not callable, in '{}', at line {}."
-                                          .format(node.file, node.line_num))
-
-        scope = Environment(FUNCTION_SCOPE, func.outer_scope)
-        scope.scope_name = "Function scope<{}>".format(node.f_name)
-
-        # if len(env.temp_vars) + len(list(filter(lambda k: not isinstance(k, ast.InvalidToken), func.presets))) == \
-        #         len(func.params) > 0:
-        params = func.params
-
-        if env.use_temp_var:
-            args = env.temp_vars.copy()
-            env.temp_vars.clear()
-            env.use_temp_var = False
-        else:
-            # check_args_len(func, node)
-            args = node.args.lines
-        for i in range(len(params)):
-            # Assign function arguments
-            param: ParameterPair = params[i]
-            if i < len(args):
-                arg = args[i]
-            else:
-                arg = param.preset
-
-            e = evaluate(arg, env)
-            scope.define_var(param.name, e, lf)
-        result = evaluate(func.body, scope)
-        env.assign("=>", result, lf)
+        result = call_function(node, func, func.outer_scope, env)
         return result
     elif isinstance(func, NativeFunction):
         args = []
@@ -1262,12 +1230,61 @@ def call_function(node: ast.FuncCall, env: Environment):
         raise InterpretException("Not a function call, in {}, at line {}.".format(node.file, node.line_num))
 
 
-def check_args_len(function: Function, call: ast.FuncCall):
-    pass
-    # if call.args and not list(filter(lambda k: not isinstance(k, ast.InvalidToken), function.presets)).count(True) \
-    #                      <= len(call.args.lines) <= len(function.params):
-    #     raise SplException("Too few or too many arguments for function '{}', in '{}', at line {}"
-    #                        .format(call.f_name, call.file, call.line_num))
+def call_function(call: ast.FuncCall, func: Function, func_parent_env: Environment, call_env: Environment) \
+        -> object:
+    """
+    Calls a function
+
+    :param call: the call
+    :param func: the function object itself
+    :param func_parent_env: the parent environment of the function where it was defined
+    :param call_env: the environment where the function call was made
+    :return: the function result
+    """
+    lf = call.line_num, call.file
+
+    if func.abstract:
+        raise AbstractMethodException("Abstract method is not callable, in '{}', at line {}."
+                                      .format(call.file, call.line_num))
+
+    scope = Environment(FUNCTION_SCOPE, func.outer_scope)
+    scope.scope_name = "Function scope<{}>".format(call.f_name)
+
+    params = func.params
+
+    args = call.args.lines
+
+    pos_args = []  # Positional arguments
+    kwargs = {}  # Keyword arguments
+
+    for arg in args:
+        if isinstance(arg, ast.AssignmentNode):
+            kwargs[arg.left.name] = arg.right
+        else:
+            pos_args.append(arg)
+    # print(pos_args)
+    # print(kwargs)
+    if len(pos_args) + len(kwargs) > len(params):
+        raise ArgumentException("Too many arguments for function '{}', in file '{}', at line {}"
+                                .format(call.f_name, call.file, call.line_num))
+    for i in range(len(params)):
+        # Assign function arguments
+        param: ParameterPair = params[i]
+        if i < len(pos_args):
+            arg = pos_args[i]
+        elif param.name in kwargs:
+            arg = kwargs[param.name]
+        elif param.preset is not INVALID:
+            arg = param.preset
+        else:
+            raise ArgumentException("Function '{}' missing a positional argument '{}', in file '{}', at line {}"
+                                    .format(call.f_name, param.name, call.file, call.line_num))
+
+        e = evaluate(arg, call_env)
+        scope.define_var(param.name, e, lf)
+    result = evaluate(func.body, scope)
+    func_parent_env.assign("=>", result, lf)
+    return result
 
 
 def eval_dot(node: ast.Dot, env: Environment):
@@ -1295,11 +1312,13 @@ def eval_dot(node: ast.Dot, env: Environment):
                 raise IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
                                                .format(node.file, node.line_num))
         elif isinstance(instance, ClassInstance):
-            instance.env.use_temp_var = True
-            for arg in obj.args.lines:
-                instance.env.temp_vars.append(evaluate(arg, env))
-            result = evaluate(obj, instance.env)
+            # instance.env.use_temp_var = True
+            # for arg in obj.args.lines:
+            #     instance.env.temp_vars.append(evaluate(arg, env))
             lf = node.line_num, node.file
+            func: Function = instance.env.get(obj.f_name, lf)
+            result = call_function(obj, func, instance.env, env)
+
             env.assign("=>", result, lf)
             return result
         else:
@@ -1332,9 +1351,9 @@ def arithmetic(left, right_node: ast.Node, symbol, env: Environment):
 
 def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment, right_node):
     if symbol == "===":
-        return isinstance(right, ClassInstance) and left.env.constants["id"] == right.env.constants["id"]
+        return isinstance(right, ClassInstance) and left.id == right.id
     elif symbol == "!==":
-        return not isinstance(right, ClassInstance) or left.env.constants["id"] != right.env.constants["id"]
+        return not isinstance(right, ClassInstance) or left.id != right.id
     elif symbol == "instanceof":
         if isinstance(right, Class):
             return is_subclass_of(env.get_heap(left.class_name), right.class_name, env)
@@ -1344,11 +1363,13 @@ def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment, ri
         else:
             return False
     else:
-        fc = ast.FuncCall((0, "interpreter"), "__" + stl.BINARY_OPERATORS[symbol] + "__")
-        left.env.temp_vars.append(right)
-        left.env.use_temp_var = True
-        res = evaluate(fc, left.env)
-        return res
+        fc = ast.FuncCall(LINE_FILE, "__" + stl.BINARY_OPERATORS[symbol] + "__")
+        block = ast.BlockStmt(LINE_FILE)
+        block.add_line(right)
+        fc.args = block
+        func: Function = left.env.get(fc.f_name, LINE_FILE)
+        result = call_function(fc, func, left.env, env)
+        return result
 
 
 def string_arithmetic(left, right, symbol):
@@ -1576,8 +1597,7 @@ def eval_while(node: ast.WhileStmt, env: Environment):
         block_scope.invalidate()
         result = evaluate(node.body, block_scope)
         title_scope.resume_loop()
-        # env.paused = False  # reset the environment the the next iteration
-    # env.broken = False  # reset the environment for next loop
+
     del title_scope
     del block_scope
     return result
@@ -1619,8 +1639,7 @@ def eval_def(node: ast.DefStmt, env: Environment):
     f.line_num = node.line_num
     override = "Override" in node.titles
     env.define_function(node.name, f, (node.line_num, node.file), override)
-    # if node.auth == stl.PRIVATE:
-    #     env.add_private(node.name)
+
     return f
 
 
@@ -1645,8 +1664,7 @@ def raise_exception(e: Exception):
     raise e
 
 
-# SELF_RETURN_TABLE = {"int", "float", "bool", "NoneType", "String", "List", "Set", "Pair", "System", "File"}
-SELF_RETURN_TABLE_2 = {int, float, bool, String, List, Set, Pair, System, File, ClassInstance}
+SELF_RETURN_TABLE = {int, float, bool, String, List, Set, Pair, System, File, ClassInstance}
 
 NODE_TABLE = {
     ast.INT_NODE: lambda n, env: n.value,
@@ -1669,14 +1687,11 @@ NODE_TABLE = {
     ast.WHILE_STMT: eval_while,
     ast.FOR_LOOP_STMT: eval_for_loop_stmt,
     ast.DEF_STMT: eval_def,
-    ast.FUNCTION_CALL: call_function,
+    ast.FUNCTION_CALL: eval_func_call,
     ast.CLASS_STMT: eval_class_stmt,
     ast.CLASS_INIT: init_class,
     ast.INVALID_TOKEN: lambda n, env: raise_exception(InterpretException("Argument error, in {}, at line {}"
                                                                          .format(n.file, n.line_num))),
-    ast.ABSTRACT: lambda n, env: raise_exception(
-        AbstractMethodException("Method is not implemented, in {}, at line {}"
-                                .format(n.file, n.line_num))),
     ast.THROW_STMT: lambda n, env: raise_exception(RuntimeException(evaluate(n.value, env))),
     ast.TRY_STMT: eval_try_catch,
     ast.JUMP_NODE: eval_jump,
@@ -1696,7 +1711,7 @@ def evaluate(node: ast.Node, env: Environment):
         return env.terminate_value()
     if node is None:
         return None
-    if type(node) in SELF_RETURN_TABLE_2:
+    if type(node) in SELF_RETURN_TABLE:
         return node
     t = node.node_type
     node.execution += 1

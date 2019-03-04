@@ -181,7 +181,8 @@ class Parser:
                         if isinstance(next_token, stl.IdToken) and next_token.symbol in ABSTRACT_IDENTIFIER:
                             is_abstract = True
                         else:
-                            parser.add_abstract(line)
+                            raise stl.ParseException()
+                            # parser.add_abstract(line)
                     elif sym == "new":
                         i += 1
                         c_token = self.tokens[i]

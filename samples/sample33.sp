@@ -1,7 +1,7 @@
 class Object {
     var attr1;
-    function Object(a) {
-        attr1 = a;
+    function Object(a=0, b=5) {
+        attr1 = a + b;
     }
 
     function increment() {
@@ -12,17 +12,23 @@ class Object {
 
     }
 
+    function copy(plus) {
+        return new Object(attr1 + plus, b=0);
+    }
+
     operator +(other) {
-        return new Object(attr1 + other.attr1);
+        return new Object(attr1 + other.attr1, 0);
     }
 }
 
-if (main()) {
-    var a;
-    println(dir(Object));
-    for (var i = 0; i < 10; i += 1) {
-        a = new Object(i);
-        println(a);
-    }
+function duck(a, b=1, c=2, d=3) {
+    return a + b + c + d;
+}
 
+if (main()) {
+    var a = new Object(1, 2);
+    var b = a.copy(0);
+    println(a);
+    println(b);
+    println(a + b);
 }
