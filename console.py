@@ -1,17 +1,19 @@
 import spl_interpreter
+import spl_lexer as lex
 import spl_token_lib as stl
+import spl_parser as psr
 
 
 if __name__ == "__main__":
 
-    # import spl_lexer
-
     line_terminated = True
 
-    lex2 = spl_interpreter.lex.Lexer()
+    lex2 = lex.Tokenizer()
     itr = spl_interpreter.Interpreter([], "utf8")
     lines = []
+
     while True:
+
         if line_terminated:
             line = input(">>> ")
         else:
@@ -20,7 +22,9 @@ if __name__ == "__main__":
 
         try:
             lex2.tokenize(lines)
-            block = lex2.parse()
+
+            parser_ = psr.Parser(lex2.get_tokens())
+            block = parser_.parse()
 
             itr.set_ast(block)
             res = itr.interpret()

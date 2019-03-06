@@ -60,13 +60,6 @@ class Optimizer:
                     self.returning = True
                 node.value = self.reduce_leaf(node.value)
                 self.returning = False
-                # if isinstance(v, FuncCall):
-                #     if self.last_func:
-                #         if self.last_func.name == v.f_name:
-                #             jn = JumpNode((node.line_num, node.file), self.last_func.name)
-                #             jn.args = v.args
-                #             print(jn.args)
-                #             return jn
                 return node
             else:
                 node.value = self.reduce_leaf(node.value)

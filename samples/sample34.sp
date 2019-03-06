@@ -19,5 +19,9 @@ if (main()) {
     println(b.length());
     var c = string(b);
     b.append(66);
-    println(b.length());
+    println(b);
+
+    var d = list(1, 2, 3, 4);
+    d[1] += 1;
+    println(d);
 }

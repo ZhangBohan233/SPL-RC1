@@ -128,8 +128,6 @@ class AbstractSyntaxTree:
         if self.inner:
             self.inner.add_assignment(line, var_level)
         else:
-            # print(len(self.stack))
-
             name = self.stack.pop()
             ass_node = AssignmentNode(line, var_level)
             ass_node.left = name
@@ -196,7 +194,6 @@ class AbstractSyntaxTree:
         else:
             tb = TryStmt(line)
             self.stack.append(tb)
-            # self.inner = AbstractSyntaxTree()
 
     def add_catch(self, line):
         if self.inner:
@@ -211,7 +208,6 @@ class AbstractSyntaxTree:
             self.inner.add_finally(line)
         else:
             pass
-            # self.inner = AbstractSyntaxTree()
 
     def add_function(self, line, f_name, abstract: bool, tags: list):
         if self.inner:
@@ -325,7 +321,6 @@ class AbstractSyntaxTree:
         if self.inner.inner:
             self.inner.build_call()
         else:
-            # line = self.condition.get_as_line()
             self.inner.build_line()
 
             block: BlockStmt = self.inner.get_as_block()
@@ -372,16 +367,8 @@ class AbstractSyntaxTree:
         if self.inner:
             self.inner.add_extends(superclass_name, target_class)
         else:
-            # cs: ClassStmt = self.stack[-1]
-            # cs.superclass_name = superclass_name
             target_class: ClassStmt
             target_class.superclass_names.append(superclass_name)
-
-    # def add_abstract(self, line):
-    #     if self.inner:
-    #         self.inner.add_abstract(line)
-    #     else:
-    #         self.stack.append(Abstract(line))
 
     def build_class(self):
         if self.inner:
@@ -536,10 +523,6 @@ class BinaryExpr(Node):
     def __init__(self, line):
         Node.__init__(self, line)
 
-        # self.left = None
-        # self.right = None
-        # self.operation = None
-
     def __str__(self):
         return "BE({} {} {})".format(self.left, self.operation, self.right)
 
@@ -626,8 +609,6 @@ class UnaryOperator(Node):
     def __init__(self, line, extra):
         Node.__init__(self, line)
 
-        # self.value = None
-        # self.operation = None
         self.extra_precedence = extra * MULTIPLIER
 
     def precedence(self):
@@ -650,10 +631,7 @@ class NameNode(LeafNode):
         self.name = n
 
     def __str__(self):
-        # if self.auth == stl.PUBLIC:
         return "N(" + self.name + ")"
-        # else:
-        #     return "N(private " + self.name + ")"
 
     def __repr__(self):
         return self.__str__()
@@ -803,8 +781,6 @@ class CondStmt(Node):
     def __init__(self, line):
         Node.__init__(self, line)
 
-        # self.condition = None
-
 
 class IfStmt(CondStmt):
     then_block = None
@@ -814,8 +790,6 @@ class IfStmt(CondStmt):
         CondStmt.__init__(self, line)
 
         self.node_type = IF_STMT
-        # self.then_block = None
-        # self.else_block = None
 
     def __str__(self):
         return "if({} then {} else {})".format(self.condition, self.then_block, self.else_block)
@@ -831,7 +805,6 @@ class WhileStmt(CondStmt):
         CondStmt.__init__(self, line)
 
         self.node_type = WHILE_STMT
-        # self.body = None
 
     def __str__(self):
         return "while({} do {})".format(self.condition, self.body)
@@ -847,7 +820,6 @@ class ForLoopStmt(CondStmt):
         CondStmt.__init__(self, line)
 
         self.node_type = FOR_LOOP_STMT
-        # self.body = None
 
     def __str__(self):
         return "for ({}) do {}".format(self.condition, self.body)
@@ -865,7 +837,6 @@ class DefStmt(TitleNode):
 
     def __init__(self, line, f_name, abstract: bool, tags: list):
         TitleNode.__init__(self, line)
-        # Limited.__init__(self, auth)
 
         self.node_type = DEF_STMT
         self.name = f_name
@@ -893,8 +864,6 @@ class FuncCall(LeafNode):
 
         self.node_type = FUNCTION_CALL
         self.f_name = f_name
-        # self.args = None
-        # self.is_get_set = False
 
     def __str__(self):
         return "{}({})".format(self.f_name, self.args)
@@ -916,7 +885,6 @@ class ClassStmt(Node):
         self.class_name = name
         self.abstract = abstract
         self.superclass_names = []
-        # self.block = None
 
     def __str__(self):
         return "Class {}: {}".format(self.class_name, self.block)
@@ -934,7 +902,6 @@ class ClassInit(LeafNode):
 
         self.node_type = CLASS_INIT
         self.class_name = name
-        # self.args: BlockStmt = None
 
     def __str__(self):
         if self.args:
@@ -981,7 +948,6 @@ class CatchStmt(CondStmt):
         CondStmt.__init__(self, line)
 
         self.node_type = CATCH_STMT
-        # self.then: BlockStmt = None
 
     def __str__(self):
         return "catch ({}) {}".format(self.condition, self.then)
@@ -999,9 +965,7 @@ class TryStmt(Node):
         Node.__init__(self, line)
 
         self.node_type = TRY_STMT
-        # self.try_block: BlockStmt = None
         self.catch_blocks: [CatchStmt] = []
-        # self.finally_block: BlockStmt = None
 
     def __str__(self):
         return "try {} {} finally {}" \
