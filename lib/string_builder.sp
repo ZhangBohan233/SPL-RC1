@@ -24,6 +24,10 @@ class StringBuilder {
         return len;
     }
 
+    function substring(from, to=null) {
+        return to_string().substring(from, to);
+    }
+
     function __str__() {
         return to_string();
     }

@@ -965,7 +965,7 @@ def eval_dot(node: ast.Dot, env: Environment):
         else:
             raise lib.InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
     else:
-        raise lib.InterpretException("Unknown Syntax")
+        raise lib.InterpretException("Unknown Syntax, in {}, at line {}".format(node.file, node.line_num))
 
 
 def arithmetic(left, right_node: ast.Node, symbol, env: Environment):

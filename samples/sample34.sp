@@ -17,11 +17,8 @@ if (main()) {
     b.append(3);
     b.append("r");
     println(b.length());
-    var c = string(b);
     b.append(66);
+    var c = string(b);
     println(b);
-
-    var d = list(1, 2, 3, 4);
-    d[1] += 1;
-    println(d);
+    println(b.substring(1, 4));
 }

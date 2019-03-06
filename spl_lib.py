@@ -124,8 +124,12 @@ class String(NativeType, Iterable):
     def type_name(self):
         return "string"
 
-    # def join(self, iterable):
-    #     raise NotImplementedError
+    def substring(self, from_, to=None):
+        length = self.length()
+        end = length if to is None else to
+        if from_ < 0 or end > length:
+            raise IndexOutOfRangeException("Substring index out of range")
+        return String(self.literal[from_: end])
 
 
 class List(NativeType, Iterable):
@@ -181,6 +185,13 @@ class List(NativeType, Iterable):
 
     def sort(self):
         self.list.sort()
+
+    def sublist(self, from_, to=None):
+        length = self.length()
+        end = length if to is None else to
+        if from_ < 0 or end > length:
+            raise IndexOutOfRangeException("Substring index out of range")
+        return List(self.list[from_: end])
 
     def reverse(self):
         self.list.reverse()

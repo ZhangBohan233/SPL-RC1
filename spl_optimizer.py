@@ -7,6 +7,7 @@ class Optimizer:
         self.level = 0
         self.last_func = None
         self.returning = False
+        self.interrupt = False
 
     def optimize(self, level):
         self.level = level
@@ -33,6 +34,10 @@ class Optimizer:
             return node.value == "true"
         elif isinstance(node, psr.BinaryExpr):
             # this reversal is done intentionally
+            node: psr.BinaryExpr
+            if node.node_type == psr.DOT:
+                if self.returning:
+                    self.interrupt = True
             node.right = self.reduce_leaf(node.right)
             node.left = self.reduce_leaf(node.left)
             return node
@@ -58,6 +63,7 @@ class Optimizer:
                 # v = node.value
                 if self.level > 1:
                     self.returning = True
+                    self.interrupt = False
                 node.value = self.reduce_leaf(node.value)
                 self.returning = False
                 return node
@@ -75,7 +81,7 @@ class Optimizer:
             return node
         elif t == psr.FUNCTION_CALL:
             node: psr.FuncCall
-            if self.returning:
+            if self.returning and not self.interrupt:
                 if self.last_func:
                     if self.last_func.name == node.f_name:
                         jn = psr.JumpNode((node.line_num, node.file), self.last_func.name)
