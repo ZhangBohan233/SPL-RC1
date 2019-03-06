@@ -33,7 +33,7 @@ DEF_STMT = 20
 FUNCTION_CALL = 21
 CLASS_STMT = 22
 CLASS_INIT = 23
-INVALID_TOKEN = 24
+# INVALID_TOKEN = 24
 ABSTRACT = 25
 THROW_STMT = 26
 TRY_STMT = 27
@@ -213,11 +213,11 @@ class AbstractSyntaxTree:
             pass
             # self.inner = AbstractSyntaxTree()
 
-    def add_function(self, line, f_name, abstract: bool, titles: list):
+    def add_function(self, line, f_name, abstract: bool, tags: list):
         if self.inner:
-            self.inner.add_function(line, f_name, abstract, titles)
+            self.inner.add_function(line, f_name, abstract, tags)
         else:
-            func = DefStmt(line, f_name, abstract, titles)
+            func = DefStmt(line, f_name, abstract, tags)
             self.stack.append(func)
             self.inner = AbstractSyntaxTree()
 
@@ -861,8 +861,9 @@ class DefStmt(TitleNode):
     params: BlockStmt = None
     body = None
     abstract: bool = False
+    tags: list
 
-    def __init__(self, line, f_name, abstract: bool, titles: list):
+    def __init__(self, line, f_name, abstract: bool, tags: list):
         TitleNode.__init__(self, line)
         # Limited.__init__(self, auth)
 
@@ -870,7 +871,7 @@ class DefStmt(TitleNode):
         self.name = f_name
         self.params = None
         self.abstract = abstract
-        self.titles = titles
+        self.tags = tags
 
     def __str__(self):
         return "func({}({}) -> {})".format(self.name, self.params, self.body)
@@ -954,32 +955,6 @@ class Dot(OperatorNode):
 
     def __str__(self):
         return "({} dot {})".format(self.left, self.right)
-
-    def __repr__(self):
-        return self.__str__()
-
-
-# class Abstract(LeafNode):
-#     def __init__(self, line):
-#         LeafNode.__init__(self, line)
-#
-#         self.node_type = ABSTRACT
-#
-#     def __str__(self):
-#         return "abstract"
-#
-#     def __repr__(self):
-#         return self.__str__()
-
-
-class InvalidToken(Node):
-    def __init__(self, line):
-        Node.__init__(self, line)
-
-        self.node_type = INVALID_TOKEN
-
-    def __str__(self):
-        return "invalid"
 
     def __repr__(self):
         return self.__str__()

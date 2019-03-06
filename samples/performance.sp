@@ -1,12 +1,9 @@
 import "algorithm";
 
-function run() {
+if (main()) {
     const t0 = system.time();
 
-    let i = 0;
-    while (i < 1000000) {
-        i = i + 1;
-    }
+    for (var i = 0; i < 1000000; i += 1);
 
     const t1 = system.time();
     println(t1 - t0);
@@ -24,5 +21,3 @@ function run() {
 
     println(t4 - t3);
 }
-
-run();

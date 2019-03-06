@@ -1,3 +1,17 @@
+********** SPL 1.3 Beta 1 **********
+===== Build 0042: 2019/03/04 =====
+
+*Optimizations:
+    *Optimized performance for about 20%
+    *Moved non-environment dependent classes and functions to spl_lib
+*Modified built-in libs to match the new spl syntax
+*Implemented tags marked with '@'
+*Updated 'print' function: place of output
+*Replaced 'InvalidToken' with 'InvalidArgument'
+*Added a new library class 'StringBuilder'
+*Flushes the stdout and stderr after process finished
+*Implemented the link of 'string()' and '__str__()' method
+
 ********** SPL 1.3 Alpha 2 **********
 ===== Build 0041: 2019/03/04 =====
 

@@ -8,6 +8,7 @@ import time
 import os
 import spl_optimizer as opt
 import spl_token_lib as stl
+import spl_lib as lib
 
 sys.setrecursionlimit(10000)
 
@@ -143,8 +144,11 @@ def interpret():
 
     end = time.time()
 
+    sys.stdout.flush()
+    sys.stderr.flush()
+
     if argv["exit"]:
-        print("Process finished with exit value " + stl.replace_bool_none(str(result)))
+        print("Process finished with exit value " + lib.replace_bool_none(str(result)))
 
     if argv["vars"]:
         print(itr.env)

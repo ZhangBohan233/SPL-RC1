@@ -5,71 +5,51 @@ import "iterable"
 /*
  * A queue data structure, follows the rule "first in first out".
  */
-class Queue {
+abstract class Queue {
 
-    function Queue() {
-        abstract;
-    }
+    abstract function Queue();
 
     /*
      * Returns the number of element in this queue.
      */
-    function size() {
-        abstract;
-    }
+    abstract function size();
 
     /*
      * Adds an element to the last.
      */
-    function add_last(element) {
-        abstract;
-    }
+    abstract function add_last(element);
 
-    function remove_last() {
-        abstract;
-    }
+    abstract function remove_last();
 
     /*
      * Returns first-added element.
      */
-    function get_first() {
-        abstract;
-    }
+    abstract function get_first();
 
-    function remove_first() {
-        abstract;
-    }
+    abstract function remove_first();
 }
 
 
 class Deque extends Queue, Stack {
 
-    function Deque() {
-        abstract;
-    }
+    abstract function Deque();
 
-    function add_first(element) {
-        abstract;
-    }
+    abstract function add_first(element);
 
-    function remove_first() {
-        abstract;
-    }
+    @Override
+    abstract function remove_first();
 
-    function get_last() {
-        abstract;
-    }
+    abstract function get_last();
 
-    function remove_last() {
-        abstract;
-    }
+    @Override
+    abstract function remove_last();
 }
 
 
 class LLNode {
-    let before = null;
-    let after = null;
-    let value = null;
+    var before = null;
+    var after = null;
+    var value = null;
 }
 
 
@@ -93,7 +73,7 @@ class LinkedList extends Deque, Iterable {
     @Override
     function __next__() {
         if (iter_node) {
-            let value = iter_node.value;
+            var value = iter_node.value;
             iter_node = iter_node.after;
             return value;
         } else {
@@ -102,8 +82,8 @@ class LinkedList extends Deque, Iterable {
     }
 
     function __str__() {
-        let s = "Link[";
-        for (let cur = head; cur; cur = cur.after) {
+        var s = "Link[";
+        for (var cur = head; cur; cur = cur.after) {
             s += string(cur.value) + "->";
         }
         s += "]";
@@ -120,7 +100,7 @@ class LinkedList extends Deque, Iterable {
         if (size_ == 0) {
             create(element);
         } else {
-            let n = new LLNode;
+            var n = new LLNode;
             n.value = element;
             n.before = tail;
             tail.after = n;
@@ -134,7 +114,7 @@ class LinkedList extends Deque, Iterable {
         if (size_ == 0) {
             create(element);
         } else {
-            let n = new LLNode;
+            var n = new LLNode;
             n.value = element;
             n.after = head;
             head.before = n;
@@ -155,7 +135,7 @@ class LinkedList extends Deque, Iterable {
 
     @Override
     function remove_first() {
-        let n = head;
+        var n = head;
         head = head.after;
         if (head !== null) {
             head.before = null;
@@ -166,7 +146,7 @@ class LinkedList extends Deque, Iterable {
 
     @Override
     function remove_last() {
-        let n = tail;
+        var n = tail;
         tail = head.before;
         if (tail) {
             tail.after = null;
@@ -191,7 +171,7 @@ class LinkedList extends Deque, Iterable {
     }
 
     function create(ele) {
-        let n = new LLNode;
+        var n = new LLNode;
         n.value = ele;
         head = n;
         tail = n;

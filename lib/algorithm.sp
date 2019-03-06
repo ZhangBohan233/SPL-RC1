@@ -5,12 +5,12 @@ import "math";
  * Sorts the <lst> with merge sort algorithm.
  */
 function merge_sort(lst) {
-    let length = lst.length();
-    let step = 1;
+    var length = lst.length();
+    var step = 1;
     while (step < length) {
-        for (let i = 0; i < length; i += step * 2) {
-            let mid = i + step;
-            let end = mid + step;
+        for (var i = 0; i < length; i += step * 2) {
+            var mid = i + step;
+            var end = mid + step;
             if (end > length) {
                 end = length;
             }
@@ -18,11 +18,11 @@ function merge_sort(lst) {
                 mid = length;
             }
 
-            let c_len = end - i;
-            let i1 = i;
-            let i2 = mid;
-            let ci = 0;
-            let cache = list();
+            var c_len = end - i;
+            var i1 = i;
+            var i2 = mid;
+            var ci = 0;
+            var cache = list();
 
             while (i1 < mid && i2 < end) {
                 if (lst[i1] < lst[i2]) {
@@ -35,16 +35,16 @@ function merge_sort(lst) {
                     i2 += 1;
                 }
             }
-            let remain = mid - i1;
+            var remain = mid - i1;
             if (remain > 0) {
-                for (let x = 0; x < remain; x += 1) {
+                for (var x = 0; x < remain; x += 1) {
                     cache.append(lst[i1 + x]);
                 }
-                for (let x = 0; x < c_len; x += 1) {
+                for (var x = 0; x < c_len; x += 1) {
                     lst[i + x] = cache[x];
                 }
             } else {
-                for (let x = 0; x < ci; x += 1) {
+                for (var x = 0; x < ci; x += 1) {
                     lst[i + x] = cache[x];
                 }
             }
@@ -58,11 +58,11 @@ function merge_sort(lst) {
  * Returns a list with length <length> containing random integers in range [min, max].
  */
 function rand_list(length, min, max) {
-    let lst = list();
-    let x = 0;
-    let r = max - min;
-    let xi;
-    for (let i = 0; i < length; i += 1) {
+    var lst = list();
+    var x = 0;
+    var r = max - min;
+    var xi;
+    for (var i = 0; i < length; i += 1) {
         x = random() * r + min;
         xi = int(x);
         lst.append(xi);

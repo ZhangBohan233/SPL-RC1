@@ -26,6 +26,7 @@ function duck(a, b=1, c=2, d=3) {
 }
 
 if (main()) {
+    println(duck(1));
     var a = new Object(1, 2);
     var b = a.copy(0);
     println(a);

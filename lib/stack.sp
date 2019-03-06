@@ -1,21 +1,14 @@
 /*
  * A stack data structure, follows the rule "last in first out".
  */
-class Stack {
+abstract class Stack {
 
-    function size() {
-        abstract;
-    }
+    @Suppress
+    abstract function size();
 
-    function top() {
-        abstract;
-    }
+    abstract function top();
 
-    function push(element) {
-        abstract;
-    }
+    abstract function push(element);
 
-    function pop() {
-        abstract;
-    }
+    abstract function pop();
 }

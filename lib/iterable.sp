@@ -1,25 +1,20 @@
 /*
  * Superclass of
  */
-class Iterable {
+abstract class Iterable {
 
     function Iterable() {
-        abstract;
     }
 
     /*
      * Returns an object to be iterated.
      */
-    function __iter__() {
-        abstract;
-    }
+    abstract function __iter__();
 
     /*
      * Returns the next iteration.
      */
-    function __next__() {
-        abstract;
-    }
+    abstract function __next__();
 }
 
 

@@ -7,8 +7,8 @@ import "functions"
 function random() {
     const m = (1 << 15) - 1;
     const a = 3;
-    let seed = system.time();
-    for (let i = 0; i < 100; i += 1) {
+    var seed = system.time();
+    for (var i = 0; i < 100; i += 1) {
         seed = seed * a % m;
     }
     return float(seed) / 32768;
@@ -28,7 +28,7 @@ function abs(n) {
 
 
 function ceil(n) {
-    let x = int(n);
+    var x = int(n);
     if (n > x) {
         return x + 1;
     } else {
@@ -46,8 +46,8 @@ function floor(n) {
  * Returns the square root of <n>.
  */
 function sqrt(n) {
-    let x = float(n);
-    let g = x;
+    var x = float(n);
+    var g = x;
     while (abs(g * g - x) > 0.000001) {
         g = (g + x / g) / 2;
     }
@@ -59,10 +59,10 @@ function sqrt(n) {
  * Returns the nearest integer of number <n>.
  */
 function round(n) {
-    let fl = floor(n);
-    let ce = ceil(n);
-    let low = n - fl;
-    let up = ce - n;
+    var fl = floor(n);
+    var ce = ceil(n);
+    var low = n - fl;
+    var up = ce - n;
     if (up > low) {
         return fl;
     } else {
@@ -75,7 +75,7 @@ function round(n) {
  * Returns <true> if <p> is a prime.
  */
 function is_prime(p) {
-    let lim = ceil(sqrt(p));
+    var lim = ceil(sqrt(p));
     if (p == 2) {
         return true;
     } else if (p % 2 == 0) {
@@ -95,11 +95,11 @@ function is_prime(p) {
  * Returns a list of primes that less than or equal to <limit>.
  */
 function primes(limit) {
-    let lst = list();
-    for (let i = 2; i <= limit; i += 1) {
+    var lst = list();
+    for (var i = 2; i <= limit; i += 1) {
         lst.append(i);
     }
-    let index = 0;
+    var index = 0;
     var tar = lst[0];
     while (lst[lst.length() - 1] > tar * tar) {
         tar = lst[index];
@@ -114,15 +114,15 @@ function primes(limit) {
  * Returns the prime factorization of integer <n>.
  */
 function factorization(n) {
-    let x = n;
-    let ps = primes(n);
-    let res = pair();
+    var x = n;
+    var ps = primes(n);
+    var res = pair();
     if (ps[ps.length() - 1] == n) {
         res[n] = 1;
         return res;
     }
     while (x > 1) {
-        for (let p; ps) {
+        for (var p; ps) {
             if (x % p == 0) {
                 x /= p;
                 if (res.contains(p)) {

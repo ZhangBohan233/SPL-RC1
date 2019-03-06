@@ -1,9 +1,8 @@
 import spl_ast as ast
 import spl_lexer as lex
 import spl_parser as psr
-import time as time_lib
 import spl_token_lib as stl
-import sys
+import spl_lib as lib
 
 LST = [72, 97, 112, 112, 121, 32, 66, 105, 114, 116, 104, 100, 97, 121, 32,
        73, 115, 97, 98, 101, 108, 108, 97, 33, 33, 33]
@@ -17,7 +16,7 @@ SUB_SCOPE = 4
 # LOCAL_SCOPES = {LOOP_SCOPE, IF_ELSE_SCOPE, TRY_CATCH_SCOPE, LOOP_INNER_SCOPE}
 
 LINE_FILE = 0, "interpreter"
-INVALID = ast.InvalidToken(LINE_FILE)
+INVALID = lib.InvalidArgument()
 
 
 class Interpreter:
@@ -30,9 +29,14 @@ class Interpreter:
     def __init__(self, argv, encoding):
         self.ast = None
         self.argv = argv
+        self.encoding = encoding
         self.env = Environment(GLOBAL_SCOPE, None)
-        self.env.add_heap("system", System(List(*parse_args(argv)), encoding))
         self.env.scope_name = "Global"
+        self.set_up_env()
+
+    def set_up_env(self):
+        self.env.add_heap("system", lib.System(lib.List(*parse_args(self.argv)), self.encoding))
+        self.env.add_heap("natives", NativeInvokes())
 
     def set_ast(self, ast_: ast.BlockStmt):
         """
@@ -58,7 +62,7 @@ def parse_args(argv):
     :param argv: the system argv
     :return: the argv in spl String object
     """
-    return [String(x) for x in argv]
+    return [lib.String(x) for x in argv]
 
 
 class Counter:
@@ -89,14 +93,12 @@ class Environment:
 
     def __init__(self, scope_type, outer):
         self.scope_type = scope_type
-        if outer is not None:
-            self.heap: dict = outer.heap  # Heap-allocated variables (global)
-        else:
+        if outer is None:
             self.heap: dict = {}
+        else:
+            self.heap: dict = outer.heap  # Heap-allocated variables (global)
         self.variables: dict = {}  # Stack variables
         self.constants: dict = {}  # Constants
-        # self.locals: dict = {}  # Local variables
-        # self.privates = set()
 
         self.outer: Environment = outer
         self.scope_name = None
@@ -146,26 +148,26 @@ class Environment:
         return self.scope_type == LOOP_SCOPE or self.scope_type == SUB_SCOPE
 
     def _add_natives(self):
-        self.add_heap("print", NativeFunction(print_, "print"))
-        self.add_heap("println", NativeFunction(print_ln, "println"))
+        self.add_heap("print", NativeFunction(lib.print_, "print"))
+        self.add_heap("println", NativeFunction(lib.print_ln, "println"))
         self.add_heap("type", NativeFunction(typeof, "type"))
-        self.add_heap("pair", NativeFunction(make_pair, "pair"))
-        self.add_heap("list", NativeFunction(make_list, "list"))
-        self.add_heap("set", NativeFunction(make_set, "set"))
-        self.add_heap("int", NativeFunction(to_int, "int"))
-        self.add_heap("float", NativeFunction(to_float, "float"))
+        self.add_heap("pair", NativeFunction(lib.make_pair, "pair"))
+        self.add_heap("list", NativeFunction(lib.make_list, "list"))
+        self.add_heap("set", NativeFunction(lib.make_set, "set"))
+        self.add_heap("int", NativeFunction(lib.to_int, "int"))
+        self.add_heap("float", NativeFunction(lib.to_float, "float"))
         self.add_heap("string", NativeFunction(to_str, "string"))
-        self.add_heap("input", NativeFunction(input_, "input"))
-        self.add_heap("f_open", NativeFunction(f_open, "f_open"))
+        self.add_heap("input", NativeFunction(lib.input_, "input"))
+        self.add_heap("f_open", NativeFunction(lib.f_open, "f_open"))
         self.add_heap("eval", NativeFunction(eval_, "eval"))
         self.add_heap("dir", NativeFunction(dir_, "dir", self))
         self.add_heap("getcwf", NativeFunction(getcwf, "getcwf", self))
         self.add_heap("main", NativeFunction(is_main, "main", self))
-        self.add_heap("exit", NativeFunction(exit_, "exit"))
+        self.add_heap("exit", NativeFunction(lib.exit_, "exit"))
         self.add_heap("help", NativeFunction(help_, "help", self))
 
         # type of built-in
-        self.add_heap("boolean", NativeFunction(to_boolean, "boolean"))
+        self.add_heap("boolean", NativeFunction(lib.to_boolean, "boolean"))
         self.add_heap("void", NativeFunction(None, "void"))
 
         self.add_heap("cwf", None)
@@ -182,7 +184,7 @@ class Environment:
                 self.broken = True
             self.outer.terminate(exit_value)
         else:
-            raise SplException("Return outside function.")
+            raise lib.SplException("Return outside function.")
 
     def is_terminated(self):
         if self.scope_type == FUNCTION_SCOPE:
@@ -198,7 +200,7 @@ class Environment:
         elif self.is_sub():
             return self.outer.terminate_value()
         else:
-            raise SplException("Terminate value outside function.")
+            raise lib.SplException("Terminate value outside function.")
 
     def break_loop(self):
         if self.scope_type == LOOP_SCOPE:
@@ -206,7 +208,7 @@ class Environment:
         elif self.is_sub():
             self.outer.break_loop()
         else:
-            raise SplException("Break not inside loop.")
+            raise lib.SplException("Break not inside loop.")
 
     def pause_loop(self):
         if self.scope_type == LOOP_SCOPE:
@@ -214,7 +216,7 @@ class Environment:
         elif self.is_sub():
             self.outer.pause_loop()
         else:
-            raise SplException("Continue not inside loop.")
+            raise lib.SplException("Continue not inside loop.")
 
     def resume_loop(self):
         if self.scope_type == LOOP_SCOPE:
@@ -222,66 +224,63 @@ class Environment:
         elif self.is_sub():
             self.outer.resume_loop()
         else:
-            raise SplException("Not inside loop.")
+            raise lib.SplException("Not inside loop.")
 
-    def define_function(self, key, value, lf, override: bool):
-        if not override and key[0].islower() and self.contains_key(key):
-            stl.print_waring("Warning: re-declaring function '{}' in '{}', at line {}".format(key, lf[1], lf[0]))
+    def define_function(self, key, value, lf, options: dict):
+        if not options["override"] and not options["suppress"] and key[0].islower() and self.contains_key(key):
+            lib.print_waring("Warning: re-declaring method '{}' in '{}', at line {}".format(key, lf[1], lf[0]))
         self.variables[key] = value
 
     def define_var(self, key, value, lf):
         if self.contains_key(key):
-            raise SplException("Name '{}' is already defined in this scope, in '{}', at line {}"
-                               .format(key, lf[1], lf[0]))
+            raise lib.SplException("Name '{}' is already defined in this scope, in '{}', at line {}"
+                                   .format(key, lf[1], lf[0]))
         else:
             self.variables[key] = value
 
     def define_const(self, key, value, lf):
         # if key in self.constants:
         if self.contains_key(key):
-            raise SplException("Name '{}' is already defined in this scope, in {}, at line {}"
-                               .format(key, lf[1], lf[0]))
+            raise lib.SplException("Name '{}' is already defined in this scope, in {}, at line {}"
+                                   .format(key, lf[1], lf[0]))
         else:
             self.constants[key] = value
 
     def assign(self, key, value, lf):
-        if key in self.constants:
-            raise SplException("Re-assignment to constant values, in '{}', at line {}"
-                               .format(key, lf[1], lf[0]))
-        elif key in self.variables:
+        if key in self.variables:
             self.variables[key] = value
         else:
             out = self.outer
             while out:
-                if key in out.constants:
-                    raise SplException("Re-assignment to constant values, in '{}', at line {}"
-                                       .format(key, lf[1], lf[0]))
                 if key in out.variables:
                     out.variables[key] = value
                     return
                 out = out.outer
-            raise SplException("Name '{}' is not defined, in '{}', at line {}"
-                               .format(key, lf[1], lf[0]))
+            raise lib.SplException("Name '{}' is not defined, in '{}', at line {}"
+                                   .format(key, lf[1], lf[0]))
 
     def inner_get(self, key: str):
+        """
+        Internally gets a value stored in this scope, 'NULLPTR' if not found.
+
+        :param key:
+        :return:
+        """
         if key in self.constants:
             return self.constants[key]
-        elif key in self.variables:
+        if key in self.variables:
             return self.variables[key]
 
         out = self.outer
         while out:
             if key in out.constants:
                 return out.constants[key]
-            elif key in out.variables:
+            if key in out.variables:
                 return out.variables[key]
 
             out = out.outer
 
-        if key in self.heap:
-            return self.heap[key]
-        else:
-            return NULLPTR
+        return self.heap.get(key, NULLPTR)
 
     def get(self, key: str, line_file: tuple):
         """
@@ -294,17 +293,14 @@ class Environment:
         v = self.inner_get(key)
         # print(key + str(v))
         if v is NULLPTR:
-            raise SplException("Name '{}' is not defined, in file {}, at line {}"
-                               .format(key, line_file[1], line_file[0]))
+            raise lib.SplException("Name '{}' is not defined, in file {}, at line {}"
+                                   .format(key, line_file[1], line_file[0]))
         else:
             return v
 
     def contains_key(self, key: str):
         v = self.inner_get(key)
-        if v is NULLPTR:
-            return False
-        else:
-            return True
+        return v is not NULLPTR
 
     def get_heap(self, class_name):
         return self.heap[class_name]
@@ -394,9 +390,6 @@ class NullPointer:
     def __init__(self):
         pass
 
-    # def __eq__(self, other):
-    #     return isinstance(other, NullPointer)
-
     def __str__(self):
         return "NullPointer"
 
@@ -415,353 +408,49 @@ class Undefined:
         return self.__str__()
 
 
-class NativeType:
+class NativeInvokes(lib.NativeType):
     def __init__(self):
-        pass
+        lib.NativeType.__init__(self)
 
     def type_name(self):
-        raise NotImplementedError
+        return "natives"
 
-
-class Iterable:
-    def __init__(self):
-        pass
-
-    def __iter__(self):
-        raise NotImplementedError
-
-
-class String(NativeType, Iterable):
-    length = 0
-
-    def __init__(self, lit):
-        NativeType.__init__(self)
-
-        self.literal: str = lit
-        self.length = len(lit)
-
-    def __iter__(self):
-        return (c for c in self.literal)
-
-    def __str__(self):
-        return "'" + self.literal + "'"
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __eq__(self, other):
-        return isinstance(other, String) and self.literal == other.literal
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __add__(self, other):
-        if isinstance(other, String):
-            return String(self.literal + other.literal)
+    def str_join(self, s: lib.String, itr):
+        if isinstance(itr, lib.Iterable):
+            return lib.String(s.literal.join([x.text() for x in itr]))
         else:
-            raise TypeException("Cannot add <string> with {}".format(typeof(other)))
+            raise lib.TypeException("Object is not a native-iterable object.")
 
-    def __getitem__(self, index):
-        return self.literal[index]
 
-    def text(self):
-        return self.literal
+# Native functions with dependencies
 
-    def contains(self, char):
-        return char in self.literal
+def to_str(v) -> lib.String:
+    if isinstance(v, ClassInstance):
+        fc: ast.FuncCall = ast.FuncCall(LINE_FILE, "__str__")
+        block: ast.BlockStmt = ast.BlockStmt(LINE_FILE)
+        fc.args = block
+        func: Function = v.env.get("__str__", LINE_FILE)
+        result: lib.String = call_function(fc, func, v.env, None)
+        return result
+    else:
+        return lib.String(v)
 
-    def type_name(self):
-        return "string"
 
-
-class List(NativeType, Iterable):
-    def __init__(self, *initial):
-        NativeType.__init__(self)
-
-        self.list = [*initial]
-
-    def __iter__(self):
-        return (x for x in self.list)
-
-    def __str__(self):
-        return str(self.list)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __getitem__(self, item):
-        return self.list[item]
-
-    def __setitem__(self, key, value):
-        self.list[key] = value
-
-    def set(self, key, value):
-        self.__setitem__(key, value)
-
-    def get(self, key):
-        self.__getitem__(key)
-
-    def type_name(self):
-        return "list"
-
-    def append(self, value):
-        self.list.append(value)
-
-    def contains(self, item):
-        return item in self.list
-
-    def insert(self, index, item):
-        self.list.insert(index, item)
-
-    def pop(self, index=-1):
-        return self.list.pop(index)
-
-    def clear(self):
-        return self.list.clear()
-
-    def extend(self, lst):
-        self.list.extend(lst)
-
-    def length(self):
-        return len(self.list)
-
-    def sort(self):
-        self.list.sort()
-
-
-class Pair(NativeType, Iterable):
-    def __init__(self):
-        NativeType.__init__(self)
-
-        self.pair = {}
-
-    def __iter__(self):
-        return (k for k in self.pair)
-
-    def __str__(self):
-        return str(self.pair)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __getitem__(self, item):
-        return self.pair[item]
-
-    def __setitem__(self, key, value):
-        self.pair[key] = value
-
-    def contains(self, item):
-        return item in self.pair
-
-    def size(self):
-        return len(self.pair)
-
-    def type_name(self):
-        return "pair"
-
-
-class Set(NativeType, Iterable):
-    def __init__(self):
-        NativeType.__init__(self)
-
-        self.set = set()
-
-    def __iter__(self):
-        return (v for v in self.set)
-
-    def __str__(self):
-        return str(self.set)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def size(self):
-        return len(self.set)
-
-    def add(self, item):
-        self.set.add(item)
-
-    def pop(self):
-        self.set.pop()
-
-    def clear(self):
-        self.set.clear()
-
-    def union(self, other):
-        self.set.union(other)
-
-    def update(self, s):
-        self.set.update(s)
-
-    def contains(self, item):
-        return item in self.set
-
-    def type_name(self):
-        return "set"
-
-
-class System(NativeType):
-    argv: List
-    encoding: str
-
-    def __init__(self, argv_: List, enc: str):
-        NativeType.__init__(self)
-
-        type(self).argv = argv_
-        type(self).encoding = enc
-
-    def time(self):
-        return int(time_lib.time() * 1000)
-
-    def type_name(self):
-        return "system"
-
-
-class File(NativeType):
-    """
-    :type fp:
-    """
-
-    def __init__(self, fp, mode):
-        NativeType.__init__(self)
-
-        self.mode = mode
-        self.fp = fp
-
-    def read_one(self):
-        r = self.fp.read(1)
-        if r:
-            if self.mode == "r":
-                return String(r)
-            elif self.mode == "rb":
-                return int(self.fp.read(1)[0])
-            else:
-                raise IOException("Wrong mode")
-        else:
-            return None
-
-    def read(self):
-        if self.mode == "r":
-            return String(self.fp.read())
-        elif self.mode == "rb":
-            return List(*list(self.fp.read()))
-        else:
-            raise IOException("Wrong mode")
-
-    def readline(self):
-        if self.mode == "r":
-            s = self.fp.readline()
-            if s:
-                return String(s)
-            else:
-                return None
-        else:
-            raise IOException("Wrong mode")
-
-    def write(self, s):
-        if "w" in self.mode:
-            if "b" in self.mode:
-                self.fp.write(bytes(s))
-            else:
-                self.fp.write(str(s))
-            return None
-        else:
-            raise IOException("Wrong mode")
-
-    def flush(self):
-        if "w" in self.mode:
-            self.fp.flush()
-            return None
-        else:
-            raise IOException("Wrong mode")
-
-    def close(self):
-        self.fp.close()
-        return None
-
-    def type_name(self):
-        return "file"
-
-
-# Native functions
-
-def print_ln(*args):
-    if len(args) > 0:
-        a0 = args[0]
-        s = stl.replace_bool_none(str(a0))
-        # print(s, *args[1:])
-        sys.stdout.write(s)
-    sys.stdout.write('\n')
-    sys.stdout.flush()
-    return None
-
-
-def print_(*args):
-    a0 = args[0]
-    s = stl.replace_bool_none(str(a0))
-    sys.stdout.write(s)
-    return None
-
-
-def input_(*prompt):
-    s = input(*prompt)
-    return String(s)
-
-
-def typeof(obj) -> String:
+def typeof(obj) -> lib.String:
     if obj is None:
-        return String("void")
+        return lib.String("void")
     elif isinstance(obj, ClassInstance):
-        return String(obj.class_name)
+        return lib.String(obj.class_name)
     elif isinstance(obj, bool):
-        return String("boolean")
-    elif isinstance(obj, NativeType):
-        return String(obj.type_name())
+        return lib.String("boolean")
+    elif isinstance(obj, lib.NativeType):
+        return lib.String(obj.type_name())
     else:
         t = type(obj)
-        return String(t.__name__)
+        return lib.String(t.__name__)
 
 
-def make_list(*initial_elements):
-    lst = List(*initial_elements)
-    return lst
-
-
-def make_pair():
-    pair = Pair()
-    return pair
-
-
-def make_set():
-    s = Set()
-    return s
-
-
-def to_int(v):
-    return int(v)
-
-
-def to_float(v):
-    return float(v)
-
-
-def to_str(v):
-    return String(str(v))
-
-
-def to_boolean(v):
-    return True if v else False
-
-
-def f_open(file, mode=String("r"), encoding=String("utf-8")):
-    if not mode.contains("b"):
-        f = open(str(file), str(mode), encoding=str(encoding))
-    else:
-        f = open(str(file), str(mode))
-    return File(f, str(mode))
-
-
-def eval_(expr: String):
+def eval_(expr: lib.String):
     lexer = lex.Tokenizer()
     lexer.file_name = "expression"
     lexer.script_dir = "expression"
@@ -779,7 +468,7 @@ def dir_(env, obj):
     :param obj:
     :return:
     """
-    lst = List()
+    lst = lib.List()
     if isinstance(obj, Class):
         # instance = inter.ClassInstance(env, obj.class_name)
         create = ast.ClassInit((0, "dir"), obj.class_name)
@@ -792,11 +481,11 @@ def dir_(env, obj):
         del instance
         ID_COUNTER.decrement()
     elif isinstance(obj, NativeFunction):
-        for nt in NativeType.__subclasses__():
+        for nt in lib.NativeType.__subclasses__():
             if nt.type_name(nt) == obj.name:
                 lst.extend(dir(nt))
-    elif isinstance(obj, NativeType):
-        for nt in NativeType.__subclasses__():
+    elif isinstance(obj, lib.NativeType):
+        for nt in lib.NativeType.__subclasses__():
             if nt.type_name(nt) == obj.type_name():
                 lst.extend(dir(nt))
     lst.sort()
@@ -804,15 +493,11 @@ def dir_(env, obj):
 
 
 def getcwf(env: Environment):
-    return env.get_heap("cwf")
+    return lib.String(env.get_heap("cwf"))
 
 
 def is_main(env: Environment):
     return env.get_heap("system").argv[0] == getcwf(env)
-
-
-def exit_(code=0):
-    exit(code)
 
 
 def help_(env, obj):
@@ -883,48 +568,6 @@ def _filter_doc(lines: [str], pos: int):
     return lst
 
 
-# Exceptions
-
-class InterpretException(Exception):
-    def __init__(self, msg=""):
-        Exception.__init__(self, msg)
-
-
-class SplException(InterpretException):
-    def __init__(self, msg=""):
-        InterpretException.__init__(self, msg)
-
-
-class TypeException(SplException):
-    def __init__(self, msg=""):
-        SplException.__init__(self, msg)
-
-
-class IndexOutOfRangeException(SplException):
-    def __init__(self, msg=""):
-        SplException.__init__(self, msg)
-
-
-class IOException(SplException):
-    def __init__(self, msg=""):
-        SplException.__init__(self, msg)
-
-
-class AbstractMethodException(SplException):
-    def __init__(self, msg=""):
-        SplException.__init__(self, msg)
-
-
-class UnauthorizedException(SplException):
-    def __init__(self, msg=""):
-        SplException.__init__(self, msg)
-
-
-class ArgumentException(SplException):
-    def __init__(self, msg=""):
-        SplException.__init__(self, msg)
-
-
 # Interpreter
 
 NULLPTR = NullPointer()
@@ -962,9 +605,7 @@ class ClassInstance:
 
     def __str__(self):
         if self.env.contains_key("__str__"):
-            call = ast.FuncCall(LINE_FILE, "__str__")
-            call.args = []
-            return str(evaluate(call, self.env))
+            return to_str(self).literal
         else:
             attr = self.env.attributes()
             attr.pop("this")
@@ -1023,11 +664,11 @@ def eval_for_each_loop(node: ast.ForLoopStmt, env: Environment):
         evaluate(inv, title_scope)
         invariant = inv.left.name
     else:
-        raise SplException("Unknown type for for-each loop invariant")
+        raise lib.SplException("Unknown type for for-each loop invariant")
     target = con.lines[1]
     # print(target)
     iterable = evaluate(target, title_scope)
-    if isinstance(iterable, Iterable):
+    if isinstance(iterable, lib.Iterable):
         result = None
         for x in iterable:
             block_scope.invalidate()
@@ -1061,7 +702,7 @@ def eval_for_each_loop(node: ast.ForLoopStmt, env: Environment):
         del block_scope
         return result
     else:
-        raise SplException(
+        raise lib.SplException(
             "For-each loop on non-iterable objects, in {}, at line {}".format(node.file, node.line_num))
 
 
@@ -1157,11 +798,11 @@ def assignment(node: ast.AssignmentNode, env: Environment):
         elif node.level == ast.VAR:
             env.define_var(key.name, value, lf)
         else:
-            raise SplException("Unknown variable level")
+            raise lib.SplException("Unknown variable level")
         return value
     elif t == ast.DOT:
         if node.level == ast.CONST:
-            raise SplException("Unsolved syntax: assigning a constant to an instance")
+            raise lib.SplException("Unsolved syntax: assigning a constant to an instance")
         node = key
         name_lst = []
         while isinstance(node, ast.Dot):
@@ -1176,14 +817,14 @@ def assignment(node: ast.AssignmentNode, env: Environment):
         scope.assign(name_lst[-1], value, lf)
         return value
     else:
-        raise InterpretException("Unknown assignment, in {}, at line {}".format(node.file, node.line_num))
+        raise lib.InterpretException("Unknown assignment, in {}, at line {}".format(node.file, node.line_num))
 
 
 def init_class(node: ast.ClassInit, env: Environment):
     cla: Class = env.get_heap(node.class_name)
 
     if cla.abstract:
-        raise SplException("Abstract class is not instantiable")
+        raise lib.SplException("Abstract class is not instantiable")
 
     scope = Environment(CLASS_SCOPE, cla.outer_env)
     # scope.outer = env
@@ -1227,7 +868,7 @@ def eval_func_call(node: ast.FuncCall, env: Environment):
         else:
             return result
     else:
-        raise InterpretException("Not a function call, in {}, at line {}.".format(node.file, node.line_num))
+        raise lib.InterpretException("Not a function call, in {}, at line {}.".format(node.file, node.line_num))
 
 
 def call_function(call: ast.FuncCall, func: Function, func_parent_env: Environment, call_env: Environment) \
@@ -1244,8 +885,8 @@ def call_function(call: ast.FuncCall, func: Function, func_parent_env: Environme
     lf = call.line_num, call.file
 
     if func.abstract:
-        raise AbstractMethodException("Abstract method is not callable, in '{}', at line {}."
-                                      .format(call.file, call.line_num))
+        raise lib.AbstractMethodException("Abstract method is not callable, in '{}', at line {}."
+                                          .format(call.file, call.line_num))
 
     scope = Environment(FUNCTION_SCOPE, func.outer_scope)
     scope.scope_name = "Function scope<{}>".format(call.f_name)
@@ -1265,8 +906,8 @@ def call_function(call: ast.FuncCall, func: Function, func_parent_env: Environme
     # print(pos_args)
     # print(kwargs)
     if len(pos_args) + len(kwargs) > len(params):
-        raise ArgumentException("Too many arguments for function '{}', in file '{}', at line {}"
-                                .format(call.f_name, call.file, call.line_num))
+        raise lib.ArgumentException("Too many arguments for function '{}', in file '{}', at line {}"
+                                    .format(call.f_name, call.file, call.line_num))
     for i in range(len(params)):
         # Assign function arguments
         param: ParameterPair = params[i]
@@ -1277,8 +918,8 @@ def call_function(call: ast.FuncCall, func: Function, func_parent_env: Environme
         elif param.preset is not INVALID:
             arg = param.preset
         else:
-            raise ArgumentException("Function '{}' missing a positional argument '{}', in file '{}', at line {}"
-                                    .format(call.f_name, param.name, call.file, call.line_num))
+            raise lib.ArgumentException("Function '{}' missing a positional argument '{}', in file '{}', at line {}"
+                                        .format(call.f_name, param.name, call.file, call.line_num))
 
         e = evaluate(arg, call_env)
         scope.define_var(param.name, e, lf)
@@ -1295,22 +936,22 @@ def eval_dot(node: ast.Dot, env: Environment):
     if t == ast.NAME_NODE:
         obj: ast.NameNode
         if obj.name == "this":
-            raise UnauthorizedException("Access 'this' from outside")
-        if isinstance(instance, NativeType):
+            raise lib.UnauthorizedException("Access 'this' from outside")
+        if isinstance(instance, lib.NativeType):
             return native_types_invoke(instance, obj)
         elif isinstance(instance, ClassInstance):
             attr = instance.env.get(obj.name, (node.line_num, node.file))
             return attr
         else:
-            raise InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
+            raise lib.InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
     elif t == ast.FUNCTION_CALL:
         obj: ast.FuncCall
-        if isinstance(instance, NativeType):
+        if isinstance(instance, lib.NativeType):
             try:
                 return native_types_call(instance, obj, env)
             except IndexError as ie:
-                raise IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
-                                               .format(node.file, node.line_num))
+                raise lib.IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
+                                                   .format(node.file, node.line_num))
         elif isinstance(instance, ClassInstance):
             # instance.env.use_temp_var = True
             # for arg in obj.args.lines:
@@ -1322,9 +963,9 @@ def eval_dot(node: ast.Dot, env: Environment):
             env.assign("=>", result, lf)
             return result
         else:
-            raise InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
+            raise lib.InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
     else:
-        raise InterpretException("Unknown Syntax")
+        raise lib.InterpretException("Unknown Syntax")
 
 
 def arithmetic(left, right_node: ast.Node, symbol, env: Environment):
@@ -1334,14 +975,14 @@ def arithmetic(left, right_node: ast.Node, symbol, env: Environment):
         elif isinstance(left, int) or isinstance(left, float):
             return num_and_or(left, right_node, symbol, env)
         else:
-            raise InterpretException("Operator '||' '&&' do not support type.")
+            raise lib.InterpretException("Operator '||' '&&' do not support type.")
     else:
         right = evaluate(right_node, env)
         if left is None or isinstance(left, bool):
             return primitive_arithmetic(left, right, symbol)
         elif isinstance(left, int) or isinstance(left, float):
             return num_arithmetic(left, right, symbol)
-        elif isinstance(left, String):
+        elif isinstance(left, lib.String):
             return string_arithmetic(left, right, symbol)
         elif isinstance(left, ClassInstance):
             return instance_arithmetic(left, right, symbol, env, right_node)
@@ -1386,7 +1027,7 @@ def string_arithmetic(left, right, symbol):
     elif symbol == "instanceof":
         return isinstance(right, NativeFunction) and right.name == "string"
     else:
-        raise TypeException("Unsupported operation between string and " + typeof(right).literal)
+        raise lib.TypeException("Unsupported operation between string and " + typeof(right).literal)
 
     return result
 
@@ -1401,12 +1042,12 @@ def raw_type_comparison(left, right, symbol):
     elif symbol == "!==":
         result = left != right
     elif symbol == "instanceof":
-        if isinstance(right, String):
+        if isinstance(right, lib.String):
             return type(left).__name__ == right.literal
         else:
             return False
     else:
-        raise InterpretException("Unsupported operation for raw type " + left.type_name())
+        raise lib.TypeException("Unsupported operation for raw type " + left.type_name())
 
     return result
 
@@ -1419,7 +1060,7 @@ def primitive_and_or(left, right_node: ast.Node, symbol, env: Environment):
         elif symbol == "||":
             return True
         else:
-            raise InterpretException("Unsupported operation for primitive type")
+            raise lib.TypeException("Unsupported operation for primitive type")
     else:
         if symbol == "&&":
             return False
@@ -1427,7 +1068,7 @@ def primitive_and_or(left, right_node: ast.Node, symbol, env: Environment):
             right = evaluate(right_node, env)
             return right
         else:
-            raise InterpretException("Unsupported operation for primitive type")
+            raise lib.TypeException("Unsupported operation for primitive type")
 
 
 def primitive_arithmetic(left, right, symbol):
@@ -1442,7 +1083,7 @@ def primitive_arithmetic(left, right, symbol):
     elif symbol == "instanceof":
         return isinstance(right, NativeFunction) and PRIMITIVE_FUNC_TABLE[right.name] == type(left).__name__
     else:
-        raise InterpretException("Unsupported operation for primitive type")
+        raise lib.TypeException("Unsupported operation for primitive type")
 
     return result
 
@@ -1455,7 +1096,7 @@ def num_and_or(left, right_node: ast.Node, symbol, env: Environment):
             right = evaluate(right_node, env)
             return right
         else:
-            raise InterpretException("No such symbol")
+            raise lib.TypeException("No such symbol")
     else:
         if symbol == "&&":
             return False
@@ -1463,14 +1104,21 @@ def num_and_or(left, right_node: ast.Node, symbol, env: Environment):
             right = evaluate(right_node, env)
             return right
         else:
-            raise InterpretException("No such symbol")
+            raise lib.TypeException("No such symbol")
+
+
+def divide(a, b):
+    if isinstance(a, int) and isinstance(b, int):
+        return a // b
+    else:
+        return a / b
 
 
 ARITHMETIC_TABLE = {
     "+": lambda left, right: left + right,
     "-": lambda left, right: left - right,
     "*": lambda left, right: left * right,
-    "/": lambda left, right: left / right,
+    "/": divide,  # a special case in case to produce integer if int/int
     "%": lambda left, right: left % right,
     "==": lambda left, right: left == right,
     "!=": lambda left, right: left != right,
@@ -1508,13 +1156,14 @@ def class_inheritance(cla: Class, env: Environment, scope: Environment):
     evaluate(cla.body, scope)  # this step just fills the scope
 
 
-def native_types_call(instance: NativeType, method: ast.FuncCall, env: Environment):
+def native_types_call(instance: lib.NativeType, method: ast.FuncCall, env: Environment):
     """
+    Calls a method of a native object.
 
-    :param instance:
-    :param method:
-    :param env:
-    :return:
+    :param instance: the NativeType object instance
+    :param method: the method being called
+    :param env: the current working environment
+    :return: the returning value of the method called
     """
     args = []
     for x in method.args.lines:
@@ -1522,12 +1171,17 @@ def native_types_call(instance: NativeType, method: ast.FuncCall, env: Environme
     name = method.f_name
     type_ = type(instance)
     method = getattr(type_, name)
-    res = method(instance, *args)
+    params: tuple = method.__code__.co_varnames
+    if "env" in params and params.index("env") == 1:
+        res = method(instance, env, *args)
+    else:
+        res = method(instance, *args)
     return res
 
 
-def native_types_invoke(instance: NativeType, node: ast.NameNode):
+def native_types_invoke(instance: lib.NativeType, node: ast.NameNode):
     """
+    Invokes an attribute of a native type.
 
     :param instance:
     :param node:
@@ -1549,7 +1203,7 @@ def eval_boolean_stmt(node: ast.BooleanStmt, env):
     elif node.value == "false":
         return False
     else:
-        raise InterpretException("Unknown boolean value")
+        raise lib.InterpretException("Unknown boolean value")
 
 
 def eval_anonymous_call(node: ast.AnonymousCall, env: Environment):
@@ -1610,8 +1264,8 @@ def eval_for_loop_stmt(node: ast.ForLoopStmt, env: Environment):
     elif arg_num == 2:
         return eval_for_each_loop(node, env)
     else:
-        raise InterpretException("Wrong argument number for 'for' loop, in {}, at line {}"
-                                 .format(node.file, node.line_num))
+        raise lib.ArgumentException("Wrong argument number for 'for' loop, in {}, at line {}"
+                                    .format(node.file, node.line_num))
 
 
 def eval_def(node: ast.DefStmt, env: Environment):
@@ -1629,16 +1283,16 @@ def eval_def(node: ast.DefStmt, env: Environment):
             name = p.left.name
             value = evaluate(p.right, env)
         else:
-            raise SplException("Unexpected syntax in function parameter, in file '{}', at line {}."
-                               .format(node.file, node.line_num))
+            raise lib.SplException("Unexpected syntax in function parameter, in file '{}', at line {}."
+                                   .format(node.file, node.line_num))
         pair = ParameterPair(name, value)
         params_lst.append(pair)
 
     f = Function(params_lst, node.body, env, node.abstract)
     f.file = node.file
     f.line_num = node.line_num
-    override = "Override" in node.titles
-    env.define_function(node.name, f, (node.line_num, node.file), override)
+    options = {"override": "Override" in node.tags, "suppress": "Suppress" in node.tags}
+    env.define_function(node.name, f, (node.line_num, node.file), options)
 
     return f
 
@@ -1664,12 +1318,12 @@ def raise_exception(e: Exception):
     raise e
 
 
-SELF_RETURN_TABLE = {int, float, bool, String, List, Set, Pair, System, File, ClassInstance}
+SELF_RETURN_TABLE = {int, float, bool, lib.String, lib.List, lib.Set, lib.Pair, lib.System, lib.File, ClassInstance}
 
 NODE_TABLE = {
     ast.INT_NODE: lambda n, env: n.value,
     ast.FLOAT_NODE: lambda n, env: n.value,
-    ast.LITERAL_NODE: lambda n, env: String(n.literal),
+    ast.LITERAL_NODE: lambda n, env: lib.String(n.literal),
     ast.NAME_NODE: lambda n, env: env.get(n.name, (n.line_num, n.file)),
     ast.BOOLEAN_STMT: eval_boolean_stmt,
     ast.NULL_STMT: lambda n, env: None,
@@ -1690,8 +1344,6 @@ NODE_TABLE = {
     ast.FUNCTION_CALL: eval_func_call,
     ast.CLASS_STMT: eval_class_stmt,
     ast.CLASS_INIT: init_class,
-    ast.INVALID_TOKEN: lambda n, env: raise_exception(InterpretException("Argument error, in {}, at line {}"
-                                                                         .format(n.file, n.line_num))),
     ast.THROW_STMT: lambda n, env: raise_exception(RuntimeException(evaluate(n.value, env))),
     ast.TRY_STMT: eval_try_catch,
     ast.JUMP_NODE: eval_jump,
@@ -1716,5 +1368,7 @@ def evaluate(node: ast.Node, env: Environment):
     t = node.node_type
     node.execution += 1
     tn = NODE_TABLE[t]
-    env.add_heap("cwf", String(node.file))
+    env.add_heap("cwf", node.file)
     return tn(node, env)
+
+# Processes before run

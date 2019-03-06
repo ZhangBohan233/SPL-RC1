@@ -181,7 +181,8 @@ class Parser:
                         if isinstance(next_token, stl.IdToken) and next_token.symbol in ABSTRACT_IDENTIFIER:
                             is_abstract = True
                         else:
-                            raise stl.ParseException()
+                            raise stl.ParseException("Unexpected token 'abstract', in file '{}', at line {}"
+                                                     .format(line[1], line[0]))
                             # parser.add_abstract(line)
                     elif sym == "new":
                         i += 1
@@ -268,6 +269,8 @@ class Parser:
                 else:
                     stl.unexpected_token(token)
                 i += 1
+            except stl.ParseException as e:
+                raise e
             except Exception:
                 raise stl.ParseException("Parse error in '{}', at line {}".format(self.tokens[i].file_name(),
                                                                                   self.tokens[i].line_number()))
