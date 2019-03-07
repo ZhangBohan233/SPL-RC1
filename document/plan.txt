@@ -1,7 +1,7 @@
 ===== 1.4 =====
 
-* assert
-* unpack operator
+* assert   ...done
+* unpack operator   ...done
 * threading   ...done
 * integer underline separator   ...done
 * string format   ...done

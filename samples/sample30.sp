@@ -1,12 +1,12 @@
 import "queue"
 import "exception"
 
-let a = new LinkedList();
-for (let i = 1; i < 10; i += 1) {
+var a = new LinkedList();
+for (var i = 1; i < 10; i += 1) {
     a.add_last(i);
 }
 
-let b;
+var b;
 if (true) {
     b = 2;
 } else {
@@ -15,8 +15,8 @@ if (true) {
 
 println(b);
 
-for (let i; a) {
-    for (let j = 1; j < 10; j += 1) {
+for (var i; a) {
+    for (var j = 1; j < 10; j += 1) {
         print(j);
         print('*');
         print(i);
@@ -30,8 +30,8 @@ for (let i; a) {
     println();
 }
 
-def ff(a) {
-    for (let i = 0; i < 10; i += 1) {
+def ff(g) {
+    for (var i = 0; i < 10; i += 1) {
         if (i == 4) {
             return null;
         }
@@ -41,7 +41,7 @@ def ff(a) {
 
 println(ff(4));
 
-let x;
+var x;
 try {
     x = 5;
     throw new Exception();

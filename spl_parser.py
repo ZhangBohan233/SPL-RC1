@@ -212,11 +212,18 @@ class Parser:
                         par_count += 1
                     elif sym == "finally":
                         parser.add_finally(line)
+                    elif sym == "assert":
+                        parser.add_assert(line)
                     elif sym in stl.BINARY_OPERATORS:
                         if sym == "-" and (i == 0 or is_unary(self.tokens[i - 1])):
                             parser.add_neg(line, extra_precedence)
-                        # elif sym == "*" and (i == 0 or is_unary(self.tokens[i - 1])):
-                        #     parser.add_unpack(line, extra_precedence)
+                        elif sym == "*" and (i == 0 or is_unary(self.tokens[i - 1])):
+                            next_token = self.tokens[i + 1]
+                            if isinstance(next_token, stl.IdToken) and next_token.symbol == "*":
+                                parser.add_kw_unpack(line)
+                                i += 1
+                            else:
+                                parser.add_unpack(line)
                         else:
                             parser.add_operator(line, sym, extra_precedence)
                     elif sym in stl.UNARY_OPERATORS:

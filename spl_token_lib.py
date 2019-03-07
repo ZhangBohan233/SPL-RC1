@@ -11,7 +11,7 @@ OTHERS = {"=", "@", ":"}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
 RESERVED = {"class", "function", "def", "if", "else", "new", "extends", "return", "break", "continue",
             "true", "false", "null", "operator", "while", "for", "import", "throw", "try", "catch", "finally",
-            "abstract", "const", "var"}
+            "abstract", "const", "var", "assert"}
 LAZY = {"&&", "||"}
 OMITS = {"\n", "\r", "\t", " "}
 OP_EQ = {"+", "-", "*", "/", "%", "&", "^", "|", "<<", ">>"}

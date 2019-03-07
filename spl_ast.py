@@ -1,11 +1,11 @@
 PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "==": 20, ">": 25, "<": 25, ">=": 25, "<=": 25,
               "!=": 20, "&&": 5, "||": 5, "&": 12, "^": 11, "|": 10,
-              "<<": 40, ">>": 40, "unpack": 200,
+              "<<": 40, ">>": 40, "unpack": 200, "kw_unpack": 200,
               ".": 500, "!": 200, "neg": 200, "return": 1, "throw": 1,
               "+=": 2, "-=": 2, "*=": 2, "/=": 2, "%=": 2,
               "&=": 2, "^=": 2, "|=": 2, "<<=": 2, ">>=": 2, "=>": 500,
-              "===": 20, "!==": 20, "instanceof": 25}
+              "===": 20, "!==": 20, "instanceof": 25, "assert": 1}
 
 MULTIPLIER = 1000
 
@@ -39,9 +39,11 @@ THROW_STMT = 26
 TRY_STMT = 27
 CATCH_STMT = 28
 TYPE_NODE = 29
-# UNPACK_OPERATOR = 30
 JUMP_NODE = 30
 UNDEFINED_NODE = 31
+UNPACK_OPERATOR = 32
+KW_UNPACK_OPERATOR = 33
+ASSERT_STMT = 34
 
 ASSIGN = 0
 CONST = 1
@@ -116,13 +118,21 @@ class AbstractSyntaxTree:
             node = NotExpr(line, extra_precedence)
             self.stack.append(node)
 
-    # def add_unpack(self, line, extra_precedence):
-    #     if self.inner:
-    #         self.inner.add_unpack(line, extra_precedence)
-    #     else:
-    #         self.in_expr = True
-    #         node = UnpackOperator(line, extra_precedence)
-    #         self.stack.append(node)
+    def add_unpack(self, line):
+        if self.inner:
+            self.inner.add_unpack(line)
+        else:
+            self.in_expr = True
+            node = UnpackOperator(line)
+            self.stack.append(node)
+
+    def add_kw_unpack(self, line):
+        if self.inner:
+            self.inner.add_kw_unpack(line)
+        else:
+            self.in_expr = True
+            node = KwUnpackOperator(line)
+            self.stack.append(node)
 
     def add_assignment(self, line, var_level):
         if self.inner:
@@ -288,6 +298,14 @@ class AbstractSyntaxTree:
             self.in_expr = True
             rtn = ReturnStmt(line)
             self.stack.append(rtn)
+
+    def add_assert(self, line):
+        if self.inner:
+            self.inner.add_assert(line)
+        else:
+            self.in_expr = True
+            ase = AssertStmt(line)
+            self.stack.append(ase)
 
     def add_break(self, line):
         if self.inner:
@@ -679,11 +697,20 @@ class NotExpr(UnaryOperator):
         self.operation = "!"
 
 
-# class UnpackOperator(LeafNode):
-#     def __init__(self, line):
-#         LeafNode.__init__(self, line)
-#
-#         node_type = UNPACK_OPERATOR
+class UnpackOperator(UnaryOperator):
+    def __init__(self, line):
+        UnaryOperator.__init__(self, line, 0)
+
+        self.node_type = UNPACK_OPERATOR
+        self.operation = "unpack"
+
+
+class KwUnpackOperator(UnaryOperator):
+    def __init__(self, line):
+        UnaryOperator.__init__(self, line, 0)
+
+        self.node_type = KW_UNPACK_OPERATOR
+        self.operation = "kw_unpack"
 
 
 class ReturnStmt(UnaryOperator):
@@ -692,6 +719,14 @@ class ReturnStmt(UnaryOperator):
 
         self.node_type = RETURN_STMT
         self.operation = "return"
+
+
+class AssertStmt(UnaryOperator):
+    def __init__(self, line):
+        UnaryOperator.__init__(self, line, 0)
+
+        self.node_type = ASSERT_STMT
+        self.operation = "assert"
 
 
 class BreakStmt(LeafNode):

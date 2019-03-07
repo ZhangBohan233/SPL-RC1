@@ -100,6 +100,9 @@ class String(NativeType, Iterable):
     def __eq__(self, other):
         return isinstance(other, String) and self.literal == other.literal
 
+    def __hash__(self):
+        return hash(self.literal)
+
     def __ne__(self, other):
         return not self.__eq__(other)
 
@@ -452,6 +455,11 @@ class StringFormatException(SplException):
         SplException.__init__(self, msg)
 
 
+class AssertionException(SplException):
+    def __init__(self, msg=""):
+        SplException.__init__(self, msg)
+
+
 def print_ln(*args):
     if len(args) > 0:
         print_(*args)
@@ -521,3 +529,22 @@ def f_open(file, mode=String("r"), encoding=String("utf-8")):
 class InvalidArgument:
     def __init__(self):
         pass
+
+    def __str__(self):
+        return "INVALID"
+
+
+class UnpackArgument:
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return "UNPACK"
+
+
+class KwUnpackArgument:
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return "KW_UNPACK"

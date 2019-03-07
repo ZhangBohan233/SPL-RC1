@@ -18,6 +18,8 @@ SUB_SCOPE = 4
 
 LINE_FILE = 0, "interpreter"
 INVALID = lib.InvalidArgument()
+UNPACK_ARGUMENT = lib.UnpackArgument()
+KW_UNPACK_ARGUMENT = lib.KwUnpackArgument()
 
 
 class Interpreter:
@@ -714,11 +716,13 @@ def eval_for_each_loop(node: ast.ForLoopStmt, env: Environment):
     elif isinstance(iterable, ClassInstance) and is_subclass_of(title_scope.get_heap(iterable.class_name), "Iterable",
                                                                 title_scope):
         ite = ast.FuncCall(lf, "__iter__")
+        ite.args = ast.BlockStmt(LINE_FILE)
         iterator: ClassInstance = evaluate(ite, iterable.env)
         result = None
         while not title_scope.broken:
             block_scope.invalidate()
             nex = ast.FuncCall(lf, "__next__")
+            nex.args = ast.BlockStmt(LINE_FILE)
             res = evaluate(nex, iterator.env)
             if isinstance(res, ClassInstance) and is_subclass_of(title_scope.get_heap(res.class_name), "StopIteration",
                                                                  title_scope):
@@ -922,26 +926,52 @@ def call_function(call: ast.FuncCall, func: Function, func_parent_env: Environme
 
     params = func.params
 
+    if call.args is None:
+        raise lib.SplException("Argument of  function '{}' not set, in file '{}', at line {}."
+                               .format(call.f_name, call.file, call.line_num))
     args = call.args.lines
 
     pos_args = []  # Positional arguments
     kwargs = {}  # Keyword arguments
 
     for arg in args:
-        if isinstance(arg, ast.AssignmentNode):
-            kwargs[arg.left.name] = arg.right
+        if isinstance(arg, ast.Node):
+            if arg.node_type == ast.ASSIGNMENT_NODE:
+                arg: ast.AssignmentNode
+                kwargs[arg.left.name] = arg.right
+            elif arg.node_type == ast.UNPACK_OPERATOR:
+                arg: ast.UnpackOperator
+                args_list: lib.List = call_env.get(arg.value.name, LINE_FILE)
+                for an_arg in args_list:
+                    pos_args.append(an_arg)
+            elif arg.node_type == ast.KW_UNPACK_OPERATOR:
+                arg: ast.KwUnpackOperator
+                args_pair: lib.Pair = call_env.get(arg.value.name, LINE_FILE)
+                # print(args_pair)
+                for an_arg in args_pair:
+                    kwargs[an_arg.literal] = args_pair[an_arg]
+            else:
+                pos_args.append(arg)
         else:
             pos_args.append(arg)
     # print(pos_args)
     # print(kwargs)
-    if len(pos_args) + len(kwargs) > len(params):
-        raise lib.ArgumentException("Too many arguments for function '{}', in file '{}', at line {}"
-                                    .format(call.f_name, call.file, call.line_num))
+    # if len(pos_args) + len(kwargs) > len(params):
+    #     raise lib.ArgumentException("Too many arguments for function '{}', in file '{}', at line {}"
+    #                                 .format(call.f_name, call.file, call.line_num))
+    arg_index = 0
     for i in range(len(params)):
         # Assign function arguments
         param: ParameterPair = params[i]
-        if i < len(pos_args):
-            arg = pos_args[i]
+        if param.preset is UNPACK_ARGUMENT:
+            arg_index = call_unpack(param.name, pos_args, arg_index, scope, call_env, lf)
+            continue
+        elif param.preset is KW_UNPACK_ARGUMENT:
+            call_kw_unpack(param.name, kwargs, scope, call_env, lf)
+            continue
+        elif i < len(pos_args):
+            arg = pos_args[arg_index]
+            arg_index += 1
         elif param.name in kwargs:
             arg = kwargs[param.name]
         elif param.preset is not INVALID:
@@ -952,9 +982,32 @@ def call_function(call: ast.FuncCall, func: Function, func_parent_env: Environme
 
         e = evaluate(arg, call_env)
         scope.define_var(param.name, e, lf)
+
     result = evaluate(func.body, scope)
     func_parent_env.assign("=>", result, lf)
     return result
+
+
+def call_unpack(name: str, pos_args: list, index, scope: Environment, call_env: Environment, lf) -> int:
+    lst = lib.List()
+    while index < len(pos_args):
+        arg = pos_args[index]
+        e = evaluate(arg, call_env)
+        lst.append(e)
+        index += 1
+
+    scope.define_var(name, lst, lf)
+    return index
+
+
+def call_kw_unpack(name: str, kwargs: dict, scope: Environment, call_env: Environment, lf):
+    pair = lib.Pair()
+    for k in kwargs:
+        v = kwargs[k]
+        e = evaluate(v, call_env)
+        pair[lib.String(k)] = e
+
+    scope.define_var(name, pair, lf)
 
 
 def eval_dot(node: ast.Dot, env: Environment):
@@ -1311,6 +1364,14 @@ def eval_def(node: ast.DefStmt, env: Environment):
             p: ast.AssignmentNode
             name = p.left.name
             value = evaluate(p.right, env)
+        elif p.node_type == ast.UNPACK_OPERATOR:
+            p: ast.UnpackOperator
+            name = p.value.name
+            value = UNPACK_ARGUMENT
+        elif p.node_type == ast.KW_UNPACK_OPERATOR:
+            p: ast.KwUnpackOperator
+            name = p.value.name
+            value = KW_UNPACK_ARGUMENT
         else:
             raise lib.SplException("Unexpected syntax in function parameter, in file '{}', at line {}."
                                    .format(node.file, node.line_num))
@@ -1341,6 +1402,12 @@ def eval_jump(node, env: Environment):
     for i in range(len(node.args.lines)):
         env.assign(func.params[i].name, evaluate(node.args.lines[i], env), lf)
     return evaluate(func.body, env)
+
+
+def eval_assert(node: ast.AssertStmt, env: Environment):
+    result = evaluate(node.value, env)
+    if result is not True:
+        raise lib.AssertionException("Assertion failed, in file '{}', at line {}".format(node.file, node.line_num))
 
 
 def raise_exception(e: Exception):
@@ -1376,7 +1443,8 @@ NODE_TABLE = {
     ast.THROW_STMT: lambda n, env: raise_exception(RuntimeException(evaluate(n.value, env))),
     ast.TRY_STMT: eval_try_catch,
     ast.JUMP_NODE: eval_jump,
-    ast.UNDEFINED_NODE: lambda n, env: UNDEFINED
+    ast.UNDEFINED_NODE: lambda n, env: UNDEFINED,
+    ast.ASSERT_STMT: eval_assert
 }
 
 

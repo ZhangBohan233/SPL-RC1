@@ -1,3 +1,19 @@
+********** SPL 1.4 Alpha 3 **********
+===== Build 0048 2019/03/07 =====
+
+*Added call to *args and **kwargs
+*Added syntax:
+    *Keyword 'assert'
+
+********** SPL 1.4 Alpha 2 **********
+===== Build 0047 2019/03/07 =====
+
+*Added syntax:
+    *Unpack operator: *args, **kwargs
+*Bug fixes:
+    *spl type iterable argument error
+    *String hash inside Pair
+
 ********** SPL 1.4 Alpha 1 **********
 ===== Build 0046 2019/03/07 =====
 
