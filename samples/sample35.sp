@@ -1,9 +1,3 @@
-function recursion(x) {
-    if (x > 1) {
-        return recursion(x - 1);
-    } else {
-        return 1;
-    }
-}
+var a = "This is %s test of string %s, with a result %d".format('a', "format", 3.14159265358);
 
-println(recursion (6));
+println(a);

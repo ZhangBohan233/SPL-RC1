@@ -3,6 +3,7 @@ import spl_lexer as lex
 import spl_parser as psr
 import spl_token_lib as stl
 import spl_lib as lib
+import multiprocessing
 
 LST = [72, 97, 112, 112, 121, 32, 66, 105, 114, 116, 104, 100, 97, 121, 32,
        73, 115, 97, 98, 101, 108, 108, 97, 33, 33, 33]
@@ -35,6 +36,7 @@ class Interpreter:
         self.set_up_env()
 
     def set_up_env(self):
+        add_natives(self.env)
         self.env.add_heap("system", lib.System(lib.List(*parse_args(self.argv)), self.encoding))
         self.env.add_heap("natives", NativeInvokes())
 
@@ -63,6 +65,32 @@ def parse_args(argv):
     :return: the argv in spl String object
     """
     return [lib.String(x) for x in argv]
+
+
+def add_natives(self):
+    self.add_heap("print", NativeFunction(lib.print_, "print"))
+    self.add_heap("println", NativeFunction(lib.print_ln, "println"))
+    self.add_heap("type", NativeFunction(typeof, "type"))
+    self.add_heap("pair", NativeFunction(lib.make_pair, "pair"))
+    self.add_heap("list", NativeFunction(lib.make_list, "list"))
+    self.add_heap("set", NativeFunction(lib.make_set, "set"))
+    self.add_heap("int", NativeFunction(lib.to_int, "int"))
+    self.add_heap("float", NativeFunction(lib.to_float, "float"))
+    self.add_heap("string", NativeFunction(to_str, "string"))
+    self.add_heap("input", NativeFunction(lib.input_, "input"))
+    self.add_heap("f_open", NativeFunction(lib.f_open, "f_open"))
+    self.add_heap("eval", NativeFunction(eval_, "eval"))
+    self.add_heap("dir", NativeFunction(dir_, "dir", self))
+    self.add_heap("getcwf", NativeFunction(getcwf, "getcwf", self))
+    self.add_heap("main", NativeFunction(is_main, "main", self))
+    self.add_heap("exit", NativeFunction(lib.exit_, "exit"))
+    self.add_heap("help", NativeFunction(help_, "help", self))
+
+    # type of built-in
+    self.add_heap("boolean", NativeFunction(lib.to_boolean, "boolean"))
+    self.add_heap("void", NativeFunction(None, "void"))
+
+    self.add_heap("cwf", None)
 
 
 class Counter:
@@ -112,10 +140,6 @@ class Environment:
         if not self.is_sub():
             self.variables.__setitem__("=>", None)
 
-        if self.is_global():
-            self._add_natives()
-            # self._add_base_exception()
-
     def __str__(self):
         temp = [self.scope_name, "\nConst: "]
         for c in self.constants:
@@ -146,31 +170,6 @@ class Environment:
 
     def is_sub(self):
         return self.scope_type == LOOP_SCOPE or self.scope_type == SUB_SCOPE
-
-    def _add_natives(self):
-        self.add_heap("print", NativeFunction(lib.print_, "print"))
-        self.add_heap("println", NativeFunction(lib.print_ln, "println"))
-        self.add_heap("type", NativeFunction(typeof, "type"))
-        self.add_heap("pair", NativeFunction(lib.make_pair, "pair"))
-        self.add_heap("list", NativeFunction(lib.make_list, "list"))
-        self.add_heap("set", NativeFunction(lib.make_set, "set"))
-        self.add_heap("int", NativeFunction(lib.to_int, "int"))
-        self.add_heap("float", NativeFunction(lib.to_float, "float"))
-        self.add_heap("string", NativeFunction(to_str, "string"))
-        self.add_heap("input", NativeFunction(lib.input_, "input"))
-        self.add_heap("f_open", NativeFunction(lib.f_open, "f_open"))
-        self.add_heap("eval", NativeFunction(eval_, "eval"))
-        self.add_heap("dir", NativeFunction(dir_, "dir", self))
-        self.add_heap("getcwf", NativeFunction(getcwf, "getcwf", self))
-        self.add_heap("main", NativeFunction(is_main, "main", self))
-        self.add_heap("exit", NativeFunction(lib.exit_, "exit"))
-        self.add_heap("help", NativeFunction(help_, "help", self))
-
-        # type of built-in
-        self.add_heap("boolean", NativeFunction(lib.to_boolean, "boolean"))
-        self.add_heap("void", NativeFunction(None, "void"))
-
-        self.add_heap("cwf", None)
 
     def add_heap(self, k, v):
         self.heap[k] = v
@@ -408,6 +407,27 @@ class Undefined:
         return self.__str__()
 
 
+class Thread(lib.NativeType):
+    def __init__(self, process):
+        lib.NativeType.__init__(self)
+
+        self.process: multiprocessing.Process = process
+        self.daemon = False
+
+    def type_name(self):
+        return "thread"
+
+    def set_daemon(self, d):
+        self.daemon = d
+
+    def start(self):
+        self.process.daemon = self.daemon
+        self.process.start()
+
+    def alive(self):
+        return self.process.is_alive()
+
+
 class NativeInvokes(lib.NativeType):
     def __init__(self):
         lib.NativeType.__init__(self)
@@ -420,6 +440,15 @@ class NativeInvokes(lib.NativeType):
             return lib.String(s.literal.join([x.text() for x in itr]))
         else:
             raise lib.TypeException("Object is not a native-iterable object.")
+
+    def thread(self, env: Environment, target: Function, name: str, args: lib.List):
+        call = ast.FuncCall(LINE_FILE, name)
+        call.args = ast.BlockStmt(LINE_FILE)
+        for x in args.list:
+            call.args.lines.append(x)
+
+        process = multiprocessing.Process(target=call_function, args=(call, target, target.outer_scope, env))
+        return Thread(process)
 
 
 # Native functions with dependencies

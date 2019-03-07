@@ -19,11 +19,12 @@ class Parser:
         parser = ast.AbstractSyntaxTree()
         i = 0
         func_count = 0
-        in_cond = False
-        in_params = False
+        par_count = 0  # count of parenthesis
+        cond_nest_list = []
+        call_nest_list = []
+        param_nest_list = []
         is_abstract = False
         var_level = ast.ASSIGN
-        call_nest = 0
         brace_count = 0
         class_brace = -1
         extra_precedence = 0
@@ -36,26 +37,24 @@ class Parser:
                 if isinstance(token, stl.IdToken):
                     sym = token.symbol
                     if sym == "if":
-                        in_cond = True
+                        cond_nest_list.append(par_count)
+                        par_count += 1
                         parser.add_if(line)
                         i += 1
-                        next_token = self.tokens[i]
-                        if not (isinstance(next_token, stl.IdToken) and next_token.symbol == "("):
-                            stl.unexpected_token(token)
                     elif sym == "while":
-                        in_cond = True
+                        cond_nest_list.append(par_count)
+                        par_count += 1
                         parser.add_while(line)
                         i += 1
                     elif sym == "for":
-                        in_cond = True
+                        cond_nest_list.append(par_count)
+                        par_count += 1
                         parser.add_for_loop(line)
                         i += 1
                     elif sym == "else":
                         pass  # this case is automatically handled by the if-block
                     elif sym == "return":
                         parser.add_return(line)
-                        # in_expr = True
-                        # expr_layer += 1
                     elif sym == "break":
                         parser.add_break(line)
                     elif sym == "continue":
@@ -92,18 +91,19 @@ class Parser:
                         extra_precedence += 1
                     elif sym == ")":
                         if extra_precedence == 0:
-                            if call_nest > 0:
+                            par_count -= 1
+                            if is_this_list(call_nest_list, par_count):
                                 # parser.build_expr()
                                 parser.build_line()
                                 parser.build_call()
-                                call_nest -= 1
-                            elif in_cond:
+                                call_nest_list.pop()
+                            elif is_this_list(param_nest_list, par_count) > 0:
+                                parser.build_func_params()
+                                param_nest_list.pop()
+                            elif is_this_list(cond_nest_list, par_count) > 0:
                                 parser.build_expr()
                                 parser.build_condition()
-                                in_cond = False
-                            elif in_params:
-                                parser.build_func_params()
-                                in_params = False
+                                cond_nest_list.pop()
                         else:
                             # if parser.in_expr:
                             extra_precedence -= 1
@@ -117,7 +117,8 @@ class Parser:
                             parser.build_get_set(False)
                             parser.build_line()
                             parser.build_call()
-                            call_nest -= 1
+                            call_nest_list.pop()
+                            par_count -= 1
                     elif sym == "=":
                         parser.build_expr()
                         parser.add_assignment(line, var_level)
@@ -127,14 +128,15 @@ class Parser:
                         parser.add_type(line)
                     elif sym == ",":
                         # parser.build_expr()
-                        if call_nest > 0 or in_params:
+                        if len(call_nest_list) > 0 or len(param_nest_list) > 0:
                             parser.build_line()
                     elif sym == ".":
                         parser.add_dot(line, extra_precedence)
                     elif sym == "=>":
                         parser.add_anonymous_call(line, extra_precedence)
                         i += 1
-                        call_nest += 1
+                        call_nest_list.append(par_count)
+                        par_count += 1
                     elif sym == "function" or sym == "def":
                         i += 1
                         f_token: stl.IdToken = self.tokens[i]
@@ -146,7 +148,8 @@ class Parser:
                             push_back = 0
                         parser.add_function(line, f_name, is_abstract, titles.copy())
                         i += push_back
-                        in_params = True
+                        param_nest_list.append(par_count)
+                        par_count += 1
                         is_abstract = False
                         titles.clear()
                     elif sym == "operator":
@@ -154,7 +157,8 @@ class Parser:
                         op_token: stl.IdToken = self.tokens[i]
                         op_name = "__" + stl.BINARY_OPERATORS[op_token.symbol] + "__"
                         parser.add_function(line, op_name, False, titles.copy())
-                        in_params = True
+                        param_nest_list.append(par_count)
+                        par_count += 1
                         titles.clear()
                         i += 1
                     elif sym == "class":
@@ -193,7 +197,8 @@ class Parser:
                         if i + 1 < len(self.tokens) and isinstance(next_token, stl.IdToken) and \
                                 next_token.symbol == "(":
                             i += 1
-                            call_nest += 1
+                            call_nest_list.append(par_count)
+                            par_count += 1
                             parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
                             # in_call = True
                     elif sym == "throw":
@@ -203,7 +208,8 @@ class Parser:
                     elif sym == "catch":
                         parser.add_catch(line)
                         i += 1
-                        in_cond = True
+                        cond_nest_list.append(par_count)
+                        par_count += 1
                     elif sym == "finally":
                         parser.add_finally(line)
                     elif sym in stl.BINARY_OPERATORS:
@@ -223,7 +229,8 @@ class Parser:
                             # parser.build_line()
                             parser.build_call()
                             # parser.in_get = False
-                            call_nest -= 1
+                            call_nest_list.pop()
+                            par_count -= 1
                         parser.build_expr()
                         if var_level != ast.ASSIGN:
                             active = parser.get_active()
@@ -243,13 +250,15 @@ class Parser:
                             if next_token.symbol == "(":
                                 # function call
                                 parser.add_call(line, sym)
-                                call_nest += 1
+                                call_nest_list.append(par_count)
+                                par_count += 1
                                 i += 1
                             elif next_token.symbol == "[":
                                 parser.add_name(line, sym)
                                 parser.add_dot(line, extra_precedence)
                                 parser.add_get_set(line)
-                                call_nest += 1
+                                call_nest_list.append(par_count)
+                                par_count += 1
                                 i += 1
                             else:
                                 parser.add_name(line, sym)
@@ -275,9 +284,21 @@ class Parser:
                 raise stl.ParseException("Parse error in '{}', at line {}".format(self.tokens[i].file_name(),
                                                                                   self.tokens[i].line_number()))
 
-        if in_cond or call_nest != 0 or brace_count != 0 or extra_precedence != 0:
+        if par_count != 0 or len(call_nest_list) != 0 or len(cond_nest_list) != 0 or len(param_nest_list) or \
+                brace_count != 0 or extra_precedence != 0:
             raise stl.ParseEOFException("Reach the end while parsing")
         return parser.get_as_block()
+
+
+def is_this_list(lst: list, count: int) -> bool:
+    """
+    Returns true iff the list is not empty and the last item of the list equals the 'count'
+
+    :param lst:
+    :param count:
+    :return:
+    """
+    return len(lst) > 0 and lst[-1] == count
 
 
 def is_unary(last_token):

@@ -5,6 +5,10 @@ import os
 
 SPL_PATH = os.getcwd()
 
+SELF_CONCATENATE = {0, 1, 8, 9, 10, 11, 14}
+CROSS_CONCATENATE = {(8, 9), (1, 0), (0, 12), (12, 0), (15, 9), (17, 9), (16, 9), (10, 9), (11, 9),
+                     (9, 8), (1, 14), (14, 1), (0, 14), (14, 0)}
+
 
 class Tokenizer:
     """
@@ -190,7 +194,7 @@ class Tokenizer:
                     self.tokens.append(stl.IdToken(line_num, part))
             elif is_float(part):
                 self.tokens.append(stl.NumToken(line_num, part))
-            elif part.isdigit():
+            elif is_integer(part):
                 self.tokens.append(stl.NumToken(line_num, part))
             elif part in stl.ALL:
                 self.tokens.append(stl.IdToken(line_num, part))
@@ -258,13 +262,11 @@ def normalize(string):
         if len(string) > 0:
             s = string[0]
             last_type = char_type(s)
-            self_concatenate = {0, 1, 8, 9, 10, 11, 14}
-            cross_concatenate = {(8, 9), (1, 0), (0, 12), (12, 0), (15, 9), (17, 9), (16, 9), (10, 9), (11, 9),
-                                 (9, 8)}
+
             for i in range(1, len(string), 1):
                 char = string[i]
                 t = char_type(char)
-                if (t in self_concatenate and t == last_type) or ((last_type, t) in cross_concatenate):
+                if (t in SELF_CONCATENATE and t == last_type) or ((last_type, t) in CROSS_CONCATENATE):
                     s += char
                 else:
                     put_string(lst, s)
@@ -290,7 +292,7 @@ def char_type(ch):
     """
     if ch.isdigit():
         return 0
-    elif ch.isidentifier():
+    elif ch.isalpha():
         return 1
     elif ch == "{":
         return 2
@@ -316,8 +318,8 @@ def char_type(ch):
         return 12
     elif ch == ",":
         return 13
-    # elif ch == "/":
-    #     return 14
+    elif ch == "_":
+        return 14
     elif ch == "!":
         return 15
     elif ch == "^":
@@ -332,9 +334,22 @@ def char_type(ch):
         return -1
 
 
-def is_float(num_str):
+def is_integer(num_str: str) -> bool:
     """
-    :type num_str: str
+
+    :param num_str:
+    :return:
+    """
+    if len(num_str) == 0:
+        return False
+    for ch in num_str:
+        if not ch.isdigit() and ch != "_":
+            return False
+    return True
+
+
+def is_float(num_str: str) -> bool:
+    """
     :param num_str:
     :return:
     """
@@ -343,9 +358,9 @@ def is_float(num_str):
         front = num_str[:index]
         back = num_str[index + 1:]
         if len(front) > 0:
-            if not front.isdigit():
+            if not is_integer(front):
                 return False
-        if back.isdigit():
+        if is_integer(back):
             return True
     return False
 

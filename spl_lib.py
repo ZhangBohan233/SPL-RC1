@@ -121,6 +121,50 @@ class String(NativeType, Iterable):
     def contains(self, char):
         return char in self.literal
 
+    def format(self, *args):
+        lst = []
+        i = 0
+        count = 0
+        while i < self.length():
+            ch = self.literal[i]
+            if ch == "%":
+                j = i + 1
+                params = []
+                while not self.literal[j].isalpha():
+                    params.append(self.literal[j])
+                    j += 1
+                if count >= len(args):
+                    raise IndexOutOfRangeException("Not enough arguments for string format")
+                flag = self.literal[j]
+                if flag == "s":
+                    lit = args[count]
+                    try:
+                        lst.append(lit.literal)
+                    except AttributeError:
+                        raise StringFormatException("Unsupported format")
+                elif flag == "d":
+                    lst.append(str(int(args[count])))
+                elif flag == "f":
+                    if len(params) > 0:
+                        precision = int(params[0])
+                        lst.append(str(round(args[count], precision)))
+                    else:
+                        lst.append(str(args[count]))
+                else:
+                    print_waring("Warning: Unknown flag: %" + flag)
+                    lst.append("%")
+                    i = j
+                    continue
+                i = j + 1
+                count += 1
+                continue
+            lst.append(ch)
+            i += 1
+
+        if count < len(args):
+            print_waring("Warning: too much arguments for string format")
+        return String("".join(lst))
+
     def type_name(self):
         return "string"
 
@@ -283,6 +327,9 @@ class System(NativeType):
     def time(self):
         return int(time_lib.time() * 1000)
 
+    def sleep(self, milli):
+        time_lib.sleep(milli / 1000)
+
     def type_name(self):
         return "system"
 
@@ -396,6 +443,11 @@ class ArgumentException(SplException):
 
 
 class ArithmeticException(SplException):
+    def __init__(self, msg=""):
+        SplException.__init__(self, msg)
+
+
+class StringFormatException(SplException):
     def __init__(self, msg=""):
         SplException.__init__(self, msg)
 

@@ -1,3 +1,17 @@
+********** SPL 1.4 Alpha 1 **********
+===== Build 0046 2019/03/07 =====
+
+*String.format
+*Basic multi-threading
+*Rework on parser, better nested support
+*Native function: system.sleep
+
+********** SPL 1.3.2 **********
+===== Build 0045 2019/03/06 =====
+
+*Supports updates:
+    *Release notes
+
 ********** SPL 1.3.1 **********
 ===== Build 0044 2019/03/06 =====
 
