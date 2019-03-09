@@ -245,10 +245,10 @@ class List(NativeType, Iterable):
 
 
 class Pair(NativeType, Iterable):
-    def __init__(self):
+    def __init__(self, initial: dict):
         NativeType.__init__(self)
 
-        self.pair = {}
+        self.pair = initial.copy()
 
     def __iter__(self):
         return (k for k in self.pair)
@@ -493,8 +493,8 @@ def make_list(*initial_elements):
     return lst
 
 
-def make_pair():
-    pair = Pair()
+def make_pair(initial_elements):
+    pair = Pair(initial_elements)
     return pair
 
 

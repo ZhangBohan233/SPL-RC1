@@ -227,7 +227,7 @@ class Parser:
                         else:
                             parser.add_operator(line, sym, extra_precedence)
                     elif sym in stl.UNARY_OPERATORS:
-                        if sym == "!":
+                        if sym == "!" or sym == "not":
                             parser.add_not(line, extra_precedence)
                     elif sym[:-1] in stl.OP_EQ:
                         parser.add_operator(line, sym, extra_precedence, True)

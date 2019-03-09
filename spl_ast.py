@@ -1,11 +1,11 @@
 PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "==": 20, ">": 25, "<": 25, ">=": 25, "<=": 25,
-              "!=": 20, "&&": 5, "||": 5, "&": 12, "^": 11, "|": 10,
+              "!=": 20, "&&": 5, "and": 5, "||": 5, "or": 5, "&": 12, "^": 11, "|": 10,
               "<<": 40, ">>": 40, "unpack": 200, "kw_unpack": 200,
-              ".": 500, "!": 200, "neg": 200, "return": 1, "throw": 1,
+              ".": 500, "!": 200, "not": 200, "neg": 200, "return": 1, "throw": 1,
               "+=": 2, "-=": 2, "*=": 2, "/=": 2, "%=": 2,
               "&=": 2, "^=": 2, "|=": 2, "<<=": 2, ">>=": 2, "=>": 500,
-              "===": 20, "!==": 20, "instanceof": 25, "assert": 1}
+              "===": 20, "is": 20, "!==": 20, "instanceof": 25, "assert": 1}
 
 MULTIPLIER = 1000
 
@@ -611,9 +611,7 @@ class OperatorNode(BinaryExpr):
         BinaryExpr.__init__(self, line)
 
         self.node_type = OPERATOR_NODE
-        # self.assignment = False
         self.extra_precedence = extra * MULTIPLIER
-        # print(self.extra_precedence)
 
     def precedence(self):
         return PRECEDENCE[self.operation] + self.extra_precedence

@@ -325,11 +325,17 @@ class NativeFunction:
     def __repr__(self):
         return self.__str__()
 
-    def call(self, args):
+    def call(self, args, kwargs):
         if self.parent_env:
-            return self.function(self.parent_env, *args)
+            if len(kwargs) > 0:
+                return self.function(self.parent_env, *args, kwargs)
+            else:
+                return self.function(self.parent_env, *args)
         else:
-            return self.function(*args)
+            if len(kwargs) > 0:
+                return self.function(*args, kwargs)
+            else:
+                return self.function(*args)
 
 
 class ParameterPair:
@@ -757,12 +763,7 @@ def eval_try_catch(node: ast.TryStmt, env: Environment):
                 catch_name = line.right.name
                 if is_subclass_of(exception_class, catch_name, block_scope):
                     result = evaluate(cat.then, block_scope)
-                    # env.terminated = False
                     return result
-                    # if node.finally_block is None:
-                    #     return result
-                    # else:
-                    #     env.terminated = False
         raise re
     except Exception as e:  # catches the exceptions raised by python
         block_scope = Environment(SUB_SCOPE, env)
@@ -890,10 +891,14 @@ def eval_func_call(node: ast.FuncCall, env: Environment):
         return result
     elif isinstance(func, NativeFunction):
         args = []
+        kwargs = {}
         for i in range(len(node.args.lines)):
-            # args.append(evaluate(node.args[i], env))
-            args.append(evaluate(node.args.lines[i], env))
-        result = func.call(args)
+            arg = node.args.lines[i]
+            if isinstance(arg, ast.AssignmentNode):
+                kwargs[evaluate(arg.left, env)] = evaluate(arg.right, env)
+            else:
+                args.append(evaluate(arg, env))
+        result = func.call(args, kwargs)
         if isinstance(result, ast.BlockStmt):
             # Special case for "eval"
             res = evaluate(result, env)
@@ -1073,7 +1078,7 @@ def arithmetic(left, right_node: ast.Node, symbol, env: Environment):
 
 
 def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment, right_node):
-    if symbol == "===":
+    if symbol == "===" or symbol == "is":
         return isinstance(right, ClassInstance) and left.id == right.id
     elif symbol == "!==":
         return not isinstance(right, ClassInstance) or left.id != right.id
@@ -1095,94 +1100,83 @@ def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment, ri
         return result
 
 
-def string_arithmetic(left, right, symbol):
-    if symbol == "==":
-        result = left == right
-    elif symbol == "!=":
-        result = left != right
-    elif symbol == "+":
-        result = left + right
-    elif symbol == "===":
-        result = left == right
-    elif symbol == "!==":
-        result = left != right
-    elif symbol == "instanceof":
-        return isinstance(right, NativeFunction) and right.name == "string"
-    else:
-        raise lib.TypeException("Unsupported operation between string and " + typeof(right).literal)
+STRING_ARITHMETIC_TABLE = {
+    "==": lambda left, right: left == right,
+    "!=": lambda left, right: left != right,
+    "+": lambda left, right: left + right,
+    "===": lambda left, right: left is right,
+    "is": lambda left, right: left is right,
+    "!==": lambda left, right: left is not right,
+    "instanceof": lambda left, right: isinstance(right, NativeFunction) and right.name == "string"
+}
 
-    return result
+
+def string_arithmetic(left, right, symbol):
+    return STRING_ARITHMETIC_TABLE[symbol](left, right)
+
+
+RAW_TYPE_COMPARISON_TABLE = {
+    "==": lambda left, right: left == right,
+    "!=": lambda left, right: left != right,
+    "===": lambda left, right: left is right,
+    "is": lambda left, right: left is right,
+    "!==": lambda left, right: left is not right,
+    "instanceof": lambda left, right: False
+}
 
 
 def raw_type_comparison(left, right, symbol):
-    if symbol == "==":
-        result = left == right
-    elif symbol == "!=":
-        result = left != right
-    elif symbol == "===":
-        result = left == right
-    elif symbol == "!==":
-        result = left != right
-    elif symbol == "instanceof":
-        if isinstance(right, lib.String):
-            return type(left).__name__ == right.literal
-        else:
-            return False
-    else:
-        raise lib.TypeException("Unsupported operation for raw type " + left.type_name())
-
-    return result
+    return RAW_TYPE_COMPARISON_TABLE[symbol](left, right)
 
 
 def primitive_and_or(left, right_node: ast.Node, symbol, env: Environment):
     if left:
-        if symbol == "&&":
+        if symbol == "&&" or symbol == "and":
             right = evaluate(right_node, env)
             return right
-        elif symbol == "||":
+        elif symbol == "||" or symbol == "or":
             return True
         else:
             raise lib.TypeException("Unsupported operation for primitive type")
     else:
-        if symbol == "&&":
+        if symbol == "&&" or symbol == "and":
             return False
-        elif symbol == "||":
+        elif symbol == "||" or symbol == "or":
             right = evaluate(right_node, env)
             return right
         else:
             raise lib.TypeException("Unsupported operation for primitive type")
 
 
-def primitive_arithmetic(left, right, symbol):
-    if symbol == "==":
-        result = left == right
-    elif symbol == "!=":
-        result = left != right
-    elif symbol == "===":
-        result = left == right
-    elif symbol == "!==":
-        result = left != right
-    elif symbol == "instanceof":
-        return isinstance(right, NativeFunction) and PRIMITIVE_FUNC_TABLE[right.name] == type(left).__name__
-    else:
-        raise lib.TypeException("Unsupported operation for primitive type")
+PRIMITIVE_ARITHMETIC_TABLE = {
+    "==": lambda left, right: left == right,
+    "!=": lambda left, right: left != right,
+    "===": lambda left, right: left is right,
+    "is": lambda left, right: left is right,
+    "!==": lambda left, right: left is not right,
+    "instanceof": lambda left, right: isinstance(right, NativeFunction) and PRIMITIVE_FUNC_TABLE[right.name] == type(
+        left).__name__
+}
 
-    return result
+
+def primitive_arithmetic(left, right, symbol):
+    operation = PRIMITIVE_ARITHMETIC_TABLE[symbol]
+    return operation(left, right)
 
 
 def num_and_or(left, right_node: ast.Node, symbol, env: Environment):
     if left:
-        if symbol == "||":
+        if symbol == "||" or symbol == "or":
             return True
-        elif symbol == "&&":
+        elif symbol == "&&" or symbol == "and":
             right = evaluate(right_node, env)
             return right
         else:
             raise lib.TypeException("No such symbol")
     else:
-        if symbol == "&&":
+        if symbol == "&&" or symbol == "and":
             return False
-        elif symbol == "||":
+        elif symbol == "||" or symbol == "or":
             right = evaluate(right_node, env)
             return right
         else:
@@ -1196,7 +1190,7 @@ def divide(a, b):
         return a / b
 
 
-ARITHMETIC_TABLE = {
+NUMBER_ARITHMETIC_TABLE = {
     "+": lambda left, right: left + right,
     "-": lambda left, right: left - right,
     "*": lambda left, right: left * right,
@@ -1213,14 +1207,15 @@ ARITHMETIC_TABLE = {
     "&": lambda left, right: left & right,
     "^": lambda left, right: left ^ right,
     "|": lambda left, right: left | right,
-    "===": lambda left, right: left == right,
-    "!==": lambda left, right: left != right,
+    "===": lambda left, right: left is right,
+    "is": lambda left, right: left is right,
+    "!==": lambda left, right: left is not right,
     "instanceof": lambda left, right: isinstance(right, NativeFunction) and right.name == type(left).__name__
 }
 
 
 def num_arithmetic(left, right, symbol):
-    return ARITHMETIC_TABLE[symbol](left, right)
+    return NUMBER_ARITHMETIC_TABLE[symbol](left, right)
 
 
 def class_inheritance(cla: Class, env: Environment, scope: Environment):
@@ -1414,8 +1409,10 @@ def raise_exception(e: Exception):
     raise e
 
 
+# Set of types that will not change after being evaluated
 SELF_RETURN_TABLE = {int, float, bool, lib.String, lib.List, lib.Set, lib.Pair, lib.System, lib.File, ClassInstance}
 
+# Operation table of every non-abstract node types
 NODE_TABLE = {
     ast.INT_NODE: lambda n, env: n.value,
     ast.FLOAT_NODE: lambda n, env: n.value,

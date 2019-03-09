@@ -188,10 +188,7 @@ class Tokenizer:
             #     break
             wm += 1
             if part.isidentifier():
-                if part in stl.RESERVED:
-                    self.tokens.append(stl.IdToken(line_num, part))
-                else:
-                    self.tokens.append(stl.IdToken(line_num, part))
+                self.tokens.append(stl.IdToken(line_num, part))
             elif is_float(part):
                 self.tokens.append(stl.NumToken(line_num, part))
             elif is_integer(part):

@@ -4,7 +4,7 @@ function g(a, b, c=1, d=0, e=1) {
 
 function decor(func) {
     function pt(*args, **kwargs) {
-        assert kwargs.size() == 0;
+        assert kwargs.size() >= 0;
         println("fucked!");
         func(*args, **kwargs);
     }
@@ -13,3 +13,4 @@ function decor(func) {
 
 var f = decor(g);
 println(f(3, 4, 2, d=1, e=2));
+println(not (true is true));

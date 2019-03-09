@@ -5,14 +5,15 @@ MIDDLE = {"(", ")", "[", "]"}
 BINARY_OPERATORS = {"+": "add", "-": "sub", "*": "mul", "/": "div", "%": "mod",
                     "<": "lt", ">": "gt", "==": "eq", ">=": "ge", "<=": "le", "!=": "neq",
                     "&&": "and", "||": "or", "&": "band", "^": "xor", "|": "bor",
-                    "<<": "lshift", ">>": "rshift", "===": "", "!==": "", "instanceof": ""}
-UNARY_OPERATORS = {"!": "not"}
+                    "<<": "lshift", ">>": "rshift", "===": "", "!==": "", "instanceof": "",
+                    "and": "and", "or": "or", "is": ""}
+UNARY_OPERATORS = {"!": "not", "not": "not"}
 OTHERS = {"=", "@", ":"}
 ALL = set().union(SYMBOLS).union(BINARY_OPERATORS).union(OTHERS).union(MIDDLE).union(UNARY_OPERATORS)
 RESERVED = {"class", "function", "def", "if", "else", "new", "extends", "return", "break", "continue",
             "true", "false", "null", "operator", "while", "for", "import", "throw", "try", "catch", "finally",
             "abstract", "const", "var", "assert"}
-LAZY = {"&&", "||"}
+LAZY = {"&&", "||", "and", "or"}
 OMITS = {"\n", "\r", "\t", " "}
 OP_EQ = {"+", "-", "*", "/", "%", "&", "^", "|", "<<", ">>"}
 ESCAPES = {"n": "\n", "t": "\t", "0": "\0", "a": "\a", "r": "\r", "f": "\f", "v": "\v", "b": "\b", "\\": "\\"}

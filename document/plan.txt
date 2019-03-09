@@ -5,3 +5,6 @@
 * threading   ...done
 * integer underline separator   ...done
 * string format   ...done
+
+* list creation with []
+* pair creation with {}
