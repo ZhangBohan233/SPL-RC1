@@ -1,5 +1,5 @@
 ********** SPL 1.4 Alpha 4 **********
-===== Build 0049 2019/03/08 =====
+===== Build 0049 2019/03/09 =====
 
 *Added syntax:
     *'and', 'or', 'is', 'not' to increase readability
