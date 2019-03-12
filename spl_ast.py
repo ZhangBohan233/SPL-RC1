@@ -44,6 +44,7 @@ UNDEFINED_NODE = 31
 UNPACK_OPERATOR = 32
 KW_UNPACK_OPERATOR = 33
 ASSERT_STMT = 34
+ARRAY_INIT = 35
 
 ASSIGN = 0
 CONST = 1
@@ -403,6 +404,14 @@ class AbstractSyntaxTree:
         else:
             node = ClassInit(line, class_name)
             self.stack.append(node)
+
+    def add_array_init(self, line, class_name):
+        if self.inner:
+            self.inner.add_array_init(line, class_name)
+        else:
+            node = ArrayInit(line, class_name)
+            self.stack.append(node)
+            self.inner = AbstractSyntaxTree()
 
     def add_dot(self, line, extra_precedence):
         if self.inner:
@@ -944,6 +953,16 @@ class ClassInit(LeafNode):
 
     def __repr__(self):
         return self.__str__()
+
+
+class ArrayInit(FuncCall):
+    def __init__(self, line, type_name):
+        FuncCall.__init__(self, line, type_name)
+
+        self.node_type = ARRAY_INIT
+
+    def __str__(self):
+        return "arr<{}>({})".format(self.f_name, self.args)
 
 
 class Dot(OperatorNode):

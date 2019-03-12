@@ -1,3 +1,13 @@
+********** SPL 1.4 Alpha 5 **********
+===== Build 0050 2019/03/12 =====
+
+*Functions changes:
+    *'set' now take initial values
+*Reference framework changes:
+    *Instances and NativeTypes are stored in memory, pointers are passed through
+    *Implemented array types
+    *Garbage collector
+
 ********** SPL 1.4 Alpha 4 **********
 ===== Build 0049 2019/03/09 =====
 

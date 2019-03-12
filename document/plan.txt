@@ -6,5 +6,7 @@
 * integer underline separator   ...done
 * string format   ...done
 
-* list creation with []
-* pair creation with {}
+* list creation with []   ...discard
+* pair creation with {}   ...discard
+
+* array

@@ -5,7 +5,7 @@ import "math";
  * Sorts the <lst> with merge sort algorithm.
  */
 function merge_sort(lst) {
-    var length = lst.length();
+    const length = lst.length();
     var step = 1;
     while (step < length) {
         for (var i = 0; i < length; i += step * 2) {

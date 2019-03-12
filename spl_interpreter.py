@@ -1,3 +1,4 @@
+import spl_memory as mem
 import spl_ast as ast
 import spl_lexer as lex
 import spl_parser as psr
@@ -21,15 +22,22 @@ INVALID = lib.InvalidArgument()
 UNPACK_ARGUMENT = lib.UnpackArgument()
 KW_UNPACK_ARGUMENT = lib.KwUnpackArgument()
 
+PRIMITIVE_TYPE_TABLE = {
+    "boolean": "bool",
+    "void": "NoneType"
+}
+
 
 class Interpreter:
     """
-    :type ast: Node
-    :type argv: list
-    :type encoding: str
+    A spl interpreter entry object.
+
+    This class is used to create an spl evaluator, which is mostly used to interpret the root 'BlockStmt' of
+    a program.
     """
 
-    def __init__(self, argv, encoding):
+    def __init__(self, argv: list, encoding: str):
+        # mem.start()
         self.ast = None
         self.argv = argv
         self.encoding = encoding
@@ -38,9 +46,15 @@ class Interpreter:
         self.set_up_env()
 
     def set_up_env(self):
+        """
+        Sets up the global environment.
+
+        :return:
+        """
         add_natives(self.env)
         self.env.add_heap("system", lib.System(lib.List(*parse_args(self.argv)), self.encoding))
         self.env.add_heap("natives", NativeInvokes())
+        self.env.add_heap("os", lib.Os())
 
     def set_ast(self, ast_: ast.BlockStmt):
         """
@@ -79,6 +93,7 @@ def add_natives(self):
     self.add_heap("int", NativeFunction(lib.to_int, "int"))
     self.add_heap("float", NativeFunction(lib.to_float, "float"))
     self.add_heap("string", NativeFunction(to_str, "string"))
+    self.add_heap("repr", NativeFunction(to_repr, "repr"))
     self.add_heap("input", NativeFunction(lib.input_, "input"))
     self.add_heap("f_open", NativeFunction(lib.f_open, "f_open"))
     self.add_heap("eval", NativeFunction(eval_, "eval"))
@@ -87,28 +102,14 @@ def add_natives(self):
     self.add_heap("main", NativeFunction(is_main, "main", self))
     self.add_heap("exit", NativeFunction(lib.exit_, "exit"))
     self.add_heap("help", NativeFunction(help_, "help", self))
+    self.add_heap("memory_view", NativeFunction(lib.memory_view, "memory_view"))
+    self.add_heap("gc", NativeFunction(gc, "gc", self))
 
     # type of built-in
     self.add_heap("boolean", NativeFunction(lib.to_boolean, "boolean"))
     self.add_heap("void", NativeFunction(None, "void"))
 
     self.add_heap("cwf", None)
-
-
-class Counter:
-    def __init__(self):
-        self.count = 0
-
-    def decrement(self):
-        self.count -= 1
-
-    def get_and_increment(self):
-        temp = self.count
-        self.count += 1
-        return temp
-
-
-ID_COUNTER = Counter()
 
 
 class Environment:
@@ -123,10 +124,12 @@ class Environment:
 
     def __init__(self, scope_type, outer):
         self.scope_type = scope_type
+        self.children = []
         if outer is None:
             self.heap: dict = {}
         else:
             self.heap: dict = outer.heap  # Heap-allocated variables (global)
+            outer.children.append(self)
         self.variables: dict = {}  # Stack variables
         self.constants: dict = {}  # Constants
 
@@ -175,6 +178,9 @@ class Environment:
 
     def add_heap(self, k, v):
         self.heap[k] = v
+
+    def has_class(self, class_name):
+        return class_name in self.heap
 
     def terminate(self, exit_value):
         if self.scope_type == FUNCTION_SCOPE:
@@ -459,6 +465,121 @@ class NativeInvokes(lib.NativeType):
         return Thread(process)
 
 
+class InstanceArray(lib.Array):
+    def __init__(self, type_name: str, length):
+        lib.Array.__init__(self, length)
+
+        self.object_type = type_name
+        self.element_size = 8
+        self.array: lib.IntArray = lib.IntArray(length)
+
+    def type_name(self):
+        return "{}[]".format(self.object_type, self.length())
+
+    def __getitem__(self, index):
+        pointer = self.array[index]
+        return mem.MEMORY.get_instance(pointer)
+
+    def __setitem__(self, index, value: mem.Pointer):
+        obj = mem.MEMORY.get_instance(value.id)
+        if obj.class_name != self.object_type:
+            lib.print_waring("Warning: generic array of different types")
+        self.array[index] = value.id
+
+    def __str__(self):
+        return str([self[i] for i in range(self.length())])
+
+
+NULLPTR = NullPointer()
+UNDEFINED = Undefined()
+
+
+class ClassInstance:
+    def __init__(self, env: Environment, class_name: str):
+        """
+        ===== Attributes =====
+        :param class_name: name of this class
+        :param env: instance attributes
+        """
+        self.class_name = class_name
+        self.env = env
+        self.id = mem.MEMORY.get_and_increment(self)
+        # self.reference_count = 0
+        self.env.constants["this"] = self
+
+    def __hash__(self):
+        if self.env.contains_key("__hash__"):
+            call = ast.FuncCall(LINE_FILE, "__hash__")
+            call.args = []
+            return evaluate(call, self.env)
+        else:
+            return hash(self)
+
+    def __repr__(self):
+        if self.env.contains_key("__repr__"):
+            return to_repr(self).literal
+        else:
+            return "<{} at {}>".format(self.class_name, self.id)
+
+    def __str__(self):
+        if self.env.contains_key("__str__"):
+            return to_str(self).literal
+        else:
+            attr = self.env.attributes()
+            attr.pop("this")
+            attr.pop("=>")
+            return "<{} at {}>: {}".format(self.class_name, self.id, attr)
+
+
+class RuntimeException(Exception):
+    def __init__(self, exception: ClassInstance):
+        Exception.__init__(self, "RuntimeException")
+
+        self.exception = exception
+
+
+class GarbageCollector:
+    def __init__(self, memory):
+        self.found = {0: None}
+        self.memory: mem.Memory = memory
+
+    def gc(self, global_env: Environment):
+        self.find(global_env)
+        # print(self.found)
+        self.memory.memory = self.found
+        self.memory.count = len(self.found)
+        # new_memory = {}
+        # for obj_id in self.found:
+        #     obj = self.found[obj_id]
+        #     obj.id = obj_id
+
+    def find(self, env: Environment):
+        if env.is_global():
+            self.strong_ref(env.heap)
+        self.strong_ref(env.constants)
+        self.strong_ref(env.variables)
+
+        for child in env.children:
+            self.find(child)
+
+    def strong_ref(self, d: dict):
+        for key in d:
+            ptr = d[key]
+            if isinstance(ptr, mem.Pointer):
+                obj = self.memory.get_instance(ptr.id)
+                if isinstance(obj, ClassInstance):
+                    self.found[obj.id] = obj
+                elif isinstance(obj, lib.NativeType):
+                    self.found[obj.id] = obj
+                    attrs = dir(obj)
+                    for attr in attrs:
+                        v = getattr(obj, attr)
+                        # print(type(v))
+                        if isinstance(v, lib.NativeType):
+                            # print(attr)
+                            self.found[v.id] = v
+
+
 # Native functions with dependencies
 
 def to_str(v) -> lib.String:
@@ -467,6 +588,18 @@ def to_str(v) -> lib.String:
         block: ast.BlockStmt = ast.BlockStmt(LINE_FILE)
         fc.args = block
         func: Function = v.env.get("__str__", LINE_FILE)
+        result: lib.String = call_function(fc, func, v.env, None)
+        return result
+    else:
+        return lib.String(v)
+
+
+def to_repr(v) -> lib.String:
+    if isinstance(v, ClassInstance):
+        fc: ast.FuncCall = ast.FuncCall(LINE_FILE, "__repr__")
+        block: ast.BlockStmt = ast.BlockStmt(LINE_FILE)
+        fc.args = block
+        func: Function = v.env.get("__repr__", LINE_FILE)
         result: lib.String = call_function(fc, func, v.env, None)
         return result
     else:
@@ -516,7 +649,7 @@ def dir_(env, obj):
             if attr not in exc:
                 lst.append(attr)
         del instance
-        ID_COUNTER.decrement()
+        mem.MEMORY.decrement()
     elif isinstance(obj, NativeFunction):
         for nt in lib.NativeType.__subclasses__():
             if nt.type_name(nt) == obj.name:
@@ -535,6 +668,11 @@ def getcwf(env: Environment):
 
 def is_main(env: Environment):
     return env.get_heap("system").argv[0] == getcwf(env)
+
+
+def gc(env: Environment):
+    collector = GarbageCollector(mem.MEMORY)
+    collector.gc(env)
 
 
 def help_(env, obj):
@@ -558,13 +696,15 @@ def help_(env, obj):
 
         create = ast.ClassInit((0, "dir"), obj.class_name)
         instance: ClassInstance = evaluate(create, env)
-        ID_COUNTER.decrement()
+        # do not add to pointer list
         exc = {"this"}
         # for attr in instance.env.variables:
         for attr in instance.env.attributes():
             if attr not in exc:
                 print(attr)
                 print(_get_doc(instance.env.get(attr, (0, "help"))))
+        del instance
+        mem.MEMORY.decrement()
 
 
 # Helper functions
@@ -606,55 +746,6 @@ def _filter_doc(lines: [str], pos: int):
 
 
 # Interpreter
-
-NULLPTR = NullPointer()
-UNDEFINED = Undefined()
-
-PRIMITIVE_FUNC_TABLE = {
-    "boolean": "bool",
-    "void": "NoneType"
-}
-
-
-class ClassInstance:
-    def __init__(self, env: Environment, class_name: str):
-        """
-        ===== Attributes =====
-        :param class_name: name of this class
-        :param env: instance attributes
-        """
-        self.class_name = class_name
-        self.env = env
-        self.id = ID_COUNTER.get_and_increment()
-        # self.reference_count = 0
-        self.env.constants["this"] = self
-
-    def __hash__(self):
-        if self.env.contains_key("__hash__"):
-            call = ast.FuncCall(LINE_FILE, "__hash__")
-            call.args = []
-            return evaluate(call, self.env)
-        else:
-            return hash(self)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __str__(self):
-        if self.env.contains_key("__str__"):
-            return to_str(self).literal
-        else:
-            attr = self.env.attributes()
-            attr.pop("this")
-            attr.pop("=>")
-            return "<{} at {}>: {}".format(self.class_name, self.id, attr)
-
-
-class RuntimeException(Exception):
-    def __init__(self, exception: ClassInstance):
-        Exception.__init__(self, "RuntimeException")
-
-        self.exception = exception
 
 
 def eval_for_loop(node: ast.ForLoopStmt, env: Environment):
@@ -879,7 +970,8 @@ def init_class(node: ast.ClassInit, env: Environment):
         fc.args = node.args
         func = scope.get(node.class_name, (node.line_num, node.file))
         call_function(fc, func, scope, env)
-    return instance
+    # return instance
+    return mem.Pointer(instance.id)
 
 
 def eval_func_call(node: ast.FuncCall, env: Environment):
@@ -1006,7 +1098,7 @@ def call_unpack(name: str, pos_args: list, index, scope: Environment, call_env: 
 
 
 def call_kw_unpack(name: str, kwargs: dict, scope: Environment, call_env: Environment, lf):
-    pair = lib.Pair()
+    pair = lib.Pair({})
     for k in kwargs:
         v = kwargs[k]
         e = evaluate(v, call_env)
@@ -1154,7 +1246,7 @@ PRIMITIVE_ARITHMETIC_TABLE = {
     "===": lambda left, right: left is right,
     "is": lambda left, right: left is right,
     "!==": lambda left, right: left is not right,
-    "instanceof": lambda left, right: isinstance(right, NativeFunction) and PRIMITIVE_FUNC_TABLE[right.name] == type(
+    "instanceof": lambda left, right: isinstance(right, NativeFunction) and PRIMITIVE_TYPE_TABLE[right.name] == type(
         left).__name__
 }
 
@@ -1405,6 +1497,24 @@ def eval_assert(node: ast.AssertStmt, env: Environment):
         raise lib.AssertionException("Assertion failed, in file '{}', at line {}".format(node.file, node.line_num))
 
 
+def eval_array_init(node: ast.ArrayInit, env: Environment):
+    length = evaluate(node.args, env)
+    type_name: str = node.f_name
+    if type_name == "int":
+        return lib.IntArray(length)
+    elif type_name == "float":
+        return lib.FloatArray(length)
+    elif type_name == "boolean":
+        return lib.BooleanArray(length)
+    elif env.has_class(type_name):
+        cla = env.get_heap(type_name)
+        if isinstance(cla, Class):
+            return InstanceArray(type_name, length)
+        elif isinstance(cla, NativeFunction):
+            return lib.NativeObjectArray(type_name, length)
+    raise lib.TypeException("Unknown type for array creation, in '{}', at line {}.".format(node.file, node.line_num))
+
+
 def raise_exception(e: Exception):
     raise e
 
@@ -1441,7 +1551,8 @@ NODE_TABLE = {
     ast.TRY_STMT: eval_try_catch,
     ast.JUMP_NODE: eval_jump,
     ast.UNDEFINED_NODE: lambda n, env: UNDEFINED,
-    ast.ASSERT_STMT: eval_assert
+    ast.ASSERT_STMT: eval_assert,
+    ast.ARRAY_INIT: eval_array_init
 }
 
 
@@ -1459,6 +1570,8 @@ def evaluate(node: ast.Node, env: Environment):
         return None
     if type(node) in SELF_RETURN_TABLE:
         return node
+    if isinstance(node, mem.Pointer):
+        return mem.MEMORY.get_instance(node.id)
     t = node.node_type
     node.execution += 1
     tn = NODE_TABLE[t]

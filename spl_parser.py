@@ -1,7 +1,6 @@
 import spl_ast as ast
 import spl_token_lib as stl
 
-
 ABSTRACT_IDENTIFIER = {"function", "def", "class"}
 
 
@@ -24,6 +23,7 @@ class Parser:
         call_nest_list = []
         param_nest_list = []
         is_abstract = False
+        array_init_count = -1
         var_level = ast.ASSIGN
         brace_count = 0
         class_brace = -1
@@ -107,6 +107,10 @@ class Parser:
                         else:
                             # if parser.in_expr:
                             extra_precedence -= 1
+                    # elif sym == "[":
+                    #     # list_creation += 1
+                    #     square_count += 1
+                    #     parser.add_call(line, "list")
                     elif sym == "]":
                         next_token = self.tokens[i + 1]
                         if isinstance(next_token, stl.IdToken) and next_token.symbol == "=":
@@ -114,9 +118,13 @@ class Parser:
                             parser.build_line()
                             i += 1
                         else:
-                            parser.build_get_set(False)
-                            parser.build_line()
-                            parser.build_call()
+                            if is_this_list(call_nest_list, array_init_count):
+                                parser.build_line()
+                                parser.build_call()
+                            else:
+                                parser.build_get_set(False)
+                                parser.build_line()
+                                parser.build_call()
                             call_nest_list.pop()
                             par_count -= 1
                     elif sym == "=":
@@ -192,15 +200,23 @@ class Parser:
                         i += 1
                         c_token = self.tokens[i]
                         class_name = c_token.symbol
-                        parser.add_class_new((c_token.line_number(), c_token.file_name()), class_name)
+
                         next_token = self.tokens[i + 1]
-                        if i + 1 < len(self.tokens) and isinstance(next_token, stl.IdToken) and \
-                                next_token.symbol == "(":
-                            i += 1
-                            call_nest_list.append(par_count)
-                            par_count += 1
-                            parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
-                            # in_call = True
+                        if isinstance(next_token, stl.IdToken):
+                            if next_token.symbol == "(":
+                                parser.add_class_new((c_token.line_number(), c_token.file_name()), class_name)
+                                i += 1
+                                call_nest_list.append(par_count)
+                                par_count += 1
+                                parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
+                            elif next_token.symbol == "[":
+                                i += 1
+                                call_nest_list.append(par_count)
+                                array_init_count = par_count
+                                par_count += 1
+                                parser.add_array_init(line, class_name)
+                            else:
+                                parser.add_class_new((c_token.line_number(), c_token.file_name()), class_name)
                     elif sym == "throw":
                         parser.add_throw(line)
                     elif sym == "try":
