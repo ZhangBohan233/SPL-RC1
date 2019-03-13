@@ -26,12 +26,15 @@ class Memory:
         return "Memory({}: {})".format(self.count, self.memory)
 
 
-class Pointer:
-    def __init__(self, id_):
-        self.id = id_
-
-    def __str__(self):
-        return "ptr-" + str(self.id)
+# class Pointer:
+#     def __init__(self, id_):
+#         self.id = id_
+#
+#     def __str__(self):
+#         return "p->{}".format(MEMORY.get_instance(self.id))
+#
+#     def __repr__(self):
+#         return self.__str__()
 
 
 MEMORY = Memory()

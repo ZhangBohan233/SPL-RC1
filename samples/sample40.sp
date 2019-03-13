@@ -15,24 +15,20 @@ class Mouse {
     }
 }
 
+function get(i) {
+    return new Mouse(i);
+}
+
 if (main()) {
     var arr = new Mouse[10];
     for (var i = 0; i < 10; i += 1) {
-        arr[i] = new Mouse(i);
+        arr[i] = get(i);
     }
     println(arr);
-    var bar = new boolean[10];
-
-    bar[1] = true;
-
-    var ll = new LinkedList();
-    for (var i = 0; i < 10; i += 1) {
-        ll.add_last(i + 20);
-    }
 
     println(memory_view());
 
     gc();
     println(memory_view());
-    println(arr[7].bite());
+    println(arr);
 }

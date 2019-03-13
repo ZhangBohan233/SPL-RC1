@@ -1,3 +1,11 @@
+********** SPL 1.4 Alpha 6 **********
+===== Build 0051 2019/03/13 =====
+
+*Garbage collector updates:
+    *Used set instead of dict
+*Tool implementation:
+    *statistics
+
 ********** SPL 1.4 Alpha 5 **********
 ===== Build 0050 2019/03/12 =====
 

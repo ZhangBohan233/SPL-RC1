@@ -480,7 +480,7 @@ class InstanceArray(lib.Array):
         pointer = self.array[index]
         return mem.MEMORY.get_instance(pointer)
 
-    def __setitem__(self, index, value: mem.Pointer):
+    def __setitem__(self, index, value):
         obj = mem.MEMORY.get_instance(value.id)
         if obj.class_name != self.object_type:
             lib.print_waring("Warning: generic array of different types")
@@ -540,18 +540,17 @@ class RuntimeException(Exception):
 
 class GarbageCollector:
     def __init__(self, memory):
-        self.found = {0: None}
+        self.found: set = {0}
         self.memory: mem.Memory = memory
 
     def gc(self, global_env: Environment):
         self.find(global_env)
-        # print(self.found)
-        self.memory.memory = self.found
-        self.memory.count = len(self.found)
-        # new_memory = {}
-        # for obj_id in self.found:
-        #     obj = self.found[obj_id]
-        #     obj.id = obj_id
+        new_memory = {}
+        for k in self.memory.memory.keys():
+            if k in self.found:
+                new_memory[k] = self.memory.memory[k]
+        self.memory.memory = new_memory
+        self.memory.count = len(self.memory.memory)
 
     def find(self, env: Environment):
         if env.is_global():
@@ -564,20 +563,16 @@ class GarbageCollector:
 
     def strong_ref(self, d: dict):
         for key in d:
-            ptr = d[key]
-            if isinstance(ptr, mem.Pointer):
-                obj = self.memory.get_instance(ptr.id)
-                if isinstance(obj, ClassInstance):
-                    self.found[obj.id] = obj
-                elif isinstance(obj, lib.NativeType):
-                    self.found[obj.id] = obj
-                    attrs = dir(obj)
-                    for attr in attrs:
-                        v = getattr(obj, attr)
-                        # print(type(v))
-                        if isinstance(v, lib.NativeType):
-                            # print(attr)
-                            self.found[v.id] = v
+            obj = d[key]
+            if isinstance(obj, ClassInstance):
+                self.found.add(obj.id)
+            elif isinstance(obj, lib.NativeType):
+                self.found.add(obj.id)
+                attrs = dir(obj)
+                for attr in attrs:
+                    v = getattr(obj, attr)
+                    if isinstance(v, lib.NativeType):
+                        self.found.add(obj.id)
 
 
 # Native functions with dependencies
@@ -971,7 +966,7 @@ def init_class(node: ast.ClassInit, env: Environment):
         func = scope.get(node.class_name, (node.line_num, node.file))
         call_function(fc, func, scope, env)
     # return instance
-    return mem.Pointer(instance.id)
+    return instance
 
 
 def eval_func_call(node: ast.FuncCall, env: Environment):
@@ -1132,9 +1127,6 @@ def eval_dot(node: ast.Dot, env: Environment):
                 raise lib.IndexOutOfRangeException(str(ie) + " in file: '{}', at line {}"
                                                    .format(node.file, node.line_num))
         elif isinstance(instance, ClassInstance):
-            # instance.env.use_temp_var = True
-            # for arg in obj.args.lines:
-            #     instance.env.temp_vars.append(evaluate(arg, env))
             lf = node.line_num, node.file
             func: Function = instance.env.get(obj.f_name, lf)
             result = call_function(obj, func, instance.env, env)
@@ -1570,8 +1562,6 @@ def evaluate(node: ast.Node, env: Environment):
         return None
     if type(node) in SELF_RETURN_TABLE:
         return node
-    if isinstance(node, mem.Pointer):
-        return mem.MEMORY.get_instance(node.id)
     t = node.node_type
     node.execution += 1
     tn = NODE_TABLE[t]
