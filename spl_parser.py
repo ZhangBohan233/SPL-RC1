@@ -23,7 +23,7 @@ class Parser:
         call_nest_list = []
         param_nest_list = []
         is_abstract = False
-        array_init_count = -1
+        array_init_pos = -1
         var_level = ast.ASSIGN
         brace_count = 0
         class_brace = -1
@@ -118,9 +118,10 @@ class Parser:
                             parser.build_line()
                             i += 1
                         else:
-                            if is_this_list(call_nest_list, array_init_count):
+                            if is_this_list(call_nest_list, array_init_pos):
                                 parser.build_line()
                                 parser.build_call()
+                                array_init_pos = -1
                             else:
                                 parser.build_get_set(False)
                                 parser.build_line()
@@ -212,7 +213,7 @@ class Parser:
                             elif next_token.symbol == "[":
                                 i += 1
                                 call_nest_list.append(par_count)
-                                array_init_count = par_count
+                                array_init_pos = par_count
                                 par_count += 1
                                 parser.add_array_init(line, class_name)
                             else:

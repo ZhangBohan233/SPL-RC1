@@ -2,6 +2,7 @@ import sys
 import time as time_lib
 import os
 import spl_memory as mem
+import struct
 
 
 def replace_bool_none(string: str):
@@ -67,7 +68,7 @@ def print_waring(msg: str):
 
 class NativeType:
     def __init__(self):
-        self.id = mem.MEMORY.get_and_increment(self)
+        self.id = mem.MEMORY.allocate(self)
 
     def type_name(self) -> str:
         raise NotImplementedError
@@ -155,6 +156,9 @@ class String(NativeType, Iterable):
                         lst.append(str(round(args[count], precision)))
                     else:
                         lst.append(str(args[count]))
+                elif flag == "r":
+                    lit = args[count]
+                    lst.append(str(lit))
                 else:
                     print_waring("Warning: Unknown flag: %" + flag)
                     lst.append("%")
@@ -340,7 +344,6 @@ class System(NativeType):
 
 
 class Os(NativeType):
-
     name = String(os.name)
     separator = String(os.sep)
 
@@ -461,13 +464,12 @@ class IntArray(Array):
     def __init__(self, length):
         Array.__init__(self, length)
 
-        self.element_size = 8
         self.array = bytearray(length * 8)
 
     def type_name(self):
         return "int[]".format(self.length())
 
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> int:
         if index >= self.length() or index < 0:
             raise IndexOutOfRangeException("Array index out of range")
         byte_index = index << 3
@@ -494,7 +496,7 @@ class BooleanArray(Array):
     def type_name(self):
         return "boolean[{}]".format(self.length())
 
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> bool:
         return False if self.array[index] == 0 else True
 
     def __setitem__(self, index, value):
@@ -509,6 +511,28 @@ class BooleanArray(Array):
 class FloatArray(Array):
     def __init__(self, length):
         Array.__init__(self, length)
+
+        self.array = bytearray(length * 8)
+
+    def type_name(self):
+        return "float[{}]".format(self.length())
+
+    def __getitem__(self, index) -> float:
+        if index >= self.length() or index < 0:
+            raise IndexOutOfRangeException("Array index out of range")
+        byte_index = index << 3
+        seq = self.array[byte_index: byte_index + 8]
+        return struct.unpack("d", seq)[0]
+
+    def __setitem__(self, index, value: float):
+        if index >= self.length() or index < 0:
+            raise IndexOutOfRangeException("Array index out of range")
+        byte_index = index << 3
+        byte_value = bytearray(struct.pack("d", value))
+        self.array[byte_index: byte_index + 8] = byte_value
+
+    def __str__(self):
+        return str([self[i] for i in range(self.length())])
 
 
 class NativeObjectArray(Array):
@@ -616,22 +640,23 @@ def exit_(code=0):
 
 def input_(*prompt):
     s = input(*prompt)
-    return String(s)
+    st = String(s)
+    return mem.Pointer(st.id)
 
 
 def make_list(*initial_elements):
     lst = List(*initial_elements)
-    return lst
+    return mem.Pointer(lst.id)
 
 
 def make_pair(initial_elements: dict):
     pair = Pair(initial_elements)
-    return pair
+    return mem.Pointer(pair.id)
 
 
 def make_set(*initial_elements):
     s = Set(*initial_elements)
-    return s
+    return mem.Pointer(s.id)
 
 
 def to_int(v):
@@ -655,7 +680,8 @@ def f_open(file, mode=String("r"), encoding=String("utf-8")):
         f = open(str(file), str(mode), encoding=str(encoding))
     else:
         f = open(str(file), str(mode))
-    return File(f, str(mode))
+    file = File(f, str(mode))
+    return mem.Pointer(file.id)
 
 
 # etc

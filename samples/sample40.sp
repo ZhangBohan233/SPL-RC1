@@ -15,14 +15,30 @@ class Mouse {
     }
 }
 
+
+class Cat {
+    var belly = new LinkedList();
+
+    function eat(mouse) {
+        belly.add_last(mouse);
+    }
+
+    function __repr__() {
+        return "Cat (%r)".format(belly);
+    }
+}
+
 function get(i) {
     return new Mouse(i);
 }
 
 if (main()) {
-    var arr = new Mouse[10];
+    var arr = new Cat[10];
     for (var i = 0; i < 10; i += 1) {
-        arr[i] = get(i);
+        arr[i] = new Cat;
+        for (var j = 0; j < i; j += 1) {
+            arr[i].eat(new Mouse(j));
+        }
     }
     println(arr);
 
@@ -30,5 +46,8 @@ if (main()) {
 
     gc();
     println(memory_view());
-    println(arr);
+    //println(arr);
+
+    var g = new Mouse(922);
+    println(memory_view());
 }

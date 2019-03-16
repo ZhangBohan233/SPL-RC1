@@ -52,9 +52,12 @@ class Interpreter:
         :return:
         """
         add_natives(self.env)
-        self.env.add_heap("system", lib.System(lib.List(*parse_args(self.argv)), self.encoding))
-        self.env.add_heap("natives", NativeInvokes())
-        self.env.add_heap("os", lib.Os())
+        system = lib.System(lib.List(*parse_args(self.argv)), self.encoding)
+        natives = NativeInvokes()
+        os_ = lib.Os()
+        self.env.add_heap("system", mem.Pointer(system.id))
+        self.env.add_heap("natives", mem.Pointer(natives.id))
+        self.env.add_heap("os", mem.Pointer(os_.id))
 
     def set_ast(self, ast_: ast.BlockStmt):
         """
@@ -302,6 +305,8 @@ class Environment:
         if v is NULLPTR:
             raise lib.SplException("Name '{}' is not defined, in file {}, at line {}"
                                    .format(key, line_file[1], line_file[0]))
+        elif isinstance(v, mem.Pointer):
+            return mem.MEMORY.point(v)
         else:
             return v
 
@@ -310,7 +315,11 @@ class Environment:
         return v is not NULLPTR
 
     def get_heap(self, class_name):
-        return self.heap[class_name]
+        obj = self.heap[class_name]
+        if isinstance(obj, mem.Pointer):
+            return mem.MEMORY.point(obj)
+        else:
+            return obj
 
     def attributes(self):
         return {**self.constants, **self.variables}
@@ -503,7 +512,7 @@ class ClassInstance:
         """
         self.class_name = class_name
         self.env = env
-        self.id = mem.MEMORY.get_and_increment(self)
+        self.id = mem.MEMORY.allocate(self)
         # self.reference_count = 0
         self.env.constants["this"] = self
 
@@ -550,7 +559,8 @@ class GarbageCollector:
             if k in self.found:
                 new_memory[k] = self.memory.memory[k]
         self.memory.memory = new_memory
-        self.memory.count = len(self.memory.memory)
+        self.memory.count = 1
+        # self.memory.count = len(self.memory.memory)
 
     def find(self, env: Environment):
         if env.is_global():
@@ -643,8 +653,8 @@ def dir_(env, obj):
         for attr in instance.env.attributes():
             if attr not in exc:
                 lst.append(attr)
-        del instance
-        mem.MEMORY.decrement()
+        # del instance
+        # mem.MEMORY.free()
     elif isinstance(obj, NativeFunction):
         for nt in lib.NativeType.__subclasses__():
             if nt.type_name(nt) == obj.name:
@@ -698,8 +708,8 @@ def help_(env, obj):
             if attr not in exc:
                 print(attr)
                 print(_get_doc(instance.env.get(attr, (0, "help"))))
-        del instance
-        mem.MEMORY.decrement()
+        # del instance
+        # mem.MEMORY.decrement()
 
 
 # Helper functions
@@ -965,8 +975,8 @@ def init_class(node: ast.ClassInit, env: Environment):
         fc.args = node.args
         func = scope.get(node.class_name, (node.line_num, node.file))
         call_function(fc, func, scope, env)
+    return mem.Pointer(instance.id)
     # return instance
-    return instance
 
 
 def eval_func_call(node: ast.FuncCall, env: Environment):
