@@ -1,3 +1,6 @@
+import config_loader as cfg
+
+
 class Pointer:
     def __init__(self, id_):
         self.id = id_
@@ -11,12 +14,16 @@ class Pointer:
 
 class Memory:
     def __init__(self):
+        self.gc_size = cfg.get_gc_size()
         self.count = 1
         self.memory = {0: None}
 
-    # def free(self):
-    #     self.count -= 1
-    #     self.memory.pop(self.count)
+    def check_gc(self) -> bool:
+        return len(self.memory) >= self.gc_size
+
+    def free(self, p: Pointer):
+        self.memory.pop(p.id)
+        self.count = p.id
 
     def allocate(self, instance):
         """

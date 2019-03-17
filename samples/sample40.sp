@@ -28,6 +28,14 @@ class Cat {
     }
 }
 
+class Cater {
+    var cats;
+
+    function Cater(cats_) {
+        cats = cats_;
+    }
+}
+
 function get(i) {
     return new Mouse(i);
 }
@@ -50,4 +58,7 @@ if (main()) {
 
     var g = new Mouse(922);
     println(memory_view());
+
+    var cats = new Cater(arr);
+    println(cats.cats);
 }

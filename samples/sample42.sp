@@ -18,4 +18,7 @@ if (main()) {
     var c = new float[8];
     c[2] = 5;
     println(c);
+
+    del c;
+    //println(c);
 }

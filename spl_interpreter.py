@@ -259,11 +259,13 @@ class Environment:
     def assign(self, key, value, lf):
         if key in self.variables:
             self.variables[key] = value
+            check_gc(self, value)
         else:
             out = self.outer
             while out:
                 if key in out.variables:
                     out.variables[key] = value
+                    check_gc(self, value)
                     return
                 out = out.outer
             raise lib.SplException("Name '{}' is not defined, in '{}', at line {}"
@@ -307,6 +309,22 @@ class Environment:
                                    .format(key, line_file[1], line_file[0]))
         elif isinstance(v, mem.Pointer):
             return mem.MEMORY.point(v)
+        else:
+            return v
+
+    def direct_get(self, key: str, line_file: tuple):
+        """
+        Returns the value of that key.
+
+        :param key:
+        :param line_file:
+        :return:
+        """
+        v = self.inner_get(key)
+        # print(key + str(v))
+        if v is NULLPTR:
+            raise lib.SplException("Name '{}' is not defined, in file {}, at line {}"
+                                   .format(key, line_file[1], line_file[0]))
         else:
             return v
 
@@ -474,29 +492,20 @@ class NativeInvokes(lib.NativeType):
         return Thread(process)
 
 
-class InstanceArray(lib.Array):
+class InstanceArray(lib.PointerArray):
     def __init__(self, type_name: str, length):
-        lib.Array.__init__(self, length)
+        lib.PointerArray.__init__(self, length)
 
         self.object_type = type_name
-        self.element_size = 8
-        self.array: lib.IntArray = lib.IntArray(length)
 
     def type_name(self):
         return "{}[]".format(self.object_type, self.length())
-
-    def __getitem__(self, index):
-        pointer = self.array[index]
-        return mem.MEMORY.get_instance(pointer)
 
     def __setitem__(self, index, value):
         obj = mem.MEMORY.get_instance(value.id)
         if obj.class_name != self.object_type:
             lib.print_waring("Warning: generic array of different types")
         self.array[index] = value.id
-
-    def __str__(self):
-        return str([self[i] for i in range(self.length())])
 
 
 NULLPTR = NullPointer()
@@ -515,6 +524,7 @@ class ClassInstance:
         self.id = mem.MEMORY.allocate(self)
         # self.reference_count = 0
         self.env.constants["this"] = self
+        check_gc(env, mem.Pointer(self.id))
 
     def __hash__(self):
         if self.env.contains_key("__hash__"):
@@ -552,15 +562,21 @@ class GarbageCollector:
         self.found: set = {0}
         self.memory: mem.Memory = memory
 
-    def gc(self, global_env: Environment):
+    def gc(self, env: Environment, protected: mem.Pointer):
+        global_env = env
+        while global_env.outer:
+            global_env = global_env.outer  # first go to the outermost environment
+        if protected:
+            self.found.add(protected.id)
         self.find(global_env)
         new_memory = {}
         for k in self.memory.memory.keys():
             if k in self.found:
                 new_memory[k] = self.memory.memory[k]
+        # print(new_memory)
+        print("before: {}, after: {}".format(len(self.memory.memory), len(new_memory)))
         self.memory.memory = new_memory
         self.memory.count = 1
-        # self.memory.count = len(self.memory.memory)
 
     def find(self, env: Environment):
         if env.is_global():
@@ -573,16 +589,19 @@ class GarbageCollector:
 
     def strong_ref(self, d: dict):
         for key in d:
-            obj = d[key]
-            if isinstance(obj, ClassInstance):
-                self.found.add(obj.id)
-            elif isinstance(obj, lib.NativeType):
-                self.found.add(obj.id)
-                attrs = dir(obj)
-                for attr in attrs:
-                    v = getattr(obj, attr)
-                    if isinstance(v, lib.NativeType):
-                        self.found.add(obj.id)
+            ptr = d[key]
+            if isinstance(ptr, mem.Pointer):
+                obj = self.memory.point(ptr)
+                self.found.add(ptr.id)
+                if isinstance(obj, lib.NativeType):
+                    attrs = dir(obj)
+                    for attr in attrs:
+                        v = getattr(obj, attr)
+                        if isinstance(v, lib.NativeType):
+                            self.found.add(obj.id)
+                    if isinstance(obj, lib.PointerArray):
+                        for p in obj.list_pointers():
+                            self.found.add(p)
 
 
 # Native functions with dependencies
@@ -675,9 +694,9 @@ def is_main(env: Environment):
     return env.get_heap("system").argv[0] == getcwf(env)
 
 
-def gc(env: Environment):
+def gc(env: Environment, protected=None):
     collector = GarbageCollector(mem.MEMORY)
-    collector.gc(env)
+    collector.gc(env, protected)
 
 
 def help_(env, obj):
@@ -748,6 +767,12 @@ def _filter_doc(lines: [str], pos: int):
                 lst.append("| ")
                 lst.append(line[1:])
     return lst
+
+
+def check_gc(env: Environment, protected):
+    if mem.MEMORY.check_gc():
+        if isinstance(protected, mem.Pointer):
+            gc(env, protected)
 
 
 # Interpreter
@@ -1041,17 +1066,22 @@ def call_function(call: ast.FuncCall, func: Function, func_parent_env: Environme
             if arg.node_type == ast.ASSIGNMENT_NODE:
                 arg: ast.AssignmentNode
                 kwargs[arg.left.name] = arg.right
-            elif arg.node_type == ast.UNPACK_OPERATOR:
-                arg: ast.UnpackOperator
-                args_list: lib.List = call_env.get(arg.value.name, LINE_FILE)
-                for an_arg in args_list:
-                    pos_args.append(an_arg)
-            elif arg.node_type == ast.KW_UNPACK_OPERATOR:
-                arg: ast.KwUnpackOperator
-                args_pair: lib.Pair = call_env.get(arg.value.name, LINE_FILE)
-                # print(args_pair)
-                for an_arg in args_pair:
-                    kwargs[an_arg.literal] = args_pair[an_arg]
+            elif arg.node_type == ast.UNARY_OPERATOR:
+                arg: ast.UnaryOperator
+                if arg.operation == "unpack":
+                    args_list: lib.List = call_env.get(arg.value.name, LINE_FILE)
+                    for an_arg in args_list:
+                        pos_args.append(an_arg)
+                elif arg.operation == "kw_unpack":
+                    args_pair: lib.Pair = call_env.get(arg.value.name, LINE_FILE)
+                    # print(args_pair)
+                    for an_arg in args_pair:
+                        kwargs[an_arg.literal] = args_pair[an_arg]
+                elif arg.operation == "neg":
+                    pos_args.append(arg)
+                else:
+                    raise lib.TypeException("Invalid operator in function parameter, in file '{}', at line {}."
+                                            .format(arg.file, arg.line_num))
             else:
                 pos_args.append(arg)
         else:
@@ -1347,6 +1377,7 @@ def native_types_call(instance: lib.NativeType, method: ast.FuncCall, env: Envir
         res = method(instance, env, *args)
     else:
         res = method(instance, *args)
+    check_gc(env, mem.Pointer(instance.id))
     return res
 
 
@@ -1385,9 +1416,8 @@ def eval_anonymous_call(node: ast.AnonymousCall, env: Environment):
     return evaluate(fc, env)
 
 
-def eval_return(node: ast.ReturnStmt, env: Environment):
-    value = node.value
-    res = evaluate(value, env)
+def eval_return(node: ast.Node, env: Environment):
+    res = evaluate(node, env)
     # print(env.variables)
     env.terminate(res)
     return res
@@ -1453,14 +1483,17 @@ def eval_def(node: ast.DefStmt, env: Environment):
             p: ast.AssignmentNode
             name = p.left.name
             value = evaluate(p.right, env)
-        elif p.node_type == ast.UNPACK_OPERATOR:
-            p: ast.UnpackOperator
-            name = p.value.name
-            value = UNPACK_ARGUMENT
-        elif p.node_type == ast.KW_UNPACK_OPERATOR:
-            p: ast.KwUnpackOperator
-            name = p.value.name
-            value = KW_UNPACK_ARGUMENT
+        elif p.node_type == ast.UNARY_OPERATOR:
+            p: ast.UnaryOperator
+            if p.operation == "unpack":
+                name = p.value.name
+                value = UNPACK_ARGUMENT
+            elif p.operation == "kw_unpack":
+                name = p.value.name
+                value = KW_UNPACK_ARGUMENT
+            else:
+                raise lib.SplException("Unexpected syntax in function parameter, in file '{}', at line {}."
+                                       .format(node.file, node.line_num))
         else:
             raise lib.SplException("Unexpected syntax in function parameter, in file '{}', at line {}."
                                    .format(node.file, node.line_num))
@@ -1493,8 +1526,8 @@ def eval_jump(node, env: Environment):
     return evaluate(func.body, env)
 
 
-def eval_assert(node: ast.AssertStmt, env: Environment):
-    result = evaluate(node.value, env)
+def eval_assert(node: ast.Node, env: Environment):
+    result = evaluate(node, env)
     if result is not True:
         raise lib.AssertionException("Assertion failed, in file '{}', at line {}".format(node.file, node.line_num))
 
@@ -1502,19 +1535,54 @@ def eval_assert(node: ast.AssertStmt, env: Environment):
 def eval_array_init(node: ast.ArrayInit, env: Environment):
     length = evaluate(node.args, env)
     type_name: str = node.f_name
+    array = None
     if type_name == "int":
-        return lib.IntArray(length)
+        array = lib.IntArray(length)
     elif type_name == "float":
-        return lib.FloatArray(length)
+        array = lib.FloatArray(length)
     elif type_name == "boolean":
-        return lib.BooleanArray(length)
+        array = lib.BooleanArray(length)
+    elif type_name == "Object":
+        array = lib.PointerArray(length)
     elif env.has_class(type_name):
         cla = env.get_heap(type_name)
         if isinstance(cla, Class):
-            return InstanceArray(type_name, length)
+            array = InstanceArray(type_name, length)
         elif isinstance(cla, NativeFunction):
-            return lib.NativeObjectArray(type_name, length)
-    raise lib.TypeException("Unknown type for array creation, in '{}', at line {}.".format(node.file, node.line_num))
+            array = lib.NativeObjectArray(type_name, length)
+
+    if array is not None:
+        array: lib.Array
+        return mem.Pointer(array.id)
+    else:
+        raise lib.TypeException("Unknown type for array creation, in '{}', at line {}.".format(node.file, node.line_num))
+
+
+def free_pointer(node: ast.Node, env: Environment):
+    t = node.node_type
+    if t == ast.NAME_NODE:
+        node: ast.NameNode
+        pointer = env.direct_get(node.name, (node.line_num, node.file))
+        mem.MEMORY.free(pointer)
+    else:
+        raise lib.TypeException("Unknown type for free. In file '{}', at line {}"
+                                .format(node.file, node.line_num))
+
+
+UNARY_TABLE = {
+    "return": eval_return,
+    "throw": lambda n, env: raise_exception(RuntimeException(evaluate(n.value, env))),
+    "neg": lambda n, env: -evaluate(n.value, env),
+    "!": lambda n, env: not bool(evaluate(n.value, env)),
+    "assert": eval_assert,
+    "del": free_pointer
+}
+
+
+def eval_unary_expression(node: ast.UnaryOperator, env: Environment):
+    t = node.operation
+    op = UNARY_TABLE[t]
+    return op(node.value, env)
 
 
 def raise_exception(e: Exception):
@@ -1538,9 +1606,7 @@ NODE_TABLE = {
     ast.DOT: eval_dot,
     ast.ANONYMOUS_CALL: eval_anonymous_call,
     ast.OPERATOR_NODE: eval_operator,
-    ast.NEGATIVE_EXPR: lambda n, env: -evaluate(n.value, env),
-    ast.NOT_EXPR: lambda n, env: not bool(evaluate(n.value, env)),
-    ast.RETURN_STMT: eval_return,
+    ast.UNARY_OPERATOR: eval_unary_expression,
     ast.BLOCK_STMT: eval_block,
     ast.IF_STMT: eval_if_stmt,
     ast.WHILE_STMT: eval_while,
@@ -1549,11 +1615,9 @@ NODE_TABLE = {
     ast.FUNCTION_CALL: eval_func_call,
     ast.CLASS_STMT: eval_class_stmt,
     ast.CLASS_INIT: init_class,
-    ast.THROW_STMT: lambda n, env: raise_exception(RuntimeException(evaluate(n.value, env))),
     ast.TRY_STMT: eval_try_catch,
     ast.JUMP_NODE: eval_jump,
     ast.UNDEFINED_NODE: lambda n, env: UNDEFINED,
-    ast.ASSERT_STMT: eval_assert,
     ast.ARRAY_INIT: eval_array_init
 }
 

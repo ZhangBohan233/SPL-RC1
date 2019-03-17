@@ -535,24 +535,39 @@ class FloatArray(Array):
         return str([self[i] for i in range(self.length())])
 
 
-class NativeObjectArray(Array):
-    def __init__(self, type_name, length):
+class PointerArray(Array):
+    def __init__(self, length):
         Array.__init__(self, length)
 
-        self.object_type = type_name
         self.array = IntArray(length)
 
     def __getitem__(self, index):
         pointer = self.array[index]
         return mem.MEMORY.get_instance(pointer)
 
-    def __setitem__(self, index, value: NativeType):
-        if value.type_name() != self.object_type:
-            print_waring("Warning: generic array of different types")
+    def __setitem__(self, index, value):
         self.array[index] = value.id
 
     def __str__(self):
         return str([self[i] for i in range(self.length())])
+
+    def type_name(self):
+        return "Object[{}]".format(self.length())
+
+    def list_pointers(self):
+        return (x for x in self.array)
+
+
+class NativeObjectArray(PointerArray):
+    def __init__(self, type_name, length):
+        PointerArray.__init__(self, length)
+
+        self.object_type = type_name
+
+    def __setitem__(self, index, value: NativeType):
+        if value.type_name() != self.object_type:
+            print_waring("Warning: generic array of different types")
+        self.array[index] = value.id
 
     def type_name(self):
         return "{}[{}]".format(self.object_type, self.length())

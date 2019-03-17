@@ -2,10 +2,11 @@ PRECEDENCE = {"+": 50, "-": 50, "*": 100, "/": 100, "%": 100,
               "==": 20, ">": 25, "<": 25, ">=": 25, "<=": 25,
               "!=": 20, "&&": 5, "and": 5, "||": 5, "or": 5, "&": 12, "^": 11, "|": 10,
               "<<": 40, ">>": 40, "unpack": 200, "kw_unpack": 200,
-              ".": 500, "!": 200, "not": 200, "neg": 200, "return": 1, "throw": 1,
+              ".": 500, "!": 200, "neg": 200, "return": 1, "throw": 1,
               "+=": 2, "-=": 2, "*=": 2, "/=": 2, "%=": 2,
               "&=": 2, "^=": 2, "|=": 2, "<<=": 2, ">>=": 2, "=>": 500,
-              "===": 20, "is": 20, "!==": 20, "instanceof": 25, "assert": 1}
+              "===": 20, "is": 20, "!==": 20, "instanceof": 25, "assert": 1,
+              "del": 1}
 
 MULTIPLIER = 1000
 
@@ -22,9 +23,10 @@ ASSIGNMENT_NODE = 9
 DOT = 10
 ANONYMOUS_CALL = 11
 OPERATOR_NODE = 12
-NEGATIVE_EXPR = 13
-NOT_EXPR = 14
-RETURN_STMT = 15
+UNARY_OPERATOR = 14
+# NEGATIVE_EXPR = 13
+# NOT_EXPR = 14
+# RETURN_STMT = 15
 BLOCK_STMT = 16
 IF_STMT = 17
 WHILE_STMT = 18
@@ -35,15 +37,15 @@ CLASS_STMT = 22
 CLASS_INIT = 23
 # INVALID_TOKEN = 24
 ABSTRACT = 25
-THROW_STMT = 26
+# THROW_STMT = 26
 TRY_STMT = 27
 CATCH_STMT = 28
 TYPE_NODE = 29
 JUMP_NODE = 30
 UNDEFINED_NODE = 31
-UNPACK_OPERATOR = 32
-KW_UNPACK_OPERATOR = 33
-ASSERT_STMT = 34
+# UNPACK_OPERATOR = 32
+# KW_UNPACK_OPERATOR = 33
+# ASSERT_STMT = 34
 ARRAY_INIT = 35
 
 ASSIGN = 0
@@ -103,36 +105,12 @@ class AbstractSyntaxTree:
             op_node.operation = op
             self.stack.append(op_node)
 
-    def add_neg(self, line, extra_precedence):
+    def add_unary(self, line, op, extra_precedence):
         if self.inner:
-            self.inner.add_neg(line, extra_precedence)
+            self.inner.add_unary(line, op, extra_precedence)
         else:
             self.in_expr = True
-            node = NegativeExpr(line, extra_precedence)
-            self.stack.append(node)
-
-    def add_not(self, line, extra_precedence):
-        if self.inner:
-            self.inner.add_not(line, extra_precedence)
-        else:
-            self.in_expr = True
-            node = NotExpr(line, extra_precedence)
-            self.stack.append(node)
-
-    def add_unpack(self, line):
-        if self.inner:
-            self.inner.add_unpack(line)
-        else:
-            self.in_expr = True
-            node = UnpackOperator(line)
-            self.stack.append(node)
-
-    def add_kw_unpack(self, line):
-        if self.inner:
-            self.inner.add_kw_unpack(line)
-        else:
-            self.in_expr = True
-            node = KwUnpackOperator(line)
+            node = UnaryOperator(line, op, extra_precedence)
             self.stack.append(node)
 
     def add_assignment(self, line, var_level):
@@ -190,14 +168,6 @@ class AbstractSyntaxTree:
             fls = ForLoopStmt(line)
             self.stack.append(fls)
             self.inner = AbstractSyntaxTree()
-
-    def add_throw(self, line):
-        if self.inner:
-            self.inner.add_throw(line)
-        else:
-            self.in_expr = True
-            thr = ThrowStmt(line)
-            self.stack.append(thr)
 
     def add_try(self, line):
         if self.inner:
@@ -291,22 +261,6 @@ class AbstractSyntaxTree:
                         node.f_name = "__getitem__"
                         break
                     i -= 1
-
-    def add_return(self, line):
-        if self.inner:
-            self.inner.add_return(line)
-        else:
-            self.in_expr = True
-            rtn = ReturnStmt(line)
-            self.stack.append(rtn)
-
-    def add_assert(self, line):
-        if self.inner:
-            self.inner.add_assert(line)
-        else:
-            self.in_expr = True
-            ase = AssertStmt(line)
-            self.stack.append(ase)
 
     def add_break(self, line):
         if self.inner:
@@ -489,9 +443,6 @@ class AbstractSyntaxTree:
                     elif isinstance(node, DefStmt):
                         node.body = lst[0] if len(lst) > 0 else None
                         lst.__setitem__(0, node) if len(lst) > 0 else lst.append(node)
-                    elif isinstance(node, ReturnStmt) or isinstance(node, ThrowStmt):
-                        node.value = lst[0] if len(lst) > 0 else None
-                        lst.__setitem__(0, node) if len(lst) > 0 else lst.append(node)
                     elif isinstance(node, CatchStmt):
                         node.then = lst[0] if len(lst) > 0 else None
                         lst.__setitem__(0, node) if len(lst) > 0 else lst.append(node)
@@ -631,9 +582,11 @@ class UnaryOperator(Node):
     operation = None
     extra_precedence = 0
 
-    def __init__(self, line, extra):
+    def __init__(self, line, op, extra):
         Node.__init__(self, line)
 
+        self.node_type = UNARY_OPERATOR
+        self.operation = op
         self.extra_precedence = extra * MULTIPLIER
 
     def precedence(self):
@@ -686,54 +639,6 @@ class AnonymousCall(OperatorNode):
         OperatorNode.__init__(self, line, extra)
 
         self.node_type = ANONYMOUS_CALL
-
-
-class NegativeExpr(UnaryOperator):
-    def __init__(self, line, extra):
-        UnaryOperator.__init__(self, line, extra)
-
-        self.node_type = NEGATIVE_EXPR
-        self.operation = "neg"
-
-
-class NotExpr(UnaryOperator):
-    def __init__(self, line, extra):
-        UnaryOperator.__init__(self, line, extra)
-
-        self.node_type = NOT_EXPR
-        self.operation = "!"
-
-
-class UnpackOperator(UnaryOperator):
-    def __init__(self, line):
-        UnaryOperator.__init__(self, line, 0)
-
-        self.node_type = UNPACK_OPERATOR
-        self.operation = "unpack"
-
-
-class KwUnpackOperator(UnaryOperator):
-    def __init__(self, line):
-        UnaryOperator.__init__(self, line, 0)
-
-        self.node_type = KW_UNPACK_OPERATOR
-        self.operation = "kw_unpack"
-
-
-class ReturnStmt(UnaryOperator):
-    def __init__(self, line):
-        UnaryOperator.__init__(self, line, 0)
-
-        self.node_type = RETURN_STMT
-        self.operation = "return"
-
-
-class AssertStmt(UnaryOperator):
-    def __init__(self, line):
-        UnaryOperator.__init__(self, line, 0)
-
-        self.node_type = ASSERT_STMT
-        self.operation = "assert"
 
 
 class BreakStmt(LeafNode):
@@ -974,20 +879,6 @@ class Dot(OperatorNode):
 
     def __str__(self):
         return "({} dot {})".format(self.left, self.right)
-
-    def __repr__(self):
-        return self.__str__()
-
-
-class ThrowStmt(UnaryOperator):
-    def __init__(self, line):
-        UnaryOperator.__init__(self, line, 0)
-
-        self.node_type = THROW_STMT
-        self.operation = "throw"
-
-    def __str__(self):
-        return "Throw({})".format(self.value)
 
     def __repr__(self):
         return self.__str__()
