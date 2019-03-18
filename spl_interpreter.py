@@ -87,6 +87,14 @@ def parse_args(argv):
 
 
 def add_natives(self):
+    """
+    Adds a bundle of global variables to the global scope.
+
+    Includes all built-in functions and some global vars.
+
+    :param self: the Environment
+    :return: None
+    """
     self.add_heap("print", NativeFunction(lib.print_, "print"))
     self.add_heap("println", NativeFunction(lib.print_ln, "println"))
     self.add_heap("type", NativeFunction(typeof, "type"))
@@ -112,17 +120,20 @@ def add_natives(self):
     self.add_heap("boolean", NativeFunction(lib.to_boolean, "boolean"))
     self.add_heap("void", NativeFunction(None, "void"))
 
+    # global variables
     self.add_heap("cwf", None)
 
 
 class Environment:
     heap: dict
     variables: dict
+    constants: dict
     scope_type: int
 
     """
     ===== Attributes =====
     :param scope_type: the type of scope, whether it is global, class, function or inner
+    :param heap: the shared-heap space, all pointed to one
     """
 
     def __init__(self, scope_type, outer):
@@ -170,6 +181,14 @@ class Environment:
         return "".join(['null' if k is None else k for k in temp])
 
     def invalidate(self):
+        """
+        Re-initialize this scope.
+
+        This method will only be called in a scope under level 'LOOP_SCOPE', although this access will not
+        be checked.
+
+        :return: None
+        """
         self.variables.clear()
         self.constants.clear()
 
@@ -177,6 +196,14 @@ class Environment:
         return self.scope_type == GLOBAL_SCOPE
 
     def is_sub(self):
+        """
+        Returns True iff this scope is a NOT a main scope.
+
+        A 'main scope' is a scope that has its independent variable layer. GLOBAL_SCOPE, CLASS_SCOPE and
+        FUNCTION_SCOPE are main scopes.
+
+        :return:
+        """
         return self.scope_type == LOOP_SCOPE or self.scope_type == SUB_SCOPE
 
     def add_heap(self, k, v):
@@ -197,6 +224,11 @@ class Environment:
             raise lib.SplException("Return outside function.")
 
     def is_terminated(self):
+        """
+        Returns True iff this scope or one of its parent scopes had been terminated.
+
+        :return: True iff this scope or one of its parent scopes had been terminated
+        """
         if self.scope_type == FUNCTION_SCOPE:
             return self.terminated
         elif self.is_sub():
@@ -205,6 +237,11 @@ class Environment:
             return False
 
     def terminate_value(self):
+        """
+        Returns the last recorded terminate value of a function scope that the function had returned early.
+
+        :return: the terminate value
+        """
         if self.scope_type == FUNCTION_SCOPE:
             return self.exit_value
         elif self.is_sub():
@@ -221,6 +258,13 @@ class Environment:
             raise lib.SplException("Break not inside loop.")
 
     def pause_loop(self):
+        """
+        Pauses the loop for one iteration.
+
+        This method is called when the keyword 'continue' is executed.
+
+        :return: None
+        """
         if self.scope_type == LOOP_SCOPE:
             self.paused = True
         elif self.is_sub():
@@ -229,6 +273,13 @@ class Environment:
             raise lib.SplException("Continue not inside loop.")
 
     def resume_loop(self):
+        """
+        Resumes a paused loop environment.
+
+        If this scope is not paused, this method can still be called but makes no effect.
+
+        :return: None
+        """
         if self.scope_type == LOOP_SCOPE:
             self.paused = False
         elif self.is_sub():
@@ -242,7 +293,7 @@ class Environment:
         self.variables[key] = value
 
     def define_var(self, key, value, lf):
-        if self.contains_key(key):
+        if self.local_contains(key):
             raise lib.SplException("Name '{}' is already defined in this scope, in '{}', at line {}"
                                    .format(key, lf[1], lf[0]))
         else:
@@ -271,6 +322,33 @@ class Environment:
             raise lib.SplException("Name '{}' is not defined, in '{}', at line {}"
                                    .format(key, lf[1], lf[0]))
 
+    def local_inner_get(self, key: str):
+        if key in self.constants:
+            return self.constants[key]
+        if key in self.variables:
+            return self.variables[key]
+
+        out = self
+        while out.outer and out.is_sub():
+            out = out.outer
+
+            if key in out.constants:
+                return out.constants[key]
+            if key in out.variables:
+                return out.variables[key]
+
+        return self.heap.get(key, NULLPTR)
+
+    def local_contains(self, key: str) -> bool:
+        """
+        Returns True iff this main scope has this key, or the heap has this key.
+
+        :param key:
+        :return:
+        """
+        v = self.local_inner_get(key)
+        return v is not NULLPTR
+
     def inner_get(self, key: str):
         """
         Internally gets a value stored in this scope, 'NULLPTR' if not found.
@@ -298,9 +376,11 @@ class Environment:
         """
         Returns the value of that key.
 
+        If the value is a pointer, then returns the instance pointed by the pointer instead.
+
         :param key:
         :param line_file:
-        :return:
+        :return: the value corresponding to the key. Instance will be returned if the value is a pointer.
         """
         v = self.inner_get(key)
         # print(key + str(v))
@@ -314,11 +394,11 @@ class Environment:
 
     def direct_get(self, key: str, line_file: tuple):
         """
-        Returns the value of that key.
+        Returns the value of that key, regardless of value type.
 
         :param key:
         :param line_file:
-        :return:
+        :return: the value corresponding to the key
         """
         v = self.inner_get(key)
         # print(key + str(v))
@@ -332,7 +412,16 @@ class Environment:
         v = self.inner_get(key)
         return v is not NULLPTR
 
-    def get_heap(self, class_name):
+    def get_heap(self, class_name: str):
+        """
+        Returns the heap-variable corresponding to the key 'class_name'.
+
+        This method will return the instance if the value stored in heap is a pointer.
+
+        :param class_name:
+        :return: the heap-variable corresponding to the key 'class_name'. Instance will be returned if the
+        value stored in heap is a pointer.
+        """
         obj = self.heap[class_name]
         if isinstance(obj, mem.Pointer):
             return mem.MEMORY.point(obj)
@@ -340,6 +429,11 @@ class Environment:
             return obj
 
     def attributes(self):
+        """
+        Returns a union of all local variables in this scope.
+
+        :return: a union of all local variables in this scope
+        """
         return {**self.constants, **self.variables}
 
 
@@ -1555,7 +1649,8 @@ def eval_array_init(node: ast.ArrayInit, env: Environment):
         array: lib.Array
         return mem.Pointer(array.id)
     else:
-        raise lib.TypeException("Unknown type for array creation, in '{}', at line {}.".format(node.file, node.line_num))
+        raise lib.TypeException(
+            "Unknown type for array creation, in '{}', at line {}.".format(node.file, node.line_num))
 
 
 def free_pointer(node: ast.Node, env: Environment):

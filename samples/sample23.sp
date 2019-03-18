@@ -40,11 +40,11 @@ class Student extends Person, Human, Creature {
     const g2 = "sb";
     //var father = new Human;
 
-    function Student(n, g) {
+    function Student(n, grade) {
         Person(n);
         Creature();
-        age = g + 18;
-        grade = g;
+        age = grade + 18;
+        this.grade = grade;
     }
 
     @Override

@@ -210,6 +210,13 @@ class Tokenizer:
             self.write_mark()
 
     def find_import(self, from_, to):
+        """
+        Looks for import statement between the given slice of the tokens list.
+
+        :param from_: the beginning position of search
+        :param to: the end position of search
+        :return: None
+        """
         for i in range(from_, to, 1):
             token = self.tokens[i]
             if isinstance(token, stl.IdToken) and token.symbol == "import":
@@ -229,17 +236,30 @@ class Tokenizer:
                 break
 
     def import_file(self, full_path):
-        file = open(full_path, "r")
-        lexer = Tokenizer()
-        lexer.file_name = full_path
-        lexer.script_dir = get_dir(full_path)
-        lexer.tokenize(file)
-        # print(lexer.tokens)
-        self.tokens += lexer.tokens
-        self.tokens.pop()  # remove the EOF token
-        file.close()
+        """
+        Imports an external sp file.
+
+        This method tokenizes the imported file, and inserts all tokens except the EOF token of the imported
+        file into the current file.
+
+        :param full_path: the path of the file to be imported
+        :return: None
+        """
+        with open(full_path, "r") as file:
+            lexer = Tokenizer()
+            lexer.file_name = full_path
+            lexer.script_dir = get_dir(full_path)
+            lexer.tokenize(file)
+            # print(lexer.tokens)
+            self.tokens += lexer.tokens
+            self.tokens.pop()  # remove the EOF token
 
     def get_tokens(self):
+        """
+        Returns the tokens list.
+
+        :return: the tokens list
+        """
         return self.tokens
 
 
