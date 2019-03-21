@@ -120,6 +120,11 @@ class AbstractSyntaxTree:
             name = self.stack.pop()
             ass_node = AssignmentNode(line, var_level)
             ass_node.left = name
+            if len(self.stack) > 0 and isinstance(self.stack[-1], NameNode):
+                type_node = self.stack.pop()
+                ass_node.var_type = type_node
+                if ass_node.level == ASSIGN:
+                    ass_node.level = VAR
             self.stack.append(ass_node)
 
     def add_undefined(self, line):
@@ -617,11 +622,13 @@ class NameNode(LeafNode):
 
 class AssignmentNode(BinaryExpr):
     level = ASSIGN
+    var_type: NameNode
 
     def __init__(self, line, level):
         BinaryExpr.__init__(self, line)
 
         self.node_type = ASSIGNMENT_NODE
+        self.var_type = None
         self.operation = "="
         self.level = level
 
@@ -831,7 +838,7 @@ class ClassStmt(Node):
         self.node_type = CLASS_STMT
         self.class_name = name
         self.abstract = abstract
-        self.superclass_names = []
+        self.superclass_names = ["Object"]
 
     def __str__(self):
         return "Class {}: {}".format(self.class_name, self.block)

@@ -15,6 +15,13 @@ FUNCTION_SCOPE = 2
 LOOP_SCOPE = 3
 SUB_SCOPE = 4
 
+TYPE_RAW = 0
+TYPE_INT = 1
+TYPE_FLOAT = 2
+TYPE_BOOLEAN = 3
+TYPE_FUNCTION = 4
+TYPE_POINTER = 5
+
 # LOCAL_SCOPES = {LOOP_SCOPE, IF_ELSE_SCOPE, TRY_CATCH_SCOPE, LOOP_INNER_SCOPE}
 
 LINE_FILE = 0, "interpreter"
@@ -52,9 +59,11 @@ class Interpreter:
         :return:
         """
         add_natives(self.env)
+        # obj = lib.SplObject()
         system = lib.System(lib.List(*parse_args(self.argv)), self.encoding)
         natives = NativeInvokes()
         os_ = lib.Os()
+        self.env.add_heap("Object", Class("Object", None, True))
         self.env.add_heap("system", mem.Pointer(system.id))
         self.env.add_heap("natives", mem.Pointer(natives.id))
         self.env.add_heap("os", mem.Pointer(os_.id))
@@ -157,7 +166,7 @@ class Environment:
         self.paused = False
 
         if not self.is_sub():
-            self.variables.__setitem__("=>", None)
+            self.variables.__setitem__("=>", [TYPE_RAW, None])
 
     def __str__(self):
         temp = [self.scope_name, "\nConst: "]
@@ -207,7 +216,10 @@ class Environment:
         return self.scope_type == LOOP_SCOPE or self.scope_type == SUB_SCOPE
 
     def add_heap(self, k, v):
-        self.heap[k] = v
+        if isinstance(v, mem.Pointer):
+            self.heap[k] = [TYPE_POINTER, v]
+        else:
+            self.heap[k] = [TYPE_FUNCTION, v]
 
     def has_class(self, class_name):
         return class_name in self.heap
@@ -290,32 +302,38 @@ class Environment:
     def define_function(self, key, value, lf, options: dict):
         if not options["override"] and not options["suppress"] and key[0].islower() and self.contains_key(key):
             lib.print_waring("Warning: re-declaring method '{}' in '{}', at line {}".format(key, lf[1], lf[0]))
-        self.variables[key] = value
+        self.variables[key] = [TYPE_FUNCTION, value]
 
-    def define_var(self, key, value, lf):
+    def define_var(self, key, value, lf, preset_type: int = TYPE_RAW):
         if self.local_contains(key):
             raise lib.SplException("Name '{}' is already defined in this scope, in '{}', at line {}"
                                    .format(key, lf[1], lf[0]))
         else:
-            self.variables[key] = value
+            if preset_type == TYPE_RAW:
+                if isinstance(value, mem.Pointer):
+                    self.variables[key] = [TYPE_POINTER, value]
+                else:
+                    self.variables[key] = [TYPE_RAW, value]
+            else:
+                self.variables[key] = [preset_type, value]
 
-    def define_const(self, key, value, lf):
+    def define_const(self, key, value, lf, value_type: int):
         # if key in self.constants:
         if self.contains_key(key):
             raise lib.SplException("Name '{}' is already defined in this scope, in {}, at line {}"
                                    .format(key, lf[1], lf[0]))
         else:
-            self.constants[key] = value
+            self.constants[key] = [value_type, value]
 
     def assign(self, key, value, lf):
         if key in self.variables:
-            self.variables[key] = value
+            self.variables[key][1] = value
             check_gc(self, value)
         else:
             out = self.outer
             while out:
                 if key in out.variables:
-                    out.variables[key] = value
+                    out.variables[key][1] = value
                     check_gc(self, value)
                     return
                 out = out.outer
@@ -387,10 +405,11 @@ class Environment:
         if v is NULLPTR:
             raise lib.SplException("Name '{}' is not defined, in file {}, at line {}"
                                    .format(key, line_file[1], line_file[0]))
-        elif isinstance(v, mem.Pointer):
-            return mem.MEMORY.point(v)
+        value_type = v[0]
+        if value_type == TYPE_POINTER:
+            return mem.MEMORY.point(v[1])
         else:
-            return v
+            return v[1]
 
     def direct_get(self, key: str, line_file: tuple):
         """
@@ -406,7 +425,7 @@ class Environment:
             raise lib.SplException("Name '{}' is not defined, in file {}, at line {}"
                                    .format(key, line_file[1], line_file[0]))
         else:
-            return v
+            return v[1]
 
     def contains_key(self, key: str):
         v = self.inner_get(key)
@@ -423,10 +442,11 @@ class Environment:
         value stored in heap is a pointer.
         """
         obj = self.heap[class_name]
-        if isinstance(obj, mem.Pointer):
-            return mem.MEMORY.point(obj)
+        value_type = obj[0]
+        if value_type == TYPE_POINTER:
+            return mem.MEMORY.point(obj[1])
         else:
-            return obj
+            return obj[1]
 
     def attributes(self):
         """
@@ -606,19 +626,20 @@ NULLPTR = NullPointer()
 UNDEFINED = Undefined()
 
 
-class ClassInstance:
+class ClassInstance(lib.SplObject):
     def __init__(self, env: Environment, class_name: str):
         """
         ===== Attributes =====
         :param class_name: name of this class
         :param env: instance attributes
         """
+        lib.SplObject.__init__(self)
         self.class_name = class_name
         self.env = env
-        self.id = mem.MEMORY.allocate(self)
+        # self.id = mem.MEMORY.allocate(self)
         # self.reference_count = 0
         self.env.constants["this"] = self
-        check_gc(env, mem.Pointer(self.id))
+        check_gc(env, self.pointer())
 
     def __hash__(self):
         if self.env.contains_key("__hash__"):
@@ -1009,10 +1030,13 @@ def is_subclass_of(child_class: Class, class_name: str, env: Environment) -> boo
     :param env: the environment, doesn't matter whether it is global or not
     :return: whether the child class is the ancestor class itself or inherited from that class
     """
-    if child_class.class_name == class_name:
-        return True
+    if isinstance(child_class, Class):
+        if child_class.class_name == class_name:
+            return True
+        else:
+            return any([is_subclass_of(env.get_heap(ccn), class_name, env) for ccn in child_class.superclass_names])
     else:
-        return any([is_subclass_of(env.get_heap(ccn), class_name, env) for ccn in child_class.superclass_names])
+        return False
 
 
 def eval_operator(node: ast.OperatorNode, env: Environment):
@@ -1032,6 +1056,28 @@ def eval_operator(node: ast.OperatorNode, env: Environment):
         return arithmetic(left, right_node, symbol, env)
 
 
+def generate_var_type(type_node: ast.NameNode, env: Environment) -> int:
+    if type_node is not None:
+        name: str = type_node.name
+        if name == "int":
+            return TYPE_INT
+        elif name == "float":
+            return TYPE_FLOAT
+        elif name == "boolean":
+            return TYPE_BOOLEAN
+        else:
+            target = evaluate(type_node, env)
+            if isinstance(target, Class) and is_subclass_of(target, "Object", env):
+                return TYPE_POINTER
+            elif isinstance(target, NativeFunction):
+                return TYPE_POINTER
+            else:
+                raise lib.TypeException("Unknown type '{}', in file '{}', at line {}."
+                                        .format(name, type_node.file, type_node.line_num))
+    else:
+        return TYPE_RAW
+
+
 def assignment(node: ast.AssignmentNode, env: Environment):
     key = node.left
     value = evaluate(node.right, env)
@@ -1043,9 +1089,11 @@ def assignment(node: ast.AssignmentNode, env: Environment):
         if node.level == ast.ASSIGN:
             env.assign(key.name, value, lf)
         elif node.level == ast.CONST:
-            env.define_const(key.name, value, lf)
+            var_type = generate_var_type(node.var_type, env)
+            env.define_const(key.name, value, lf, var_type)
         elif node.level == ast.VAR:
-            env.define_var(key.name, value, lf)
+            var_type = generate_var_type(node.var_type, env)
+            env.define_var(key.name, value, lf, var_type)
         else:
             raise lib.SplException("Unknown variable level")
         return value
@@ -1268,7 +1316,8 @@ def eval_dot(node: ast.Dot, env: Environment):
             env.assign("=>", result, lf)
             return result
         else:
-            raise lib.InterpretException("Not a class instance, in {}, at line {}".format(node.file, node.line_num))
+            raise lib.InterpretException("Not a class instance; {} instead, in {}, at line {}"
+                                         .format(typeof(instance), node.file, node.line_num))
     else:
         raise lib.InterpretException("Unknown Syntax, in {}, at line {}".format(node.file, node.line_num))
 
@@ -1289,6 +1338,8 @@ def arithmetic(left, right_node: ast.Node, symbol, env: Environment):
             return num_arithmetic(left, right, symbol)
         elif isinstance(left, lib.String):
             return string_arithmetic(left, right, symbol)
+        elif isinstance(left, lib.NativeType):  # NativeTypes other than String
+            return native_arithmetic(left, right, symbol)
         elif isinstance(left, ClassInstance):
             return instance_arithmetic(left, right, symbol, env, right_node)
         else:
@@ -1316,6 +1367,24 @@ def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment, ri
         func: Function = left.env.get(fc.f_name, LINE_FILE)
         result = call_function(fc, func, left.env, env)
         return result
+
+
+def native_arithmetic(left: lib.NativeType, right, symbol: str):
+    if symbol == "===" or symbol == "is":
+        return isinstance(right, lib.NativeType) and left.id == right.id
+    elif symbol == "!==":
+        return not isinstance(right, lib.NativeType) or left.id != right.id
+    elif symbol == "instanceof":
+        if isinstance(right, NativeFunction):
+            return left.type_name() == right.name
+        else:
+            return False
+    elif symbol == "==":
+        return left == right
+    elif symbol == "!=":
+        return left != right
+    else:
+        raise lib.TypeException("Unsupported operation")
 
 
 STRING_ARITHMETIC_TABLE = {
@@ -1444,8 +1513,8 @@ def class_inheritance(cla: Class, env: Environment, scope: Environment):
     :param scope: the class scope
     :return: None
     """
-    # print(cla)
     for sc in cla.superclass_names:
+        # if sc != "Object":
         class_inheritance(env.get_heap(sc), env, scope)
 
     evaluate(cla.body, scope)  # this step just fills the scope
@@ -1636,7 +1705,7 @@ def eval_array_init(node: ast.ArrayInit, env: Environment):
         array = lib.FloatArray(length)
     elif type_name == "boolean":
         array = lib.BooleanArray(length)
-    elif type_name == "Object":
+    elif type_name == "Object":  # Special case for mixture of built-in and object classes
         array = lib.PointerArray(length)
     elif env.has_class(type_name):
         cla = env.get_heap(type_name)

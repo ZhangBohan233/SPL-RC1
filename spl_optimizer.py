@@ -58,8 +58,7 @@ class Optimizer:
             node.body = self.reduce_leaf(node.body)
             return node
         elif isinstance(node, psr.UnaryOperator):
-            if t == psr.RETURN_STMT:
-                node: psr.ReturnStmt
+            if node.value == "return":
                 # v = node.value
                 if self.level > 1:
                     self.returning = True

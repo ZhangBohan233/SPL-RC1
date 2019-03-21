@@ -66,9 +66,17 @@ def print_waring(msg: str):
 # Native functions with no dependency
 
 
-class NativeType:
+class SplObject:
     def __init__(self):
         self.id = mem.MEMORY.allocate(self)
+
+    def pointer(self) -> mem.Pointer:
+        return mem.Pointer(self.id)
+
+
+class NativeType(SplObject):
+    def __init__(self):
+        SplObject.__init__(self)
 
     def type_name(self) -> str:
         raise NotImplementedError

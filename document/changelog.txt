@@ -1,3 +1,11 @@
+********** SPL 1.4 Beta 4 **********
+===== Build 0055 2019/03/21 =====
+
+*Added support for strong type notation
+*Every spl objects now extend the class 'Object'
+*Bug fixes:
+    *Fixed that the optimizer causes error since build 0053
+
 ********** SPL 1.4 Beta 3 **********
 ===== Build 0054 2019/03/18 =====
 
