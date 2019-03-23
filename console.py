@@ -13,6 +13,7 @@ if __name__ == "__main__":
     lines = []
 
     while True:
+
         if line_terminated:
             line = input(">>> ")
         else:
@@ -27,6 +28,7 @@ if __name__ == "__main__":
 
             itr.set_ast(block)
             res = itr.interpret()
+            # print(res)
 
             lines.clear()
             line_terminated = True
