@@ -65,7 +65,11 @@ def print_waring(msg: str):
 
 class NativeType:
     def __init__(self):
+<<<<<<< HEAD
         pass
+=======
+        self.id = mem.MEMORY.allocate(self)
+>>>>>>> parent of be408dc... 1.4 Beta 4
 
     def type_name(self) -> str:
         raise NotImplementedError

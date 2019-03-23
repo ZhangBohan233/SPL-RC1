@@ -1,5 +1,6 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 ********** SPL 1.4 RC1 **********
 ===== Build 0057 2019/03/23 =====
 
@@ -22,6 +23,8 @@
 *Bug fixes:
     *Fixed that the optimizer causes error since build 0053
 
+=======
+>>>>>>> parent of be408dc... 1.4 Beta 4
 ********** SPL 1.4 Beta 3 **********
 ===== Build 0054 2019/03/18 =====
 

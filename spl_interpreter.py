@@ -39,8 +39,17 @@ class Interpreter:
 
     def set_up_env(self):
         add_natives(self.env)
+<<<<<<< HEAD
         self.env.add_heap("system", lib.System(lib.List(*parse_args(self.argv)), self.encoding))
         self.env.add_heap("natives", NativeInvokes())
+=======
+        system = lib.System(lib.List(*parse_args(self.argv)), self.encoding)
+        natives = NativeInvokes()
+        os_ = lib.Os()
+        self.env.add_heap("system", mem.Pointer(system.id))
+        self.env.add_heap("natives", mem.Pointer(natives.id))
+        self.env.add_heap("os", mem.Pointer(os_.id))
+>>>>>>> parent of be408dc... 1.4 Beta 4
 
     def set_ast(self, ast_: ast.BlockStmt):
         """
@@ -175,6 +184,12 @@ class Environment:
 
     def add_heap(self, k, v):
         self.heap[k] = v
+<<<<<<< HEAD
+=======
+
+    def has_class(self, class_name):
+        return class_name in self.heap
+>>>>>>> parent of be408dc... 1.4 Beta 4
 
     def terminate(self, exit_value):
         if self.scope_type == FUNCTION_SCOPE:
@@ -233,7 +248,11 @@ class Environment:
         self.variables[key] = value
 
     def define_var(self, key, value, lf):
+<<<<<<< HEAD
         if self.contains_key(key):
+=======
+        if self.local_contains(key):
+>>>>>>> parent of be408dc... 1.4 Beta 4
             raise lib.SplException("Name '{}' is already defined in this scope, in '{}', at line {}"
                                    .format(key, lf[1], lf[0]))
         else:
@@ -250,11 +269,19 @@ class Environment:
     def assign(self, key, value, lf):
         if key in self.variables:
             self.variables[key] = value
+<<<<<<< HEAD
+=======
+            check_gc(self, value)
+>>>>>>> parent of be408dc... 1.4 Beta 4
         else:
             out = self.outer
             while out:
                 if key in out.variables:
                     out.variables[key] = value
+<<<<<<< HEAD
+=======
+                    check_gc(self, value)
+>>>>>>> parent of be408dc... 1.4 Beta 4
                     return
                 out = out.outer
             raise lib.SplException("Name '{}' is not defined, in '{}', at line {}"
@@ -287,6 +314,29 @@ class Environment:
         """
         Returns the value of that key.
 
+<<<<<<< HEAD
+=======
+        If the value is a pointer, then returns the instance pointed by the pointer instead.
+
+        :param key:
+        :param line_file:
+        :return: the value corresponding to the key. Instance will be returned if the value is a pointer.
+        """
+        v = self.inner_get(key)
+        # print(key + str(v))
+        if v is NULLPTR:
+            raise lib.SplException("Name '{}' is not defined, in file {}, at line {}"
+                                   .format(key, line_file[1], line_file[0]))
+        elif isinstance(v, mem.Pointer):
+            return mem.MEMORY.point(v)
+        else:
+            return v
+
+    def direct_get(self, key: str, line_file: tuple):
+        """
+        Returns the value of that key, regardless of value type.
+
+>>>>>>> parent of be408dc... 1.4 Beta 4
         :param key:
         :param line_file:
         :return:
@@ -303,8 +353,26 @@ class Environment:
         v = self.inner_get(key)
         return v is not NULLPTR
 
+<<<<<<< HEAD
     def get_heap(self, class_name):
         return self.heap[class_name]
+=======
+    def get_heap(self, class_name: str):
+        """
+        Returns the heap-variable corresponding to the key 'class_name'.
+
+        This method will return the instance if the value stored in heap is a pointer.
+
+        :param class_name:
+        :return: the heap-variable corresponding to the key 'class_name'. Instance will be returned if the
+        value stored in heap is a pointer.
+        """
+        obj = self.heap[class_name]
+        if isinstance(obj, mem.Pointer):
+            return mem.MEMORY.point(obj)
+        else:
+            return obj
+>>>>>>> parent of be408dc... 1.4 Beta 4
 
     def attributes(self):
         return {**self.constants, **self.variables}
@@ -453,6 +521,121 @@ class NativeInvokes(lib.NativeType):
         return Thread(process)
 
 
+<<<<<<< HEAD
+=======
+class InstanceArray(lib.PointerArray):
+    def __init__(self, type_name: str, length):
+        lib.PointerArray.__init__(self, length)
+
+        self.object_type = type_name
+
+    def type_name(self):
+        return "{}[]".format(self.object_type, self.length())
+
+    def __setitem__(self, index, value):
+        obj = mem.MEMORY.get_instance(value.id)
+        if obj.class_name != self.object_type:
+            lib.print_waring("Warning: generic array of different types")
+        self.array[index] = value.id
+
+
+NULLPTR = NullPointer()
+UNDEFINED = Undefined()
+
+
+class ClassInstance:
+    def __init__(self, env: Environment, class_name: str):
+        """
+        ===== Attributes =====
+        :param class_name: name of this class
+        :param env: instance attributes
+        """
+        self.class_name = class_name
+        self.env = env
+        self.id = mem.MEMORY.allocate(self)
+        # self.reference_count = 0
+        self.env.constants["this"] = self
+        check_gc(env, mem.Pointer(self.id))
+
+    def __hash__(self):
+        if self.env.contains_key("__hash__"):
+            call = ast.FuncCall(LINE_FILE, "__hash__")
+            call.args = []
+            return evaluate(call, self.env)
+        else:
+            return hash(self)
+
+    def __repr__(self):
+        if self.env.contains_key("__repr__"):
+            return to_repr(self).literal
+        else:
+            return "<{} at {}>".format(self.class_name, self.id)
+
+    def __str__(self):
+        if self.env.contains_key("__str__"):
+            return to_str(self).literal
+        else:
+            attr = self.env.attributes()
+            attr.pop("this")
+            attr.pop("=>")
+            return "<{} at {}>: {}".format(self.class_name, self.id, attr)
+
+
+class RuntimeException(Exception):
+    def __init__(self, exception: ClassInstance):
+        Exception.__init__(self, "RuntimeException")
+
+        self.exception = exception
+
+
+class GarbageCollector:
+    def __init__(self, memory):
+        self.found: set = {0}
+        self.memory: mem.Memory = memory
+
+    def gc(self, env: Environment, protected: mem.Pointer):
+        global_env = env
+        while global_env.outer:
+            global_env = global_env.outer  # first go to the outermost environment
+        if protected:
+            self.found.add(protected.id)
+        self.find(global_env)
+        new_memory = {}
+        for k in self.memory.memory.keys():
+            if k in self.found:
+                new_memory[k] = self.memory.memory[k]
+        # print(new_memory)
+        print("before: {}, after: {}".format(len(self.memory.memory), len(new_memory)))
+        self.memory.memory = new_memory
+        self.memory.count = 1
+
+    def find(self, env: Environment):
+        if env.is_global():
+            self.strong_ref(env.heap)
+        self.strong_ref(env.constants)
+        self.strong_ref(env.variables)
+
+        for child in env.children:
+            self.find(child)
+
+    def strong_ref(self, d: dict):
+        for key in d:
+            ptr = d[key]
+            if isinstance(ptr, mem.Pointer):
+                obj = self.memory.point(ptr)
+                self.found.add(ptr.id)
+                if isinstance(obj, lib.NativeType):
+                    attrs = dir(obj)
+                    for attr in attrs:
+                        v = getattr(obj, attr)
+                        if isinstance(v, lib.NativeType):
+                            self.found.add(obj.id)
+                    if isinstance(obj, lib.PointerArray):
+                        for p in obj.list_pointers():
+                            self.found.add(p)
+
+
+>>>>>>> parent of be408dc... 1.4 Beta 4
 # Native functions with dependencies
 
 def to_str(v) -> lib.String:
@@ -1095,6 +1278,7 @@ def instance_arithmetic(left: ClassInstance, right, symbol, env: Environment, ri
         return result
 
 
+<<<<<<< HEAD
 def string_arithmetic(left, right, symbol):
     if symbol == "==":
         result = left == right
@@ -1110,6 +1294,17 @@ def string_arithmetic(left, right, symbol):
         return isinstance(right, NativeFunction) and right.name == "string"
     else:
         raise lib.TypeException("Unsupported operation between string and " + typeof(right).literal)
+=======
+STRING_ARITHMETIC_TABLE = {
+    "==": lambda left, right: left == right,
+    "!=": lambda left, right: left != right,
+    "+": lambda left, right: left + right,
+    "===": lambda left, right: left is right,
+    "is": lambda left, right: left is right,
+    "!==": lambda left, right: left is not right,
+    "instanceof": lambda left, right: isinstance(right, NativeFunction) and right.name == "string"
+}
+>>>>>>> parent of be408dc... 1.4 Beta 4
 
     return result
 
@@ -1410,6 +1605,63 @@ def eval_assert(node: ast.AssertStmt, env: Environment):
         raise lib.AssertionException("Assertion failed, in file '{}', at line {}".format(node.file, node.line_num))
 
 
+<<<<<<< HEAD
+=======
+def eval_array_init(node: ast.ArrayInit, env: Environment):
+    length = evaluate(node.args, env)
+    type_name: str = node.f_name
+    array = None
+    if type_name == "int":
+        array = lib.IntArray(length)
+    elif type_name == "float":
+        array = lib.FloatArray(length)
+    elif type_name == "boolean":
+        array = lib.BooleanArray(length)
+    elif type_name == "Object":
+        array = lib.PointerArray(length)
+    elif env.has_class(type_name):
+        cla = env.get_heap(type_name)
+        if isinstance(cla, Class):
+            array = InstanceArray(type_name, length)
+        elif isinstance(cla, NativeFunction):
+            array = lib.NativeObjectArray(type_name, length)
+
+    if array is not None:
+        array: lib.Array
+        return mem.Pointer(array.id)
+    else:
+        raise lib.TypeException(
+            "Unknown type for array creation, in '{}', at line {}.".format(node.file, node.line_num))
+
+
+def free_pointer(node: ast.Node, env: Environment):
+    t = node.node_type
+    if t == ast.NAME_NODE:
+        node: ast.NameNode
+        pointer = env.direct_get(node.name, (node.line_num, node.file))
+        mem.MEMORY.free(pointer)
+    else:
+        raise lib.TypeException("Unknown type for free. In file '{}', at line {}"
+                                .format(node.file, node.line_num))
+
+
+UNARY_TABLE = {
+    "return": eval_return,
+    "throw": lambda n, env: raise_exception(RuntimeException(evaluate(n.value, env))),
+    "neg": lambda n, env: -evaluate(n.value, env),
+    "!": lambda n, env: not bool(evaluate(n.value, env)),
+    "assert": eval_assert,
+    "del": free_pointer
+}
+
+
+def eval_unary_expression(node: ast.UnaryOperator, env: Environment):
+    t = node.operation
+    op = UNARY_TABLE[t]
+    return op(node.value, env)
+
+
+>>>>>>> parent of be408dc... 1.4 Beta 4
 def raise_exception(e: Exception):
     raise e
 

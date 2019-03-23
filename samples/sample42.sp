@@ -9,10 +9,16 @@ class Cla {
 }
 
 if (main()) {
-    Cla a = new Cla();
+    var a = new Cla();
     println(a);
-    list d = list();
-    println(d instanceof list);
-    const b = 66;
+    a.die();
+    var b = list(3, 4);
     println(b);
+
+    var c = new float[8];
+    c[2] = 5;
+    println(c);
+
+    del c;
+    //println(c);
 }
