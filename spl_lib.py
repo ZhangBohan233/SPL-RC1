@@ -1,8 +1,5 @@
 import sys
 import time as time_lib
-import os
-import spl_memory as mem
-import struct
 
 
 def replace_bool_none(string: str):
@@ -66,17 +63,9 @@ def print_waring(msg: str):
 # Native functions with no dependency
 
 
-class SplObject:
+class NativeType:
     def __init__(self):
-        self.id = mem.MEMORY.allocate(self)
-
-    def pointer(self) -> mem.Pointer:
-        return mem.Pointer(self.id)
-
-
-class NativeType(SplObject):
-    def __init__(self):
-        SplObject.__init__(self)
+        pass
 
     def type_name(self) -> str:
         raise NotImplementedError
@@ -164,9 +153,6 @@ class String(NativeType, Iterable):
                         lst.append(str(round(args[count], precision)))
                     else:
                         lst.append(str(args[count]))
-                elif flag == "r":
-                    lit = args[count]
-                    lst.append(str(lit))
                 else:
                     print_waring("Warning: Unknown flag: %" + flag)
                     lst.append("%")
@@ -259,10 +245,10 @@ class List(NativeType, Iterable):
 
 
 class Pair(NativeType, Iterable):
-    def __init__(self, initial: dict):
+    def __init__(self):
         NativeType.__init__(self)
 
-        self.pair = initial.copy()
+        self.pair = {}
 
     def __iter__(self):
         return (k for k in self.pair)
@@ -290,10 +276,10 @@ class Pair(NativeType, Iterable):
 
 
 class Set(NativeType, Iterable):
-    def __init__(self, *initial):
+    def __init__(self):
         NativeType.__init__(self)
 
-        self.set = set(initial)
+        self.set = set()
 
     def __iter__(self):
         return (v for v in self.set)
@@ -349,20 +335,6 @@ class System(NativeType):
 
     def type_name(self):
         return "system"
-
-
-class Os(NativeType):
-    name = String(os.name)
-    separator = String(os.sep)
-
-    def __init__(self):
-        NativeType.__init__(self)
-
-    def type_name(self):
-        return "os"
-
-    def list_files(self, path):
-        return List(os.listdir(path))
 
 
 class File(NativeType):
@@ -429,156 +401,6 @@ class File(NativeType):
 
     def type_name(self):
         return "file"
-
-
-class Array(NativeType, Iterable):
-    array: bytearray
-    element_size: int
-
-    def __init__(self, length: int):
-        NativeType.__init__(self)
-
-        # self.generic = type_
-        self.item_number = length
-
-        self.iter_index = 0
-
-    def type_name(self):
-        raise NotImplementedError
-
-    def __iter__(self):
-        self.iter_index = 0
-        return self
-
-    def __next__(self):
-        if self.iter_index < self.length():
-            ele = self[self.iter_index]
-            self.iter_index += 1
-            return ele
-        else:
-            raise StopIteration
-
-    def __getitem__(self, index):
-        raise NotImplementedError
-
-    def __setitem__(self, index, value):
-        raise NotImplementedError
-
-    def length(self):
-        return self.item_number
-
-
-class IntArray(Array):
-    def __init__(self, length):
-        Array.__init__(self, length)
-
-        self.array = bytearray(length * 8)
-
-    def type_name(self):
-        return "int[]".format(self.length())
-
-    def __getitem__(self, index) -> int:
-        if index >= self.length() or index < 0:
-            raise IndexOutOfRangeException("Array index out of range")
-        byte_index = index << 3
-        seq = self.array[byte_index: byte_index + 8]
-        return int.from_bytes(seq, "big", signed=True)
-
-    def __setitem__(self, index, value: int):
-        if index >= self.length() or index < 0:
-            raise IndexOutOfRangeException("Array index out of range")
-        byte_index = index << 3
-        byte_value = value.to_bytes(8, "big", signed=True)
-        self.array[byte_index: byte_index + 8] = byte_value
-
-    def __str__(self):
-        return str([self[i] for i in range(self.length())])
-
-
-class BooleanArray(Array):
-    def __init__(self, length):
-        Array.__init__(self, length)
-
-        self.array = bytearray(length)
-
-    def type_name(self):
-        return "boolean[{}]".format(self.length())
-
-    def __getitem__(self, index) -> bool:
-        return False if self.array[index] == 0 else True
-
-    def __setitem__(self, index, value):
-        v: int = 1 if value else 0
-        self.array[index] = v
-
-    def __str__(self):
-        lst = [False if x == 0 else True for x in self]
-        return str(lst)
-
-
-class FloatArray(Array):
-    def __init__(self, length):
-        Array.__init__(self, length)
-
-        self.array = bytearray(length * 8)
-
-    def type_name(self):
-        return "float[{}]".format(self.length())
-
-    def __getitem__(self, index) -> float:
-        if index >= self.length() or index < 0:
-            raise IndexOutOfRangeException("Array index out of range")
-        byte_index = index << 3
-        seq = self.array[byte_index: byte_index + 8]
-        return struct.unpack("d", seq)[0]
-
-    def __setitem__(self, index, value: float):
-        if index >= self.length() or index < 0:
-            raise IndexOutOfRangeException("Array index out of range")
-        byte_index = index << 3
-        byte_value = bytearray(struct.pack("d", value))
-        self.array[byte_index: byte_index + 8] = byte_value
-
-    def __str__(self):
-        return str([self[i] for i in range(self.length())])
-
-
-class PointerArray(Array):
-    def __init__(self, length):
-        Array.__init__(self, length)
-
-        self.array = IntArray(length)
-
-    def __getitem__(self, index):
-        pointer = self.array[index]
-        return mem.MEMORY.get_instance(pointer)
-
-    def __setitem__(self, index, value):
-        self.array[index] = value.id
-
-    def __str__(self):
-        return str([self[i] for i in range(self.length())])
-
-    def type_name(self):
-        return "Object[{}]".format(self.length())
-
-    def list_pointers(self):
-        return (x for x in self.array)
-
-
-class NativeObjectArray(PointerArray):
-    def __init__(self, type_name, length):
-        PointerArray.__init__(self, length)
-
-        self.object_type = type_name
-
-    def __setitem__(self, index, value: NativeType):
-        if value.type_name() != self.object_type:
-            print_waring("Warning: generic array of different types")
-        self.array[index] = value.id
-
-    def type_name(self):
-        return "{}[{}]".format(self.object_type, self.length())
 
 
 # Exceptions
@@ -663,23 +485,22 @@ def exit_(code=0):
 
 def input_(*prompt):
     s = input(*prompt)
-    st = String(s)
-    return mem.Pointer(st.id)
+    return String(s)
 
 
 def make_list(*initial_elements):
     lst = List(*initial_elements)
-    return mem.Pointer(lst.id)
+    return lst
 
 
-def make_pair(initial_elements: dict):
-    pair = Pair(initial_elements)
-    return mem.Pointer(pair.id)
+def make_pair():
+    pair = Pair()
+    return pair
 
 
-def make_set(*initial_elements):
-    s = Set(*initial_elements)
-    return mem.Pointer(s.id)
+def make_set():
+    s = Set()
+    return s
 
 
 def to_int(v):
@@ -694,17 +515,12 @@ def to_boolean(v):
     return True if v else False
 
 
-def memory_view():
-    return mem.MEMORY
-
-
 def f_open(file, mode=String("r"), encoding=String("utf-8")):
     if not mode.contains("b"):
         f = open(str(file), str(mode), encoding=str(encoding))
     else:
         f = open(str(file), str(mode))
-    file = File(f, str(mode))
-    return mem.Pointer(file.id)
+    return File(f, str(mode))
 
 
 # etc
