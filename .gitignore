@@ -2,4 +2,3 @@
 *.xml
 .idea/
 *.pyc
-__pycache__/spl_interpreter.cpython-37.pyc

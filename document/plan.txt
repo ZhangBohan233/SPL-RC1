@@ -8,5 +8,3 @@
 
 * list creation with []   ...discard
 * pair creation with {}   ...discard
-
-* array   ...done

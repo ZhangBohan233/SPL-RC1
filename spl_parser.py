@@ -1,6 +1,7 @@
 import spl_ast as ast
 import spl_token_lib as stl
 
+
 ABSTRACT_IDENTIFIER = {"function", "def", "class"}
 
 
@@ -23,7 +24,6 @@ class Parser:
         call_nest_list = []
         param_nest_list = []
         is_abstract = False
-        array_init_pos = -1
         var_level = ast.ASSIGN
         brace_count = 0
         class_brace = -1
@@ -54,8 +54,7 @@ class Parser:
                     elif sym == "else":
                         pass  # this case is automatically handled by the if-block
                     elif sym == "return":
-                        parser.add_unary(line, "return", 0)
-                        # parser.add_return(line)
+                        parser.add_return(line)
                     elif sym == "break":
                         parser.add_break(line)
                     elif sym == "continue":
@@ -108,10 +107,6 @@ class Parser:
                         else:
                             # if parser.in_expr:
                             extra_precedence -= 1
-                    # elif sym == "[":
-                    #     # list_creation += 1
-                    #     square_count += 1
-                    #     parser.add_call(line, "list")
                     elif sym == "]":
                         next_token = self.tokens[i + 1]
                         if isinstance(next_token, stl.IdToken) and next_token.symbol == "=":
@@ -119,14 +114,9 @@ class Parser:
                             parser.build_line()
                             i += 1
                         else:
-                            if is_this_list(call_nest_list, array_init_pos):
-                                parser.build_line()
-                                parser.build_call()
-                                array_init_pos = -1
-                            else:
-                                parser.build_get_set(False)
-                                parser.build_line()
-                                parser.build_call()
+                            parser.build_get_set(False)
+                            parser.build_line()
+                            parser.build_call()
                             call_nest_list.pop()
                             par_count -= 1
                     elif sym == "=":
@@ -202,26 +192,17 @@ class Parser:
                         i += 1
                         c_token = self.tokens[i]
                         class_name = c_token.symbol
-
+                        parser.add_class_new((c_token.line_number(), c_token.file_name()), class_name)
                         next_token = self.tokens[i + 1]
-                        if isinstance(next_token, stl.IdToken):
-                            if next_token.symbol == "(":
-                                parser.add_class_new((c_token.line_number(), c_token.file_name()), class_name)
-                                i += 1
-                                call_nest_list.append(par_count)
-                                par_count += 1
-                                parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
-                            elif next_token.symbol == "[":
-                                i += 1
-                                call_nest_list.append(par_count)
-                                array_init_pos = par_count
-                                par_count += 1
-                                parser.add_array_init(line, class_name)
-                            else:
-                                parser.add_class_new((c_token.line_number(), c_token.file_name()), class_name)
+                        if i + 1 < len(self.tokens) and isinstance(next_token, stl.IdToken) and \
+                                next_token.symbol == "(":
+                            i += 1
+                            call_nest_list.append(par_count)
+                            par_count += 1
+                            parser.add_call((c_token.line_number(), c_token.file_name()), class_name)
+                            # in_call = True
                     elif sym == "throw":
-                        parser.add_unary(line, "throw", 0)
-                        # parser.add_throw(line)
+                        parser.add_throw(line)
                     elif sym == "try":
                         parser.add_try(line)
                     elif sym == "catch":
@@ -232,29 +213,22 @@ class Parser:
                     elif sym == "finally":
                         parser.add_finally(line)
                     elif sym == "assert":
-                        parser.add_unary(line, "assert", 0)
-                        # parser.add_assert(line)
-                    elif sym == "del":
-                        parser.add_unary(line, "del", 0)
+                        parser.add_assert(line)
                     elif sym in stl.BINARY_OPERATORS:
                         if sym == "-" and (i == 0 or is_unary(self.tokens[i - 1])):
-                            # parser.add_neg(line, extra_precedence)
-                            parser.add_unary(line, "neg", extra_precedence)
+                            parser.add_neg(line, extra_precedence)
                         elif sym == "*" and (i == 0 or is_unary(self.tokens[i - 1])):
                             next_token = self.tokens[i + 1]
                             if isinstance(next_token, stl.IdToken) and next_token.symbol == "*":
-                                # parser.add_kw_unpack(line)
-                                parser.add_unary(line, "kw_unpack", 0)
+                                parser.add_kw_unpack(line)
                                 i += 1
                             else:
-                                # parser.add_unpack(line)
-                                parser.add_unary(line, "unpack", 0)
+                                parser.add_unpack(line)
                         else:
                             parser.add_operator(line, sym, extra_precedence)
                     elif sym in stl.UNARY_OPERATORS:
-                        if sym == "!" or sym == "not":
-                            parser.add_unary(line, "!", extra_precedence)
-                            # parser.add_not(line, extra_precedence)
+                        if sym == "!":
+                            parser.add_not(line, extra_precedence)
                     elif sym[:-1] in stl.OP_EQ:
                         parser.add_operator(line, sym, extra_precedence, True)
                     elif token.is_eol():

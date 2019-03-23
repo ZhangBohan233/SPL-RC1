@@ -1,3 +1,20 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+********** SPL 1.4 RC1 **********
+===== Build 0057 2019/03/23 =====
+
+*Reverted to 1.4 alpha 4
+
+********** SPL 1.4 Beta 5 **********
+===== Build 0056 2019/03/23 =====
+
+*Updated console
+
+=======
+>>>>>>> parent of 27d0db9... 1.4 beta5
+=======
+>>>>>>> parent of 27d0db9... 1.4 beta5
 ********** SPL 1.4 Beta 4 **********
 ===== Build 0055 2019/03/21 =====
 
@@ -6,6 +23,8 @@
 *Bug fixes:
     *Fixed that the optimizer causes error since build 0053
 
+=======
+>>>>>>> parent of be408dc... 1.4 Beta 4
 ********** SPL 1.4 Beta 3 **********
 ===== Build 0054 2019/03/18 =====
 
@@ -53,7 +72,7 @@
     *Garbage collector
 
 ********** SPL 1.4 Alpha 4 **********
-===== Build 0049 2019/03/09 =====
+===== Build 0049 2019/03/08 =====
 
 *Added syntax:
     *'and', 'or', 'is', 'not' to increase readability
@@ -61,6 +80,8 @@
 *Optimization:
     *Replaced some if-elif-else with cases table
 
+=======
+>>>>>>> parent of a3d97c2... 1.4 alpha 4
 ********** SPL 1.4 Alpha 3 **********
 ===== Build 0048 2019/03/07 =====
 
