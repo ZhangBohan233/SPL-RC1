@@ -58,7 +58,7 @@
     *Garbage collector
 
 ********** SPL 1.4 Alpha 4 **********
-===== Build 0049 2019/03/09 =====
+===== Build 0049 2019/03/08 =====
 
 *Added syntax:
     *'and', 'or', 'is', 'not' to increase readability
