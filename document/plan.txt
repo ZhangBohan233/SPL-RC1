@@ -1,0 +1,12 @@
+===== 1.4 =====
+
+* assert   ...done
+* unpack operator   ...done
+* threading   ...done
+* integer underline separator   ...done
+* string format   ...done
+
+* list creation with []   ...discard
+* pair creation with {}   ...discard
+
+* array   ...done

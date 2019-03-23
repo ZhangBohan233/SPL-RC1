@@ -1,0 +1,94 @@
+===== Build 0042 =====
+
+-o2:
+1 million while loop: ~20500 ms
+25 fib: ~4900 ms
+1k elements merge sort: ~2150 ms
+
+===== Build 0037 =====
+
+-o2:
+1 million while loop: ~26500 ms
+25 fib: ~8800 ms
+1k elements merge sort: ~3100 ms
+
+===== Build 0035 =====
+
+-o2:
+1 million while loop: ~20500 ms
+25 fib: ~6000 ms
+1k elements merge sort: ~2400 ms
+
+===== Build 0033 =====
+
+-o2:
+1 million while loop: ~14700 ms
+25 fib: ~5900 ms
+1k elements merge sort: ~1800 ms
+
+===== Build 0030 =====
+
+-o2:
+1 million while loop: ~10000 ms
+25 fib: ~4700 ms
+1k elements merge sort: ~800 ms
+
+===== Build 0027 =====
+
+-o2:
+1 million while loop: ~9400 ms
+25 fib: ~4500 ms
+1k elements merge sort: ~750 ms
+
+===== Build 0026 =====
+
+-o2:
+1 million while loop: ~8400 ms
+25 fib: ~4100 ms
+1k elements merge sort: ~660 ms
+
+===== Build 0025 =====
+-o0:
+1 million while loop: ~15700 ms
+25 fib: ~6600 ms
+1k elements merge sort: ~1100 ms
+
+-o2:
+1 million while loop: ~13700 ms
+25 fib: ~6400 ms
+1k elements merge sort: ~1050 ms
+
+===== Build 0024 =====
+1 million while loop: ~12500 ms
+25 fib: ~5500 ms
+1k elements merge sort: ~870 ms
+
+===== Build 0023 =====
+1 million while loop: ~13000 ms
+25 fib: ~5500 ms
+1k elements merge sort: ~890 ms
+
+===== Build 0022 =====
+1 million while loop: ~13500 ms
+25 fib: ~5800 ms
+1k elements merge sort: ~950 ms
+
+===== Build 0016 =====
+1 million while loop: ~15000 ms
+25 fib: ~6700 ms
+1k elements merge sort: ~1000 ms
+
+===== Build 0014 =====
+1000 element merge sort: ~1000 ms
+
+===== Build 0012 =====
+1 million while loop: ~14200 ms
+25 fib: ~5800 ms
+
+===== Build 0011 =====
+1 million while loop: ~14000 ms
+25 fib: ~5800 ms
+
+===== Build 0001 =====
+1 million while loop: ~7000 ms
+25 fib: ~3400 ms
