@@ -1,1 +1,0 @@
-move C:\Users\zbh\AppData\Local\Programs\Python\Python37\Scripts\dist\spl.exe E:\GitHub\SPL-RC1\

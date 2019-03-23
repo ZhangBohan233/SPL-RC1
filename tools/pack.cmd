@@ -1,1 +1,0 @@
-C:\Users\zbh\AppData\Local\Programs\Python\Python37\Scripts\pyinstaller -F E:\GitHub\SPL-RC1\spl.py
